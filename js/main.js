@@ -1,23 +1,24 @@
 import { $, esc, store, fmtTime } from './util.js';
 import { state, onRender, invalidate } from './state.js';
-import { loadBoard, refreshStandings, refreshFpi } from './data.js';
+import { loadBoard, refreshStandings, refreshFpi, refreshRankings } from './data.js';
 import { initSettings } from './settings.js';
 import { picks, weekLabel, togglePin, setPick, removePick } from './picks.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc } from './views/components.js';
 import { viewWeek, weekList, viewTop25 } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
-import { viewPower } from './views/power.js';
+import { viewRankings } from './views/rankings.js';
 import { viewCompare } from './views/compare.js';
 import { viewPicks } from './views/picks.js';
 
 const TABS = [
   ['week', 'This week', viewWeek, true], ['top25', 'Top 25', viewTop25, true], ['conf', 'Conferences', viewConferences, false],
-  ['power', 'Power', viewPower, false],
+  ['rankings', 'Rankings', viewRankings, false],
   ['compare', 'Forecasts', viewCompare, true], ['picks', 'My picks', viewPicks, false]
 ];
 if (state.tab === 'mvp') state.tab = 'compare';
 if (state.tab === 'standings') state.tab = 'conf';
+if (state.tab === 'power') state.tab = 'rankings';
 if (!TABS.some(([k]) => k === state.tab)) state.tab = 'week';
 
 /* ---------- rendering ---------- */
@@ -72,7 +73,8 @@ document.addEventListener('click', e => {
   if (d.conf){ state.conf = d.conf; store.set('conf', d.conf); return invalidate('main'); }
   if (d.sort){ state.sort = d.sort; return invalidate('main'); }
   if (d.tier){ state.tier = d.tier; store.set('tier', d.tier); return invalidate('main'); }
-  if (d.power){ state.powerFilter = d.power; return invalidate('main'); }
+  if (d.rk){ state.rk = d.rk; store.set('rk', d.rk); return invalidate('main'); }
+  if (d.rkconf){ state.rkConf = d.rkconf; return invalidate('main'); }
   if (d.unpick) return removePick(d.unpick);
   if (t.id === 'retry') return loadBoard({ fresh: true });
   if (t.id === 'drawerClose' || t.id === 'scrim') return closeDrawer();
@@ -103,3 +105,4 @@ invalidate();
 loadBoard();
 refreshFpi();
 refreshStandings();
+refreshRankings();

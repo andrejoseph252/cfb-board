@@ -32,6 +32,7 @@ export function scoreboard(week, st, ttl = 20e3){
 export const scheduleUrl = (id, season) => `${SITE}/teams/${id}/schedule${season ? `?season=${season}` : ''}`;
 export const teamSchedule = (id, season) => getJSON(scheduleUrl(id, season), 5 * MIN);
 export const standings = () => getJSON('https://site.api.espn.com/apis/v2/sports/football/college-football/standings?group=80', 10 * MIN);
+export const rankings = () => getJSON(`${SITE}/rankings`, 30 * MIN);
 export const powerIndex = () => getJSON('https://site.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?limit=200', 60 * MIN);
 export const summaryUrl = id => `${SITE}/summary?event=${id}`;
 export const summary = (id, live) => getJSON(summaryUrl(id), live ? 25e3 : 10 * MIN);

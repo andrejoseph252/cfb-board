@@ -1,6 +1,6 @@
 # CFB Board
 
-Personal college football board: weekly FBS slate, Top 25, conference standings and games, ESPN FPI power
+Personal college football board: weekly FBS slate, Top 25, conference standings and games, AP and ESPN FPI
 rankings, live scores and box scores, team schedules, Kalshi/Polymarket odds, a poll-vs-FPI-vs-market
 view, pregame excitement scores, themes (gear button), and pins and picks (saved in your browser).
 
@@ -36,7 +36,7 @@ Adding a tab means adding a file in `js/views/` and one line in the `TABS` list 
 ## Data
 - Games, scores, rankings, logos, sportsbook lines: ESPN scoreboard.
 - Team schedules, box scores, drives, win probability: ESPN team schedule + game summary.
-- Standings: ESPN standings. Power rankings: ESPN FPI.
+- Standings: ESPN standings. Rankings: ESPN AP poll + FPI.
 - Per-game FPI win probability and Matchup Quality: ESPN predictor.
 - Kalshi: series `KXNCAAFGAME`. Polymarket: Gamma API, `cfb` tag. The page reads
   `data/markets.json` first, then tries the market APIs directly, then falls back to

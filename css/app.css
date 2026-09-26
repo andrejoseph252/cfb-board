@@ -65,13 +65,15 @@
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
-html,body{overflow-x:clip}
+html,body{overflow-x:clip;overscroll-behavior-y:none}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
 body.drawer-open{overflow:hidden}
 /* Home-screen app: the status bar is translucent, so keep scrolled content from showing through it. */
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:15}
 img{max-width:100%}
 button,select,input{font:inherit;color:inherit}
+/* iOS zooms into any field under 16px when it's focused. */
+@media (max-width:900px){input,select,textarea{font-size:16px}}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 a{color:inherit}
@@ -383,3 +385,12 @@ main > .chips:first-child{margin-bottom:18px}
 .fc-foot{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:7px}
 .fc-final{color:var(--ink);font-weight:600}
 .fc-gap{font:800 17px/1 var(--display);color:var(--ink)}
+
+/* rankings */
+.rk-switch .chips{margin-bottom:8px}
+.rk-switch .chip{font-size:15px;padding:8px 18px}
+.tbl td.rk{font:800 18px/1 var(--display)}
+.mv{font-size:11.5px;font-weight:700;color:var(--muted)}
+.mv.up{color:var(--good)} .mv.dn{color:var(--bad)} .mv.new{color:var(--accent);text-transform:uppercase;letter-spacing:.04em;font-size:10.5px}
+.wk-tail{margin-left:6px}
+.wk-p{font-weight:700}

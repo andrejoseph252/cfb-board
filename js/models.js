@@ -96,6 +96,17 @@ export function parseFpi(j){
   return { byTeam, list, updated: j.lastUpdated };
 }
 
+export function parseRankings(j){
+  const ap = (j.rankings || []).find(r => r.type === 'ap');
+  if (!ap) return null;
+  const row = x => ({
+    id: x.team?.id, rank: x.current, prev: x.previous, trend: x.trend, points: x.points, fpv: x.firstPlaceVotes,
+    record: x.recordSummary, name: x.team?.location || x.team?.nickname, abbr: x.team?.abbreviation,
+    logo: x.team?.logo || x.team?.logos?.[0]?.href, conf: x.team?.groups?.isConference ? Number(x.team.groups.id) : null
+  });
+  return { title: ap.headline, ranks: (ap.ranks || []).map(row), others: (ap.others || []).map(row) };
+}
+
 export function parsePredictor(j){
   const stat = (side, n) => j[side]?.statistics?.find(s => s.name === n)?.value;
   const gp = stat('homeTeam', 'gameProjection');

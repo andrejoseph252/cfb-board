@@ -4,7 +4,8 @@ export const state = {
   tab: store.get('tab', 'week'), conf: store.get('conf', 'all'), tier: store.get('tier', 'p4'), q: '',
   week: null, st: null, season: null, cal: [],
   games: [], byId: {}, updated: null, loading: true, err: null,
-  standings: null, fpi: null,
+  standings: null, fpi: null, rankings: null,
+  rk: store.get('rk', 'ap'), rkConf: 'all',
   preds: new Map(),
   version: 0
 };
@@ -27,6 +28,8 @@ export const CONF_ORDER = [8,5,4,1,9,151,17,37,15,12,18];
 
 /* AP/CFP rank for a team: FPI feed carries it for every team; fall back to this week's slate. */
 export function apRank(id){
+  const poll = state.rankings?.ranks.find(t => t.id === id)?.rank;
+  if (poll) return poll;
   const r = state.fpi?.byTeam[id]?.ap;
   if (r) return r;
   for (const g of state.games){ if (g.home.id === id) return g.home.rank; if (g.away.id === id) return g.away.rank; }

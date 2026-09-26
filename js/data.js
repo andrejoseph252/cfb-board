@@ -1,6 +1,6 @@
 /* Loaders: fetch through api.js (cached), normalize, store on state, request a render. */
 import * as api from './api.js';
-import { parseEvent, parseStandings, parseFpi, parsePredictor } from './models.js';
+import { parseEvent, parseStandings, parseFpi, parsePredictor, parseRankings } from './models.js';
 import { state, invalidate } from './state.js';
 import { loadMarkets } from './markets.js';
 import { pool } from './util.js';
@@ -28,6 +28,7 @@ export async function loadBoard({ silent = false, fresh = false } = {}){
   backfillPicks();
   refreshStandings();
   refreshFpi();
+  refreshRankings();
 }
 
 let timer;
@@ -45,6 +46,10 @@ let standingsRaw, fpiRaw;
 export function refreshStandings(){
   return api.standings().then(j => { if (j !== standingsRaw){ standingsRaw = j; state.standings = parseStandings(j); state.standingsErr = null; invalidate(); } })
     .catch(e => { if (!state.standings){ state.standingsErr = e.message; invalidate(); } });
+}
+let rankingsRaw;
+export function refreshRankings(){
+  return api.rankings().then(j => { if (j !== rankingsRaw){ rankingsRaw = j; state.rankings = parseRankings(j); invalidate(); } }).catch(() => {});
 }
 export function refreshFpi(){
   return api.powerIndex().then(j => { if (j !== fpiRaw){ fpiRaw = j; state.fpi = parseFpi(j); state.fpiErr = null; invalidate(); } })
