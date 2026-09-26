@@ -1,6 +1,72 @@
 {
- "updated": "2026-09-26T22:55:07+00:00",
+ "updated": "2026-09-26T23:12:47+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Buffalo Defeats Robert Morris 31-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr4c4v/postgame_thread_buffalo_defeats_robert_morris_3128/",
+   "published": "2026-09-26T23:07:18+00:00",
+   "gameId": "401866426",
+   "teams": [
+    "Buffalo",
+    "Robert Morris"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Iowa Defeats Michigan 20-19",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr4ask/postgame_thread_iowa_defeats_michigan_2019/",
+   "published": "2026-09-26T23:05:33+00:00",
+   "gameId": "401858463",
+   "teams": [
+    "Iowa",
+    "Michigan"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Georgia Defeats Oklahoma 41-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr499e/postgame_thread_georgia_defeats_oklahoma_4113/",
+   "published": "2026-09-26T23:03:35+00:00",
+   "gameId": "401856700",
+   "teams": [
+    "Georgia",
+    "Oklahoma"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] New Mexico Defeats New Mexico State 42-18",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr47i5/postgame_thread_new_mexico_defeats_new_mexico/",
+   "published": "2026-09-26T23:01:24+00:00",
+   "gameId": "401864579",
+   "teams": [
+    "New Mexico",
+    "New Mexico State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] FAU @ ULM (8:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr46cc/game_thread_fau_ulm_800_pm_et/",
+   "published": "2026-09-26T23:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "FAU",
+    "ULM"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Tulsa @ Arkansas (8:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr46bm/game_thread_tulsa_arkansas_800_pm_et/",
+   "published": "2026-09-26T23:00:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Tulsa",
+    "Arkansas"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Boise State Defeats Western Michigan 32-7",
