@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CFB Board</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://site.api.espn.com" crossorigin>
+<link rel="preconnect" href="https://sports.core.api.espn.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>try{const s=JSON.parse(localStorage.getItem('cfbboard.settings')||'{}'),r=document.documentElement;if(s.mode&&s.mode!=='system')r.dataset.theme=s.mode;if(s.palette&&s.palette!=='field')r.dataset.palette=s.palette}catch{}</script>
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1 id="wkTitle">This week</h1>
+      <div class="sub" id="wkSub">Loading the slate…</div>
+    </div>
+    <div class="ctrl">
+      <label class="sr" for="week">Week</label>
+      <select id="week" aria-label="Week"></select>
+      <div class="settings">
+        <button id="gear" class="gear" type="button" aria-label="Settings" aria-expanded="false" aria-controls="setpanel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7.4-3a7.4 7.4 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7.3 7.3 0 0 0-2-1.2L14.5 3h-5l-.4 2.6a7.3 7.3 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7.3 7.3 0 0 0 2 1.2l.4 2.6h5l.4-2.6a7.3 7.3 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg></button>
+        <div id="setpanel" class="setpanel" role="dialog" aria-label="Settings" hidden></div>
+      </div>
+    </div>
+  </div>
+</div>
+<nav class="tabs" aria-label="Views">
+  <div class="wrap" role="tablist" id="tabs"></div>
+</nav>
+<main class="wrap" id="view"></main>
+
+<div id="drawer" class="drawer" hidden>
+  <button id="scrim" class="scrim" type="button" tabindex="-1" aria-label="Close"></button>
+  <aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <div class="sheet-bar">
+      <button id="drawerBack" class="iconbtn" type="button" aria-label="Back" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <span id="drawerTitle" class="sheet-title"></span>
+      <button id="drawerClose" class="iconbtn" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div id="drawerScroll" class="sheet-scroll"><div id="drawerBody"></div></div>
+  </aside>
+</div>
+<noscript><div class="wrap"><div class="empty">CFB Board needs JavaScript.</div></div></noscript>
+</body>
+</html>
