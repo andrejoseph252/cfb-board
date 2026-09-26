@@ -1,6 +1,6 @@
 import { $, esc, store, fmtTime } from './util.js';
 import { state, onRender, invalidate } from './state.js';
-import { loadBoard, ensureStandings, ensureFpi } from './data.js';
+import { loadBoard, refreshStandings, refreshFpi } from './data.js';
 import { initSettings } from './settings.js';
 import { picks, weekLabel, togglePin, setPick, removePick } from './picks.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
@@ -92,6 +92,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && route()) c
 window.addEventListener('hashchange', onHashChange);
 $('#week').addEventListener('change', e => {
   const [st, wk] = e.target.value.split('-'); state.st = st; state.week = wk; state.q = '';
+  state.pickedWeek = e.target.value !== state.current;
   loadBoard();
 });
 
@@ -100,5 +101,5 @@ initSettings();
 initHistory();
 invalidate();
 loadBoard();
-ensureFpi();
-ensureStandings();
+refreshFpi();
+refreshStandings();

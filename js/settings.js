@@ -12,7 +12,7 @@ function apply(){
 }
 
 function panelHTML(){
-  const seg = (key, items) => `<div class="seg" role="group">${items.map(([v, l, c]) =>
+  const seg = (key, items) => `<div class="seg seg-${key}" role="group">${items.map(([v, l, c]) =>
     `<button type="button" data-set="${key}" data-val="${v}" aria-pressed="${settings[key] === v}">${c ? `<span class="sw" style="background:${c}"></span>` : ''}${l}</button>`).join('')}</div>`;
   return `<h3>Settings</h3>
     <div class="setgrp"><span>Appearance</span>${seg('mode', MODES)}</div>
@@ -27,6 +27,12 @@ export function initSettings(){
     const open = panel.hidden;
     if (open) panel.innerHTML = panelHTML();
     panel.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    if (open){
+      // Anchored to the gear's right edge; shift right if that pushes it off the left of a narrow screen.
+      panel.style.right = '0px';
+      const left = panel.getBoundingClientRect().left;
+      if (left < 12) panel.style.right = `${left - 12}px`;
+    }
   });
   panel.addEventListener('click', e => {
     const b = e.target.closest('[data-set]'); if (!b) return;

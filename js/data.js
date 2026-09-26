@@ -9,10 +9,12 @@ import { resolvePicks, backfillPicks } from './picks.js';
 export async function loadBoard({ silent = false, fresh = false } = {}){
   if (!silent){ state.loading = true; invalidate('main', 'header'); }
   try{
-    const j = await api.scoreboard(state.week, state.st, fresh ? 0 : 20e3);
+    // Unless a week was picked from the menu, ask ESPN for "current" every time so an open tab rolls into the next week.
+    const follow = !state.pickedWeek;
+    const j = await api.scoreboard(follow ? null : state.week, follow ? null : state.st, fresh ? 0 : 20e3);
     state.cal = j.leagues?.[0]?.calendar || state.cal;
     state.season = j.season?.year ?? state.season;
-    if (!state.week){ state.week = String(j.week?.number); state.st = String(j.season?.type); }
+    if (follow){ state.week = String(j.week?.number); state.st = String(j.season?.type); state.current = `${state.st}-${state.week}`; }
     await loadMarkets(fresh);
     state.games = (j.events || []).map(parseEvent).sort((a, b) => new Date(a.date) - new Date(b.date));
     state.byId = Object.fromEntries(state.games.map(g => [g.id, g]));
@@ -24,6 +26,8 @@ export async function loadBoard({ silent = false, fresh = false } = {}){
   schedulePoll();
   loadPredictions(state.games);
   backfillPicks();
+  refreshStandings();
+  refreshFpi();
 }
 
 let timer;
@@ -36,14 +40,15 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && state.updated && Date.now() - state.updated > 60e3) loadBoard({ silent: true });
 });
 
-let standingsP, fpiP;
-export function ensureStandings(){
-  return standingsP ??= api.standings().then(j => { state.standings = parseStandings(j); invalidate(); })
-    .catch(e => { standingsP = null; state.standingsErr = e.message; invalidate(); });
+/* Called on every board load; api.js TTLs (10 min standings, 60 min FPI) decide whether anything is actually fetched. */
+let standingsRaw, fpiRaw;
+export function refreshStandings(){
+  return api.standings().then(j => { if (j !== standingsRaw){ standingsRaw = j; state.standings = parseStandings(j); state.standingsErr = null; invalidate(); } })
+    .catch(e => { if (!state.standings){ state.standingsErr = e.message; invalidate(); } });
 }
-export function ensureFpi(){
-  return fpiP ??= api.powerIndex().then(j => { state.fpi = parseFpi(j); invalidate(); })
-    .catch(e => { fpiP = null; state.fpiErr = e.message; invalidate(); });
+export function refreshFpi(){
+  return api.powerIndex().then(j => { if (j !== fpiRaw){ fpiRaw = j; state.fpi = parseFpi(j); state.fpiErr = null; invalidate(); } })
+    .catch(e => { if (!state.fpi){ state.fpiErr = e.message; invalidate(); } });
 }
 
 /* ESPN predictor per game (FPI win prob + Matchup Quality). One small request each, fetched once per session. */
