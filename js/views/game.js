@@ -9,6 +9,7 @@ import { pollP } from './compare.js';
 import { useData } from '../resource.js';
 import { teamLink, logo, panel, meter, excitementBadge, barColors } from './components.js';
 import { chartHTML } from './wpchart.js';
+import { threadsFor, searchUrl } from '../threads.js';
 
 const liveIds = new Set();
 export const isLive = id => liveIds.has(id) || state.byId[id]?.state === 'in';
@@ -25,7 +26,7 @@ export function viewGame(id){
   if (!g.book && s.line) g.book = { pHome: null, details: s.line.details, ou: s.line.ou };
   g.state === 'in' ? liveIds.add(id) : liveIds.delete(id);
 
-  let h = head(g);
+  let h = head(g) + threadLinks(g);
   if (g.state === 'pre'){
     loadPredictions([g]);
     h += preview(g, s);
@@ -50,6 +51,20 @@ function head(g){
   return `<header class="dhead game" data-title="${esc(`${g.away.name} ${g.neutral ? 'vs' : 'at'} ${g.home.name}`)}" style="--away:${esc(ca)};--home:${esc(ch)}">${side(g.away)}
     <div class="gmid">${score}<div class="status${g.state === 'in' ? ' live' : ''}">${esc(when || '')}</div>${g.sit && g.state === 'in' ? `<div class="muted small">${esc(g.sit)}</div>` : ''}</div>
     ${side(g.home)}</header>`;
+}
+
+const REDDIT = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#FF4500"/><path fill="#fff" d="M16.7 10a1.5 1.5 0 0 0-2.5-1 7.2 7.2 0 0 0-3.8-1.2l.7-3 2.1.5a1 1 0 1 0 .1-.6l-2.4-.5a.3.3 0 0 0-.4.2l-.8 3.4a7.2 7.2 0 0 0-3.9 1.2 1.5 1.5 0 1 0-1.6 2.4 2.8 2.8 0 0 0 0 .5c0 2.2 2.6 4 5.8 4s5.8-1.8 5.8-4v-.5a1.5 1.5 0 0 0 .9-1.4zM6.7 11a1 1 0 1 1 1 1 1 1 0 0 1-1-1zm5.6 2.7a3.7 3.7 0 0 1-2.3.7 3.7 3.7 0 0 1-2.3-.7.3.3 0 0 1 .4-.4 3.1 3.1 0 0 0 1.9.5 3.1 3.1 0 0 0 1.9-.5.3.3 0 1 1 .4.4zm-.1-1.7a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>';
+
+/* r/CFB threads: game thread from about an hour before kickoff, postgame thread once it's final. */
+function threadLinks(g){
+  const list = useData('threads', api.threads, j => j.threads || []).data;
+  const { game, post } = threadsFor(g, list);
+  const soon = g.state === 'pre' && new Date(g.date) - Date.now() < 2 * 3600e3;
+  const btn = (t, label) => `<a class="rbtn" href="${esc(t.url)}" target="_blank" rel="noopener">${REDDIT}<span>${label}</span></a>`;
+  const links = [game && btn(game, 'Game thread'), post && btn(post, 'Postgame thread')].filter(Boolean);
+  if (!links.length && (g.state !== 'pre' || soon))
+    links.push(`<a class="rbtn ghost" href="${esc(searchUrl(g))}" target="_blank" rel="noopener">${REDDIT}<span>Find on r/CFB</span></a>`);
+  return links.length ? `<div class="rlinks">${links.join('')}</div>` : '';
 }
 
 function preview(g, s){

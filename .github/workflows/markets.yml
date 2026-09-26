@@ -1,4 +1,4 @@
-name: Refresh market odds
+name: Refresh market odds and game threads
 
 on:
   schedule:
@@ -19,9 +19,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/fetch_markets.py
+      - run: python scripts/fetch_threads.py
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add data/markets.json
-          git diff --cached --quiet || (git commit -m "Update market odds" && git push)
+          git add data/markets.json data/threads.json
+          git diff --cached --quiet || (git commit -m "Update market odds and game threads" && git push)
