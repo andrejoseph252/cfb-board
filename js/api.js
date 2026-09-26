@@ -36,4 +36,5 @@ export const rankings = () => getJSON(`${SITE}/rankings`, 30 * MIN);
 export const powerIndex = () => getJSON('https://site.api.espn.com/apis/fitt/v3/sports/football/college-football/powerindex?limit=200', 60 * MIN);
 export const summaryUrl = id => `${SITE}/summary?event=${id}`;
 export const summary = (id, live) => getJSON(summaryUrl(id), live ? 25e3 : 10 * MIN);
+export const probabilities = (id, live) => getJSON(`${CORE}/events/${id}/competitions/${id}/probabilities?limit=1000`, live ? 25e3 : 10 * 60e3);
 export const predictor = id => getJSON(`${CORE}/events/${id}/competitions/${id}/predictor`, 60 * MIN);

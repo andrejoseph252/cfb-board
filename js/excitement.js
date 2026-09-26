@@ -79,6 +79,7 @@ export function excitement(g){
    Calibrated on 2026 week 3: blowouts < 0.5, competitive 1-2, thrillers 2.2+, instant classics 3.5+. */
 export const REALIZED_TIERS = [[3.5, 'Instant classic'], [2.2, 'Thriller'], [1, 'Competitive'], [0, 'Mostly one-sided']];
 export function realizedExcitement(wp){
+  wp = wp?.map(p => typeof p === 'number' ? p : p.home);
   if (!wp || wp.length < 5) return null;
   let s = 0; for (let i = 1; i < wp.length; i++) s += Math.abs(wp[i] - wp[i - 1]);
   // Count a flip only when the favorite changes decisively (past 55/45), not wobbles around 50%.

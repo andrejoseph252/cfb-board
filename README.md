@@ -35,7 +35,8 @@ Adding a tab means adding a file in `js/views/` and one line in the `TABS` list 
 
 ## Data
 - Games, scores, rankings, logos, sportsbook lines: ESPN scoreboard.
-- Team schedules, box scores, drives, win probability: ESPN team schedule + game summary.
+- Team schedules, box scores, drives: ESPN team schedule + game summary.
+- Per-play win / cover / over-under probability: ESPN core probabilities feed.
 - Standings: ESPN standings. Rankings: ESPN AP poll + FPI.
 - Per-game FPI win probability and Matchup Quality: ESPN predictor.
 - Kalshi: series `KXNCAAFGAME`. Polymarket: Gamma API, `cfb` tag. The page reads

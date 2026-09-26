@@ -117,6 +117,26 @@ export function parsePredictor(j){
   };
 }
 
+/* ESPN's probability feeds have one-play glitches (e.g. around kickoffs); a 3-point median removes them without flattening real swings. */
+function smooth(pts, keys){
+  const med = (a, b, c) => a + b + c - Math.min(a, b, c) - Math.max(a, b, c);
+  return pts.map((p, i) => {
+    if (i === 0 || i === pts.length - 1) return p;
+    const q = { ...p };
+    for (const k of keys) if (p[k] != null && pts[i - 1][k] != null && pts[i + 1][k] != null) q[k] = med(pts[i - 1][k], p[k], pts[i + 1][k]);
+    return q;
+  });
+}
+
+/* Core API per-play probabilities: win, cover (vs the spread) and over (vs the total), all from the home side's view. */
+export function parseProbabilities(j){
+  const pts = (j.items || []).map(x => ({
+    seq: Number(x.sequenceNumber) || 0, pid: /\/plays\/(\d+)/.exec(x.play?.$ref || '')?.[1] ?? null,
+    home: x.homeWinPercentage, cover: x.spreadCoverProbHome ?? null, over: x.totalOverProb ?? null
+  })).filter(p => p.home != null).sort((a, b) => a.seq - b.seq);
+  return smooth(pts, ['home', 'cover', 'over']);
+}
+
 export function parseSummary(j){
   const comp = j.header?.competitions?.[0] || {};
   const ev = { id: j.header?.id, date: comp.date, week: j.header?.week, season: { type: j.header?.season?.type } };
@@ -129,11 +149,6 @@ export function parseSummary(j){
   const teamSide = id => String(id) === String(g.home.id) ? 'home' : String(id) === String(g.away.id) ? 'away' : null;
   const teamStats = {};
   for (const t of j.boxscore?.teams || []) teamStats[teamSide(t.team?.id)] = t.statistics || [];
-  const leaders = {};
-  for (const t of j.leaders || []) leaders[teamSide(t.team?.id)] = (t.leaders || []).map(c => ({
-    label: c.displayName, value: c.leaders?.[0]?.displayValue, who: c.leaders?.[0]?.athlete?.shortName || c.leaders?.[0]?.athlete?.displayName,
-    pos: c.leaders?.[0]?.athlete?.position?.abbreviation
-  })).filter(x => x.who);
   const players = {};
   for (const t of j.boxscore?.players || []) players[teamSide(t.team?.id)] = (t.statistics || []).map(c => ({
     name: c.name, title: c.text || c.name, labels: c.labels || [],
@@ -146,17 +161,15 @@ export function parseSummary(j){
   const drive = d => ({
     side: teamSide(d.team?.id), desc: d.description, result: d.displayResult || d.result, isScore: !!d.isScore,
     q: d.start?.period?.number, start: d.start?.text, clock: d.start?.clock?.displayValue,
-    plays: (d.plays || []).map(p => ({ text: p.text, clock: p.clock?.displayValue, q: p.period?.number }))
+    plays: (d.plays || []).map(p => ({ id: p.id, text: p.text, clock: p.clock?.displayValue, q: p.period?.number, away: p.awayScore, home: p.homeScore }))
   });
   const drives = [...(j.drives?.previous || []).map(drive), ...(j.drives?.current && !j.drives.previous?.some(d => d.id === j.drives.current.id) ? [drive(j.drives.current)] : [])];
-  const raw = (j.winprobability || []).map(p => p.homeWinPercentage).filter(x => x != null);
-  // ESPN's feed has one-play glitches (e.g. around kickoffs); a 3-point median removes them without flattening real swings.
-  const wp = raw.map((x, i) => i === 0 || i === raw.length - 1 ? x : [raw[i - 1], x, raw[i + 1]].sort((a, b) => a - b)[1]);
+  const wp = smooth((j.winprobability || []).filter(p => p.homeWinPercentage != null).map(p => ({ pid: p.playId, home: p.homeWinPercentage })), ['home']);
   const pc = j.pickcenter?.[0];
   const pred = j.predictor ? { pHome: Number(j.predictor.homeTeam?.gameProjection) / 100 || null } : null;
   return {
-    game: g, teamStats, leaders, players, scoring, drives, wp, pred,
-    line: pc ? { details: pc.details, ou: pc.overUnder, provider: pc.provider?.name } : null,
+    game: g, teamStats, players, scoring, drives, wp, pred,
+    line: pc ? { details: pc.details, ou: pc.overUnder, spread: pc.spread ?? null, provider: pc.provider?.name } : null,
     venue: j.gameInfo?.venue?.fullName, city: [j.gameInfo?.venue?.address?.city, j.gameInfo?.venue?.address?.state].filter(Boolean).join(', '),
     weather: j.gameInfo?.weather?.temperature != null ? `${j.gameInfo.weather.temperature}°` : null,
     attendance: j.gameInfo?.attendance
