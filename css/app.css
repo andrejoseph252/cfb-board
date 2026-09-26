@@ -68,6 +68,8 @@ html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
 html,body{overflow-x:clip}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
 body.drawer-open{overflow:hidden}
+/* Home-screen app: the status bar is translucent, so keep scrolled content from showing through it. */
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:15}
 img{max-width:100%}
 button,select,input{font:inherit;color:inherit}
 button{cursor:pointer}
