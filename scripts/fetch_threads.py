@@ -11,6 +11,7 @@ import json
 import pathlib
 import re
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -22,11 +23,19 @@ ATOM = {"a": "http://www.w3.org/2005/Atom"}
 KEEP_DAYS = 10
 
 
-def fetch(flair):
-    q = urllib.parse.urlencode({"q": f'flair:"{flair}"', "restrict_sr": "on", "sort": "new", "limit": 100})
+def fetch():
+    # One combined query per run: the feed throttles back-to-back requests, and 100 items covers far more
+    # than the ~20 minutes between Saturday runs.
+    q = urllib.parse.urlencode({"q": 'flair:"Game Thread" OR flair:"Postgame Thread"', "restrict_sr": "on", "sort": "new", "limit": 100})
     req = urllib.request.Request(f"{FEED}?{q}", headers={"User-Agent": "cfb-board/1.0 (personal scoreboard; github.com/andrejoseph252/cfb-board)"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return ET.fromstring(r.read())
+    for wait in (0, 30, 60):
+        time.sleep(wait)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return ET.fromstring(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or wait == 60:
+                raise
 
 
 def sides(title, kind):
@@ -41,10 +50,13 @@ def sides(title, kind):
     return [clean(p) for p in parts] if len(parts) == 2 else None
 
 
-def entries(root, kind):
+def entries(root):
     out = []
     for e in root.findall("a:entry", ATOM):
         title = html.unescape(e.findtext("a:title", "", ATOM))
+        kind = "post" if title.startswith("[Postgame Thread]") else "game" if title.startswith("[Game Thread]") else None
+        if not kind:
+            continue
         link = e.find("a:link", ATOM)
         content = html.unescape(e.findtext("a:content", "", ATOM))
         gid = re.search(r"gameId[=/](\d+)", content)
@@ -62,13 +74,10 @@ def main():
     except (OSError, ValueError):
         old = []
     fresh, errors = [], []
-    for i, (flair, kind) in enumerate((("Game Thread", "game"), ("Postgame Thread", "post"))):
-        if i:
-            time.sleep(4)  # the unauthenticated feed rate-limits bursts
-        try:
-            fresh += entries(fetch(flair), kind)
-        except Exception as e:  # keep the previous file's threads if Reddit is down or throttling
-            errors.append(f"{kind}: {e}")
+    try:
+        fresh = entries(fetch())
+    except Exception as e:  # keep the previous file's threads if Reddit is down or throttling
+        errors.append(str(e))
     by_url = {t["url"]: t for t in old}
     by_url.update({t["url"]: t for t in fresh})
     cutoff = (datetime.now(timezone.utc) - timedelta(days=KEEP_DAYS)).isoformat()
