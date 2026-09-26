@@ -75,6 +75,16 @@ export function excitement(g){
   return r;
 }
 
+/* Live: how worth switching to this game right now. Closeness (win prob near 50%) weighted up as the clock runs down,
+   so a coin-flip fourth quarter beats a coin-flip first quarter. 0-1; 0.5+ is flagged "Watch now". */
+export function watchHeat(g){
+  if (g.state !== 'in' || g.liveWp == null) return 0;
+  const close = 1 - Math.abs(2 * g.liveWp - 1);
+  const t = g.secsLeft == null ? .5 : Math.min(1, Math.max(0, 1 - g.secsLeft / 3600));
+  return close * (.35 + .65 * t) + (g.redZone && close > .4 ? .05 : 0);
+}
+export const isHot = g => watchHeat(g) >= .5;
+
 /* In-game: total win-probability movement (sum of |ΔWP| across plays).
    Calibrated on 2026 week 3: blowouts < 0.5, competitive 1-2, thrillers 2.2+, instant classics 3.5+. */
 export const REALIZED_TIERS = [[3.5, 'Instant classic'], [2.2, 'Thriller'], [1, 'Competitive'], [0, 'Mostly one-sided']];

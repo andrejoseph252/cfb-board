@@ -2,7 +2,7 @@ import { esc, pct, fmtTime, fmtDay, plural } from '../util.js';
 import { state } from '../state.js';
 import { marketsFor, sourceLabel } from '../markets.js';
 import { pins, picks } from '../picks.js';
-import { excitement } from '../excitement.js';
+import { excitement, isHot } from '../excitement.js';
 
 export const teamHref = id => `#team/${encodeURIComponent(id)}`;
 export const gameHref = id => `#game/${encodeURIComponent(id)}`;
@@ -16,6 +16,8 @@ export function teamLink(t, { rank = true, withLogo = false, label } = {}){
 }
 
 export const sec = (title, n, unit = 'game') => `<h2 class="sec">${esc(title)}${n != null ? `<span class="n">${plural(n, unit)}</span>` : ''}</h2>`;
+/* A titled run of cards whose header sticks under the tabs while you scroll through it. */
+export const group = (label, n, body, ctx = '') => `<section class="kgroup"><div class="kgroup-h"><span class="kpill">${esc(label)}</span>${ctx ? `<span class="kctx">${esc(ctx)}</span>` : ''}<span class="kn">${n}</span></div>${body}</section>`;
 export const empty = msg => `<div class="empty">${msg}</div>`;
 export const chips = (items, active, attr) => `<div class="chips" role="group">${items.map(([v, l]) =>
   `<button class="chip" data-${attr}="${esc(v)}" aria-pressed="${String(active) === String(v)}">${esc(l)}</button>`).join('')}</div>`;
@@ -83,16 +85,16 @@ export function excitementBadge(g, { open = false } = {}){
 }
 
 export function card(g){
-  const live = g.state === 'in', pinned = pins.has(g.id), pk = picks[g.id];
+  const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id), pk = picks[g.id];
   const pickUI = g.state === 'pre' ? `<span class="pickbar" aria-label="Your pick">
       <button class="chipbtn" data-pick="away" aria-pressed="${pk?.side === 'away'}">${esc(g.away.abbr)}</button>
       <button class="chipbtn" data-pick="home" aria-pressed="${pk?.side === 'home'}">${esc(g.home.abbr)}</button></span>` : '';
   const extra = [g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, g.neutral ? 'Neutral site' : null].filter(Boolean)
     .map(x => `<span>${esc(x)}</span>`).join('');
   const detail = `<a class="dlink" href="${gameHref(g.id)}">${g.state === 'pre' ? 'Preview' : 'Box score'}</a>`;
-  return `<article class="game${live ? ' is-live' : ''}${pinned ? ' is-pinned' : ''}" data-id="${esc(g.id)}">
+  return `<article class="game${live ? ' is-live' : ''}${hot ? ' is-hot' : ''}${pinned ? ' is-pinned' : ''}" data-id="${esc(g.id)}">
     ${teamRow(g, 'away')}${teamRow(g, 'home')}${oddsBlock(g)}${excitementBadge(g)}
-    <div class="foot">${statusHTML(g)}${extra}${detail}<span class="spacer"></span>${pickUI}
+    <div class="foot">${hot ? '<span class="hotchip">Watch now</span>' : ''}${statusHTML(g)}${extra}${detail}<span class="spacer"></span>${pickUI}
       <button class="pinbtn" data-pin aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} ${esc(g.away.name)} at ${esc(g.home.name)}" title="${pinned ? 'Unpin' : 'Pin'}">${PIN}</button></div>
   </article>`;
 }

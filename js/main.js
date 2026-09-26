@@ -99,6 +99,8 @@ $('#week').addEventListener('change', e => {
 });
 
 /* ---------- boot ---------- */
+// Sticky group headers sit just below the sticky tab bar, whose height depends on font and screen size.
+new ResizeObserver(([e]) => document.documentElement.style.setProperty('--tabs-h', e.target.offsetHeight + 'px')).observe($('.tabs'));
 initSettings();
 initHistory();
 invalidate();

@@ -37,6 +37,8 @@ function game(e, c){
     neutral: !!c.neutralSite, confGame: !!c.conferenceCompetition, venue: c.venue?.fullName,
     tv: c.broadcasts?.[0]?.names?.[0] ?? c.broadcasts?.[0]?.media?.shortName,
     book: parseBook(c.odds?.[0]), sit: c.situation?.downDistanceText,
+    liveWp: c.situation?.lastPlay?.probability?.homeWinPercentage ?? null,
+    secsLeft: c.situation?.lastPlay?.probability?.secondsLeft ?? null, redZone: !!c.situation?.isRedZone,
     week: e.week?.number, st: e.seasonType?.type ?? e.season?.type
   };
 }

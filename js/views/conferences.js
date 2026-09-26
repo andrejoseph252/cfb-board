@@ -1,6 +1,6 @@
 import { esc, winPct } from '../util.js';
 import { state, CONF, CONF_ORDER, apRank } from '../state.js';
-import { teamLink, grid, sec, empty, chips, logo } from './components.js';
+import { teamLink, grid, sec, empty, chips, logo, group } from './components.js';
 
 const rec = r => r ? `${r.w}-${r.l}${r.t ? '-' + r.t : ''}` : '–';
 
@@ -28,8 +28,8 @@ function games(id){
   const gs = state.games.filter(g => g.home.conf === id || g.away.conf === id);
   if (!gs.length) return empty('No games this week.');
   const inConf = gs.filter(g => g.home.conf === id && g.away.conf === id), non = gs.filter(g => !(g.home.conf === id && g.away.conf === id));
-  return (inConf.length ? `<p class="note sub">Conference games</p>${grid(inConf)}` : '') +
-    (non.length ? `<p class="note sub">Non-conference</p>${grid(non)}` : '');
+  return (inConf.length ? group('Conference', inConf.length, grid(inConf), CONF[id]) : '') +
+    (non.length ? group('Non-conference', non.length, grid(non), CONF[id]) : '');
 }
 
 export function viewConferences(){
