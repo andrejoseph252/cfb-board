@@ -1,6 +1,72 @@
 {
- "updated": "2026-09-27T04:35:52+00:00",
+ "updated": "2026-09-27T08:37:23+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Minnesota Defeats Washington 27-24",
+   "url": "https://www.reddit.com/r/CFB/comments/1wrcuj1/postgame_thread_minnesota_defeats_washington_2724/",
+   "published": "2026-09-27T06:29:14+00:00",
+   "gameId": "401858470",
+   "teams": [
+    "Minnesota",
+    "Washington"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Stanford Defeats Georgia Tech 34-27",
+   "url": "https://www.reddit.com/r/CFB/comments/1wrckpg/postgame_thread_stanford_defeats_georgia_tech_3427/",
+   "published": "2026-09-27T06:13:18+00:00",
+   "gameId": "401858240",
+   "teams": [
+    "Stanford",
+    "Georgia Tech"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Air Force Defeats Nevada 36-33 (2OT)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wrcjhz/postgame_thread_air_force_defeats_nevada_3633_2ot/",
+   "published": "2026-09-27T06:11:19+00:00",
+   "gameId": "401864509",
+   "teams": [
+    "Air Force",
+    "Nevada"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Montana State Defeats Northern Arizona 28-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1wrc6d9/postgame_thread_montana_state_defeats_northern/",
+   "published": "2026-09-27T05:50:23+00:00",
+   "gameId": "401868120",
+   "teams": [
+    "Montana State",
+    "Northern Arizona"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Fresno State Defeats Rice 38-24",
+   "url": "https://www.reddit.com/r/CFB/comments/1wrbtpy/postgame_thread_fresno_state_defeats_rice_3824/",
+   "published": "2026-09-27T05:30:24+00:00",
+   "gameId": "401860891",
+   "teams": [
+    "Fresno State",
+    "Rice"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Montana Defeats UC Davis 62-22",
+   "url": "https://www.reddit.com/r/CFB/comments/1wrbqus/postgame_thread_montana_defeats_uc_davis_6222/",
+   "published": "2026-09-27T05:25:46+00:00",
+   "gameId": "401868113",
+   "teams": [
+    "Montana",
+    "UC Davis"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] SMU Defeats Missouri State 34-24",
