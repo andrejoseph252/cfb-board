@@ -1,7 +1,7 @@
 import { esc, norm } from '../util.js';
 import { state } from '../state.js';
 import { pins } from '../picks.js';
-import { excitement, watchHeat, isHot } from '../excitement.js';
+import { excitement, isHot } from '../excitement.js';
 import { grid, sec, empty, chips, group } from './components.js';
 
 const ranked = g => g.home.rank || g.away.rank;
@@ -9,14 +9,15 @@ const bestRank = g => Math.min(g.home.rank || 99, g.away.rank || 99);
 
 export function viewWeek(){
   const gs = state.games;
-  // Close, late games lead the live strip (and qualify even when unranked); then ranked games by rank.
-  const live = gs.filter(g => g.state === 'in' && (ranked(g) || pins.has(g.id) || isHot(g)))
-    .sort((a, b) => (isHot(b) - isHot(a)) || (isHot(a) ? watchHeat(b) - watchHeat(a) : bestRank(a) - bestRank(b)));
+  // Ranked and pinned games hold their spot by rank across refreshes; close, late unranked games join at the end.
+  const byKick = (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
+  const core = gs.filter(g => g.state === 'in' && (ranked(g) || pins.has(g.id))).sort((a, b) => bestRank(a) - bestRank(b) || byKick(a, b));
+  const live = [...core, ...gs.filter(g => g.state === 'in' && !core.includes(g) && isHot(g)).sort(byKick)];
   const pinned = gs.filter(g => pins.has(g.id));
   const must = gs.filter(g => g.state === 'pre' && !excitement(g).pending)
     .map(g => [g, excitement(g).score]).filter(([, s]) => s >= 65).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
   let h = '';
-  if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. "Watch now" marks the tightest games deep into the second half.</p>' + grid(live);
+  if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. An orange outline marks the tightest games late.</p>' + grid(live);
   if (must.length) h += sec('Best games to watch', must.length) + grid(must);
   h += sec('Pinned', pinned.length);
   h += pinned.length ? grid(pinned) : empty('Tap the pin on any game to keep it here and in the live strip.');

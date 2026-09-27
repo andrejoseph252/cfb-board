@@ -38,4 +38,4 @@ export function threadsFor(g, list){
   return { game, post };
 }
 
-export const searchUrl = g => `https://www.reddit.com/r/CFB/search/?q=${encodeURIComponent(`flair:"Game Thread" ${g.away.name} ${g.home.name}`)}&restrict_sr=1&sort=new`;
+export const searchUrl = (g, flair = 'Game Thread') => `https://www.reddit.com/r/CFB/search/?q=${encodeURIComponent(`flair:"${flair}" ${g.away.name} ${g.home.name}`)}&restrict_sr=1&sort=new`;

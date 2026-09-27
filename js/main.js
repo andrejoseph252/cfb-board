@@ -67,6 +67,9 @@ function setTab(k){
   invalidate('main'); window.scrollTo({ top: 0 });
 }
 document.addEventListener('click', e => {
+  // Tapping a card anywhere except its links, buttons or the excitement dropdown opens the game.
+  const c = e.target.closest('.game[data-id]');
+  if (c && !e.target.closest('a, button, details')){ location.hash = '#game/' + c.dataset.id; return; }
   const t = e.target.closest('button'); if (!t) return;
   const d = t.dataset;
   if (d.tab) return setTab(d.tab);

@@ -1,10 +1,11 @@
 """Collect r/CFB game and postgame threads into data/threads.json.
 
 Reddit's JSON API needs OAuth, and none of its feeds allow browser (CORS) requests, so this runs in the
-GitHub Action. The subreddit search RSS feed still works unauthenticated. Postgame threads link the ESPN
-box score, which gives an exact game id; game threads only have team names, which the page matches itself.
-Results are merged with the previous file so a busy Saturday can't push earlier threads out of the
-100-item feed window.
+GitHub Action. RSS still works unauthenticated. The primary source is u/CFB_Referee's post list (the r/CFB bot
+that posts every game and postgame thread): it's chronological, and 100 items span ~10 hours even on a busy
+Saturday, which outlasts GitHub's often multi-hour gaps between scheduled runs. Subreddit search is the fallback;
+it lags behind new posts. Postgame threads link the ESPN box score, which gives an exact game id; game threads
+only have team names, which the page matches itself. Results merge with the previous file.
 """
 import html
 import json
@@ -18,16 +19,17 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / "data" / "threads.json"
-FEED = "https://www.reddit.com/r/CFB/search.rss"
+FEEDS = [
+    "https://www.reddit.com/user/CFB_Referee/submitted/.rss?" + urllib.parse.urlencode({"limit": 100, "sort": "new"}),
+    "https://www.reddit.com/r/CFB/search.rss?" + urllib.parse.urlencode(
+        {"q": 'flair:"Game Thread" OR flair:"Postgame Thread"', "restrict_sr": "on", "sort": "new", "limit": 100}),
+]
 ATOM = {"a": "http://www.w3.org/2005/Atom"}
 KEEP_DAYS = 10
 
 
-def fetch():
-    # One combined query per run: the feed throttles back-to-back requests, and 100 items covers far more
-    # than the ~20 minutes between Saturday runs.
-    q = urllib.parse.urlencode({"q": 'flair:"Game Thread" OR flair:"Postgame Thread"', "restrict_sr": "on", "sort": "new", "limit": 100})
-    req = urllib.request.Request(f"{FEED}?{q}", headers={"User-Agent": "cfb-board/1.0 (personal scoreboard; github.com/andrejoseph252/cfb-board)"})
+def fetch(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "cfb-board/1.0 (personal scoreboard; github.com/andrejoseph252/cfb-board)"})
     for wait in (0, 30, 60):
         time.sleep(wait)
         try:
@@ -74,10 +76,12 @@ def main():
     except (OSError, ValueError):
         old = []
     fresh, errors = [], []
-    try:
-        fresh = entries(fetch())
-    except Exception as e:  # keep the previous file's threads if Reddit is down or throttling
-        errors.append(str(e))
+    for url in FEEDS:  # stop at the first feed that answers; RSS throttles back-to-back requests
+        try:
+            fresh = entries(fetch(url))
+            break
+        except Exception as e:  # keep the previous file's threads if Reddit is down or throttling
+            errors.append(f"{url.split('?')[0]}: {e}")
     by_url = {t["url"]: t for t in old}
     by_url.update({t["url"]: t for t in fresh})
     cutoff = (datetime.now(timezone.utc) - timedelta(days=KEEP_DAYS)).isoformat()

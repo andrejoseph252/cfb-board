@@ -1,6 +1,39 @@
 {
- "updated": "2026-09-27T02:01:15+00:00",
+ "updated": "2026-09-27T02:03:00+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Jacksonville State Defeats Middle Tennessee 23-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr7wwu/postgame_thread_jacksonville_state_defeats_middle/",
+   "published": "2026-09-27T02:00:42+00:00",
+   "gameId": "401871048",
+   "teams": [
+    "Jacksonville State",
+    "Middle Tennessee"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Arkansas State Defeats Kennesaw State 17-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr7wwq/postgame_thread_arkansas_state_defeats_kennesaw/",
+   "published": "2026-09-27T02:00:42+00:00",
+   "gameId": "401869931",
+   "teams": [
+    "Arkansas State",
+    "Kennesaw State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Minnesota @ Washington (11:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wr7wea/game_thread_minnesota_washington_1100_pm_et/",
+   "published": "2026-09-27T02:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Minnesota",
+    "Washington"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Miami Defeats Central Michigan 52-3",

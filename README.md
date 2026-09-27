@@ -43,7 +43,15 @@ Adding a tab means adding a file in `js/views/` and one line in the `TABS` list 
   `data/markets.json` first, then tries the market APIs directly, then falls back to
   de-vigged sportsbook moneylines.
 
+- r/CFB game and postgame threads: u/CFB_Referee's post feed (RSS), falling back to r/CFB search.
+  Collected by the same GitHub Action into `data/threads.json`; finished games without a match get a
+  "Find postgame thread" search link.
+
 None of these need an API key.
+
+## Using it
+- Tap any game card to open its box score or preview. Before kickoff, tap a team's odds to pick it.
+- The team with the ball glows (red in the red zone); an orange outline marks close, late games.
 
 ## Excitement score
 A 0-100 pregame score, shown as an itemized sum on every card (tap "Why?"):
