@@ -429,3 +429,8 @@ main > .chips:first-child{margin-bottom:18px}
 .rbtn svg{width:18px;height:18px;flex:none}
 .rbtn:hover{background:color-mix(in srgb,#FF4500 10%,var(--surface))}
 .rbtn.ghost{border-color:var(--line);font-weight:600;color:var(--muted)}
+
+/* possession */
+.poss{display:inline-flex;align-items:center;gap:3px;margin-left:6px;vertical-align:-1px}
+.poss svg{width:17px;height:10px;filter:drop-shadow(0 0 1px rgba(0,0,0,.25))}
+.poss .rz{font-size:9.5px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--live);border-radius:3px;padding:1px 3px;line-height:1.2}

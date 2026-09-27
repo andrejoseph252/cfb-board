@@ -7,7 +7,7 @@ import { marketsFor, sourceLabel } from '../markets.js';
 import { realizedExcitement } from '../excitement.js';
 import { pollP } from './compare.js';
 import { useData } from '../resource.js';
-import { teamLink, logo, panel, meter, excitementBadge, barColors } from './components.js';
+import { teamLink, logo, panel, meter, excitementBadge, barColors, possMark } from './components.js';
 import { chartHTML } from './wpchart.js';
 import { threadsFor, searchUrl } from '../threads.js';
 
@@ -41,7 +41,7 @@ function head(g){
     const ap = t.rank || apRank(t.id);
     return `<div class="gteam">
       ${t.id ? `<a href="#team/${esc(t.id)}" tabindex="-1" aria-hidden="true">${logo(t.logo, 'logo lg')}</a>` : logo(t.logo, 'logo lg')}
-      <div class="gname">${teamLink({ ...t, rank: ap })}</div><div class="muted small">${esc(t.record || '')}</div></div>`;
+      <div class="gname">${teamLink({ ...t, rank: ap })}${possMark(g, t)}</div><div class="muted small">${esc(t.record || '')}</div></div>`;
   };
   const done = g.state === 'post';
   const score = g.state === 'pre' ? `<div class="gvs">${g.neutral ? 'vs' : 'at'}</div>`

@@ -28,6 +28,13 @@ export function barColors(g){ const a = g.away.color; let h = g.home.color; if (
 
 const PIN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 3l5 5-3 1-3.5 3.5L15 17l-2 2-4-4-5 5-1-1 5-5-4-4 2-2 4.5.5L13 5l3-2z"/></svg>';
 
+const BALL = '<svg viewBox="0 0 24 14" aria-hidden="true"><ellipse cx="12" cy="7" rx="11" ry="6" fill="#8B4A2B"/><path d="M6.5 7h11M9 5v4M11 5v4M13 5v4M15 5v4" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>';
+/* Football marker for the team with the ball in a live game; "RZ" when they're inside the 20. */
+export function possMark(g, t){
+  if (g.state !== 'in' || !g.poss || String(g.poss) !== String(t.id)) return '';
+  return `<span class="poss" title="${esc(t.name)} ball${g.redZone ? ', red zone' : ''}">${BALL}<span class="sr">has the ball</span>${g.redZone ? '<b class="rz">RZ</b>' : ''}</span>`;
+}
+
 const fpiTag = id => { const f = state.fpi?.byTeam[id]; return f?.rank ? `<span class="fpi" title="ESPN FPI rank">FPI ${f.rank}</span>` : ''; };
 
 function teamRow(g, side){
@@ -37,7 +44,7 @@ function teamRow(g, side){
   return `<div class="row${lose ? ' loser' : ''}">
     <span class="stripe" style="background:${esc(t.color)}"></span>
     ${t.id ? `<a href="${teamHref(t.id)}" tabindex="-1" aria-hidden="true">${logo(t.logo)}</a>` : logo(t.logo)}
-    <span class="tname">${teamLink(t)}<span class="rec">${esc(t.record || '')}</span>${fpiTag(t.id)}</span>
+    <span class="tname">${teamLink(t)}${possMark(g, t)}<span class="rec">${esc(t.record || '')}</span>${fpiTag(t.id)}</span>
     ${mine ? `<span class="mypick ${pk.result || ''}">${pk.result === 'W' ? 'Pick hit' : pk.result === 'L' ? 'Pick missed' : 'Your pick'}</span>` : '<span></span>'}
     <span class="score">${g.state === 'pre' ? '' : esc(t.score ?? '')}</span></div>`;
 }

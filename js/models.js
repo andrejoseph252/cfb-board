@@ -39,6 +39,7 @@ function game(e, c){
     book: parseBook(c.odds?.[0]), sit: c.situation?.downDistanceText,
     liveWp: c.situation?.lastPlay?.probability?.homeWinPercentage ?? null,
     secsLeft: c.situation?.lastPlay?.probability?.secondsLeft ?? null, redZone: !!c.situation?.isRedZone,
+    poss: c.situation?.possession ?? null,
     week: e.week?.number, st: e.seasonType?.type ?? e.season?.type
   };
 }
