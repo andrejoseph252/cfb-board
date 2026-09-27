@@ -18,15 +18,26 @@ export function weekLabel(st, wk){
   return st == 3 ? 'Postseason' : `Week ${wk}`;
 }
 
+/* ESPN can flip a game to final a moment before it sets the winner flag, so fall back to the score,
+   and treat a game with neither as not settled yet (college football has no ties). */
+function winnerSide(g){
+  if (g.home.winner) return 'home';
+  if (g.away.winner) return 'away';
+  const h = Number(g.home.score), a = Number(g.away.score);
+  return Number.isFinite(h) && Number.isFinite(a) && h !== a ? (h > a ? 'home' : 'away') : null;
+}
+
+/* Grades every time a finished game is seen, so a result recorded from incomplete data corrects itself. */
 export function resolvePicks(games){
   let changed = false;
   for (const g of games){
     const pk = picks[g.id]; if (!pk) continue;
     if (g.state === 'pre'){ const m = primaryMarket(g); if (m){ pk.pClose = pk.side === 'home' ? m.pHome : 1 - m.pHome; changed = true; } }
-    if (!pk.result && g.state === 'post' && g.completed){
-      const opp = pk.side === 'home' ? 'away' : 'home';
-      pk.result = g[pk.side].winner ? 'W' : g[opp].winner ? 'L' : 'P';
-      pk.final = `${g.away.abbr} ${g.away.score}, ${g.home.abbr} ${g.home.score}`; changed = true;
+    if (g.state === 'post' && g.completed){
+      const w = winnerSide(g);
+      const result = w ? (w === pk.side ? 'W' : 'L') : null;
+      const final = `${g.away.abbr} ${g.away.score}, ${g.home.abbr} ${g.home.score}`;
+      if (pk.result !== result || (result && pk.final !== final)){ pk.result = result; pk.final = result ? final : pk.final; changed = true; }
     }
   }
   if (changed) store.set('picks', picks);
@@ -50,7 +61,8 @@ const backfilled = new Set();
 export async function backfillPicks(){
   const need = {};
   for (const p of Object.values(picks))
-    if (!p.result && new Date(p.date) < Date.now() - 4 * 3600e3 && !(p.week == state.week && p.st == state.st)) need[p.st + '-' + p.week] = [p.st, p.week];
+    // 'P' only ever came from grading a game before ESPN settled it; re-check those too.
+    if ((!p.result || p.result === 'P') && new Date(p.date) < Date.now() - 4 * 3600e3 && !(p.week == state.week && p.st == state.st)) need[p.st + '-' + p.week] = [p.st, p.week];
   let any = false;
   for (const [k, [st, wk]] of Object.entries(need)){
     if (backfilled.has(k)) continue; backfilled.add(k);
