@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29T02:53:39+00:00",
+ "updated": "2026-09-29T06:18:47+00:00",
  "threads": [
   {
    "kind": "post",
@@ -3048,39 +3048,6 @@
    "teams": [
     "Wagner",
     "California"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Oregon Defeats Portland State 84-0",
-   "url": "https://www.reddit.com/r/CFB/comments/1wkduro/postgame_thread_oregon_defeats_portland_state_840/",
-   "published": "2026-09-19T05:51:41+00:00",
-   "gameId": "401858455",
-   "teams": [
-    "Oregon",
-    "Portland State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Texas Tech Defeats Houston 28-26",
-   "url": "https://www.reddit.com/r/CFB/comments/1wkb5fx/postgame_thread_texas_tech_defeats_houston_2826/",
-   "published": "2026-09-19T03:32:02+00:00",
-   "gameId": "401856811",
-   "teams": [
-    "Texas Tech",
-    "Houston"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Miami Defeats Wake Forest 33-20",
-   "url": "https://www.reddit.com/r/CFB/comments/1wkaq5c/postgame_thread_miami_defeats_wake_forest_3320/",
-   "published": "2026-09-19T03:11:06+00:00",
-   "gameId": "401858226",
-   "teams": [
-    "Miami",
-    "Wake Forest"
    ]
   }
  ],
