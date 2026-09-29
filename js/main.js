@@ -5,16 +5,17 @@ import { initSettings } from './settings.js';
 import { picks, weekLabel, togglePin, setPick, removePick } from './picks.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc } from './views/components.js';
-import { isMine, setMyTeam } from './myteam.js';
+import { isMine, setMyTeam, myTeam } from './myteam.js';
 import { viewWeek, weekList, viewTop25 } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
 import { viewPicks } from './views/picks.js';
+import { viewMyTeam } from './views/teamtab.js';
 
 const TABS = [
   ['week', 'This week', viewWeek, true], ['top25', 'Top 25', viewTop25, true], ['conf', 'Conferences', viewConferences, false],
   ['rankings', 'Rankings', viewRankings, false],
-  ['picks', 'My picks', viewPicks, false]
+  ['team', 'My team', viewMyTeam, false], ['picks', 'My picks', viewPicks, false]
 ];
 if (state.tab === 'standings') state.tab = 'conf';
 if (state.tab === 'power') state.tab = 'rankings';
@@ -28,7 +29,9 @@ function renderHeader(){
   $('#wkSub').textContent = state.loading && !gs.length ? 'Loading the slate…' :
     `${gs.length} FBS games · ${rr} ranked matchup${rr === 1 ? '' : 's'}${live ? ` · ${live} live` : ''}${state.updated ? ` · Updated ${fmtTime(state.updated)}` : ''}`;
   const counts = { week: gs.length, top25: gs.filter(g => g.home.rank || g.away.rank).length, picks: Object.values(picks).filter(p => !p.result).length || null };
-  const tabs = TABS.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}${counts[k] ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('');
+  // The My team tab is labeled with the team once one is picked.
+  const label = (k, l) => k === 'team' && myTeam ? esc(myTeam.name) : l;
+  const tabs = TABS.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${label(k, l)}${counts[k] ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('');
   if (tabs !== lastTabs){ $('#tabs').innerHTML = tabs; lastTabs = tabs; }
   buildWeekSelect();
   renderStale();
@@ -98,6 +101,7 @@ document.addEventListener('click', e => {
   if (d.rkconf){ state.rkConf = d.rkconf; return invalidate('main'); }
   if (d.unpick) return removePick(d.unpick);
   if (d.mine) return setMyTeam(isMine(d.mine) ? null : { id: d.mine, name: d.name, color: d.color, logo: d.logo });
+  if ('teamclear' in d) return setMyTeam(null);
   if (t.id === 'retry') return loadBoard({ fresh: true });
   if (t.id === 'drawerClose' || t.id === 'scrim') return closeDrawer();
   if (t.id === 'drawerBack') return back();

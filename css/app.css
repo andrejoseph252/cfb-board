@@ -654,3 +654,117 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .mt-right small{font-size:11.5px;font-weight:700;opacity:.85;text-transform:uppercase;letter-spacing:.04em}
 .mt-chev{flex:none;width:16px;height:16px;opacity:.7}
 @media (max-width:480px){.mt{gap:10px;padding:9px 10px}.mt-right b{font-size:22px}.mt-chev{display:none}}
+
+/* ---------- My team tab ---------- */
+/* Layout: a slim team-color header, then two columns on wide screens (this week, profile and race | outlook and
+   season). On phones the columns dissolve into one list ordered by how often you'll want each part. */
+.tt{display:grid;gap:12px}
+.tt-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:12px;align-items:start}
+.tt-col{display:grid;gap:12px;min-width:0}
+@media (max-width:900px){
+  .tt-grid{grid-template-columns:minmax(0,1fr)}
+  .tt-col{display:contents}
+  [data-tt="week"]{order:1} [data-tt="outlook"]{order:2} [data-tt="season"]{order:3} [data-tt="profile"]{order:4} [data-tt="race"]{order:5}
+}
+.tt .panel{margin:0;padding:12px 14px 14px}
+.tt .panel h3{font-size:18px;margin:0 0 10px;letter-spacing:.01em}
+.tt-note{margin:10px 0 0;font-size:11.5px;color:var(--muted);line-height:1.4}
+
+/* Header */
+.tt-head{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:12px;color:var(--mt-ink);
+  background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1.5px),rgba(255,255,255,.1) calc(10% - 1.5px) 10%),
+    linear-gradient(100deg,var(--mt),color-mix(in srgb,var(--mt) 72%,#000));box-shadow:inset 0 0 0 1px rgba(127,127,127,.25)}
+.tt-disc{width:50px;height:50px} .tt-disc .logo{width:36px;height:36px}
+.tt-main{flex:1;min-width:0}
+.tt-main h2{display:flex;align-items:center;gap:7px;margin:0;font:800 clamp(24px,3.6vw,34px)/.95 var(--display);text-transform:uppercase;letter-spacing:.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tt-main h2 .star{width:15px;height:15px;flex:none}
+.tt-facts{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:5px;font-size:13px;opacity:.92}
+.tt-move{font-weight:800}
+.tt-change{flex:none;border:1px solid currentColor;background:none;color:inherit;border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:700;opacity:.8}
+.tt-change:hover{opacity:1}
+@media (max-width:520px){.tt-head{padding:10px 12px;gap:10px}.tt-disc{width:42px;height:42px}.tt-disc .logo{width:30px;height:30px}
+  .tt-change{align-self:flex-start;padding:4px 8px}}
+
+/* This week: the game card sits flat inside its panel */
+.tt [data-tt="week"] .game{border:0;padding:0;background:none;box-shadow:none;outline:none}
+.tt [data-tt="week"] .game.is-live{box-shadow:inset 3px 0 0 var(--live);padding-left:10px}
+.tt-bye{margin:0;font-size:14px;color:var(--muted)}
+
+/* Season outlook: one stat strip, then the final-record chart */
+.ol-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.ol-strip > div{display:grid;gap:1px;padding:8px 10px;min-width:0}
+.ol-strip > div + div{border-left:1px solid var(--line)}
+.ol-strip b{font:800 24px/1 var(--display);font-variant-numeric:tabular-nums}
+.ol-strip span{font-size:12px;font-weight:600;margin-top:3px}
+.ol-strip small{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:520px){.ol-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.ol-strip > div:nth-child(3){border-left:0}
+  .ol-strip > div:nth-child(n+3){border-top:1px solid var(--line)}}
+.dist-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:4px}
+.dist-key{display:flex;align-items:center;gap:5px}
+.dist-key i{width:14px;border-top:1.5px dashed var(--muted)}
+/* Final-record chart: one bar per record in the team's color, 2px gaps, 4px rounded tops on a shared baseline. */
+.dist{display:flex;align-items:stretch;gap:2px;height:118px;margin-bottom:24px;border-bottom:1px solid var(--line)}
+.dist-col{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;outline:none}
+.dist-bar{width:min(100%,34px);background:var(--c);border-radius:4px 4px 0 0}
+.dist-col:hover .dist-bar,.dist-col:focus-visible .dist-bar{box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--c)}
+.dist-lab{font:700 11px/1 var(--body);color:var(--ink);margin-bottom:3px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dist-x{position:absolute;top:100%;margin-top:4px;font-size:10.5px;font-weight:600;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.dist-col.bowl-line::before{content:"";position:absolute;left:-2px;top:0;bottom:0;border-left:1.5px dashed var(--muted)}
+.dist-tip{display:none;position:absolute;bottom:calc(100% - 16px);left:50%;transform:translateX(-50%);z-index:3;background:var(--ink);color:var(--bg);
+  font-size:12px;padding:5px 8px;border-radius:6px;white-space:nowrap;pointer-events:none}
+.dist-col:hover .dist-tip,.dist-col:focus-visible .dist-tip{display:block}
+@media (max-width:520px){.dist-x{font-size:9px}.dist-lab{font-size:9.5px}}
+
+/* Win chance pill: tinted red (likely loss) through gray (toss-up) to green (likely win); toss-ups get a ring */
+.wp-pill{display:inline-block;min-width:3.4em;text-align:center;padding:3px 7px;border-radius:999px;background:var(--soft);
+  font:700 12px/1.1 var(--body);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wp-pill.swing{box-shadow:inset 0 0 0 1.5px var(--ink)}
+
+/* Season list */
+.tl{display:grid}
+.tl-row{display:grid;grid-template-columns:3.4em minmax(0,1fr) auto 56px 5.4em;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px solid var(--soft);
+  text-decoration:none;color:var(--ink);font-size:13.5px;border-radius:6px}
+.tl-row:last-child{border-bottom:0}
+.tl-row:hover{background:var(--soft)}
+.tl-d{font-size:12px;color:var(--muted);white-space:nowrap}
+.tl-o{display:flex;align-items:center;gap:6px;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-o .logo.sm{margin:0;flex:none;width:18px;height:18px}
+.tl-o .rank{font-size:14px;margin-right:0}
+.tl-r{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right;font-size:13px}
+.tl-r b{font:800 15px/1 var(--display);margin-right:3px} .tl-r.W b{color:var(--good)} .tl-r.L b{color:var(--bad)}
+.tl-m{height:5px;border-radius:3px;background:var(--soft);overflow:hidden}
+.tl-m.none{background:none}
+.tl-m i{display:block;height:100%;border-radius:3px} .tl-m.W i{background:var(--good)} .tl-m.L i{background:var(--bad)}
+.tl-p{text-align:right}
+.tl-u{justify-self:end;display:inline-flex;align-items:center;gap:3px;font:800 9.5px/1 var(--body);letter-spacing:.05em;text-transform:uppercase;
+  color:var(--upset-ink);background:var(--upset);border-radius:999px;padding:3px 7px 2px 5px;white-space:nowrap}
+@media (max-width:520px){.tl-row{grid-template-columns:3.2em minmax(0,1fr) auto 4.6em;gap:7px;font-size:13px}.tl-m{display:none}}
+
+/* Team profile: metric, value, national-position bar, rank */
+.pf{display:grid}
+.pf-row{display:grid;grid-template-columns:minmax(0,1fr) 3.4em minmax(60px,110px) 2.6em;align-items:center;gap:10px;padding:4px 0;font-size:13px}
+.pf-head{padding:0 0 2px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pf-head span:last-child{text-align:right}
+.pf-g{margin-top:8px;padding-top:8px;border-top:1px solid var(--soft);font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pf-head + .pf-g{margin-top:0;padding-top:0;border-top:0}
+.pf-k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.pf-bar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+.pf-bar i{display:block;height:100%;border-radius:3px;background:var(--mine,var(--ink))}
+.pf-r{text-align:right;font:800 16px/1 var(--display);color:var(--muted);font-variant-numeric:tabular-nums}
+.pf-r::before{content:"#";font-size:.75em;margin-right:1px}
+.pf-r.top{color:var(--ink)}
+
+/* Conference race */
+.tt .tbl.race td,.tt .tbl.race th{padding:5px 8px}
+.tt .tbl.race .logo.sm{width:18px;height:18px}
+.tbl tr.gap td{text-align:center;color:var(--muted);padding:0 !important;font-size:11px;line-height:1.2}
+
+/* Team picker */
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.pick-team{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);background:var(--surface);border-radius:10px;
+  font-weight:600;font-size:13.5px;text-align:left;color:var(--ink)}
+.pick-team:hover{border-color:var(--muted)}
+.pick-team .logo{width:28px;height:28px;flex:none}
+.pick-team span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

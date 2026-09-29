@@ -36,16 +36,30 @@ export function myColor(){
   return 'var(--ink)';
 }
 
-/* ---------- next game, for a week my team doesn't play ---------- */
+/* ---------- my team's season schedule ---------- */
 let sched = null, schedFor = null, schedAt = 0;
-export function myNextGame(){
+/* The parsed schedule, undefined while it loads, or null with no team. Refreshed every 10 minutes. */
+export function mySchedule(){
   if (!myTeam) return null;
   if (schedFor !== myTeam.id || Date.now() - schedAt > 10 * 60e3){
     schedFor = myTeam.id; schedAt = Date.now();
-    api.teamSchedule(myTeam.id).then(j => { sched = parseSchedule(j); invalidate('main'); }).catch(() => {});
+    api.teamSchedule(myTeam.id).then(j => {
+      sched = parseSchedule(j);
+      // A team picked from the logo grid has no color yet (standings don't carry colors); its schedule does.
+      if (myTeam && String(sched.team.id) === myTeam.id && (!myTeam.color || !myTeam.logo)){
+        myTeam = { ...myTeam, color: myTeam.color || sched.team.color, logo: myTeam.logo || sched.team.logo };
+        store.set('myteam', myTeam);
+      }
+      invalidate('main');
+    }).catch(() => {});
   }
-  if (!sched || String(sched.team.id) !== myTeam.id) return undefined;   // still loading
-  return sched.games.find(g => g.state !== 'post' && new Date(g.date) > Date.now() - 4 * 3600e3) || null;
+  return sched && String(sched.team.id) === myTeam.id ? sched : undefined;
+}
+/* The next game that hasn't finished, null if none left, undefined while loading. */
+export function myNextGame(){
+  const s = mySchedule();
+  if (!s) return s;
+  return s.games.find(g => g.state !== 'post' && new Date(g.date) > Date.now() - 4 * 3600e3) || null;
 }
 
 /* Attributes for a table row: tinted in my team's color when it's my team. */

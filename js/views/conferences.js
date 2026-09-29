@@ -3,12 +3,12 @@ import { state, CONF, CONF_ORDER, apRank } from '../state.js';
 import { teamLink, grid, sec, empty, chips, logo, group } from './components.js';
 import { mineRow } from '../myteam.js';
 
-const rec = r => r ? `${r.w}-${r.l}${r.t ? '-' + r.t : ''}` : '–';
+export const rec = r => r ? `${r.w}-${r.l}${r.t ? '-' + r.t : ''}` : '–';
 
 /* Conference win % (no conference games yet counts as .500), then games over .500 in conference, then overall, then point differential. */
 const confPct = r => r && r.w + r.l + r.t ? winPct(r) : .5;
 const over = r => r ? r.w - r.l : 0;
-const order = (a, b) => confPct(b.confRec) - confPct(a.confRec) || over(b.confRec) - over(a.confRec)
+export const order = (a, b) => confPct(b.confRec) - confPct(a.confRec) || over(b.confRec) - over(a.confRec)
   || winPct(b.overall) - winPct(a.overall) || (b.diff ?? 0) - (a.diff ?? 0);
 
 function standingsTable(c){
