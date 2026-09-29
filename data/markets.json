@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29T02:52:55+00:00",
+ "updated": "2026-09-29T02:53:36+00:00",
  "kalshi": [
   {
    "source": "Kalshi",
@@ -72,7 +72,7 @@
    "teams": [
     {
      "name": "Vanderbilt",
-     "p": 0.225
+     "p": 0.23
     },
     {
      "name": "Ole Miss",
@@ -88,11 +88,11 @@
    "teams": [
     {
      "name": "UCLA",
-     "p": 0.245
+     "p": 0.25
     },
     {
      "name": "Oregon",
-     "p": 0.765
+     "p": 0.76
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1132,7 +1132,7 @@
     },
     {
      "name": "Monmouth",
-     "p": 0.72
+     "p": 0.725
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
