@@ -3,6 +3,7 @@ import { state } from '../state.js';
 import { marketsFor, sourceLabel } from '../markets.js';
 import { pins, picks } from '../picks.js';
 import { excitement, isHot } from '../excitement.js';
+import { lineFor } from '../lines.js';
 
 export const teamHref = id => `#team/${encodeURIComponent(id)}`;
 export const gameHref = id => `#game/${encodeURIComponent(id)}`;
@@ -62,6 +63,27 @@ export function meter(g, p, label){
     <span style="width:${pa}%;background:${esc(ca)}"></span><span style="width:${ph}%;background:${esc(ch)}"></span></div>`;
 }
 
+const dayName = t => new Date(t).toLocaleDateString(undefined, {weekday:'short'});
+
+/* Step path through [ms, value] points scaled into a w x h box (values 0-1, 1 at the top unless lo/hi zoom it). */
+export function stepPath(pts, w, h, lo = 0, hi = 1){
+  const t0 = pts[0][0], t1 = pts[pts.length - 1][0];
+  const X = t => ((t - t0) / (t1 - t0 || 1) * w).toFixed(1), Y = v => (h - (v - lo) / (hi - lo || 1) * h).toFixed(1);
+  return pts.map(([t, v], i) => i ? `H${X(t)}V${Y(v)}` : `M0,${Y(v)}`).join('');
+}
+
+/* Pregame only: a tiny trend of whichever side the market has moved toward, e.g. "ISU ▲20". Hidden under 3 points. */
+export function lineMove(g){
+  const L = g.state === 'pre' ? lineFor(g) : null;
+  if (!L || Math.abs(L.move) < .03) return '';
+  const side = L.move > 0 ? 'home' : 'away', t = g[side];
+  const vals = L.pts.map(([x, p]) => [x, side === 'home' ? p : 1 - p]), vs = vals.map(v => v[1]);
+  const lo = Math.min(...vs), hi = Math.max(...vs), from = vs[0], to = vs[vs.length - 1];
+  const tip = `${L.src} since ${dayName(L.since)}: ${t.name} ${pct(from)}% → ${pct(to)}%`;
+  return `<span class="lm" title="${esc(tip)}"><svg viewBox="-1 -1 42 16" aria-hidden="true"><path d="${stepPath(vals, 40, 14, lo, hi)}"/></svg>
+    <b>${esc(t.abbr)}</b> ▲${Math.round(Math.abs(L.move) * 100)}<span class="sr"> points since ${esc(dayName(L.since))}</span></span>`;
+}
+
 /* Before kickoff the two percentages (or team abbreviations, with no line yet) are the pick buttons. */
 function oddsBlock(g){
   const mk = marketsFor(g), prim = mk[0], pre = g.state === 'pre', pk = picks[g.id]?.side;
@@ -70,9 +92,11 @@ function oddsBlock(g){
   const pa = pct(1 - prim.pHome), ph = 100 - pa, label = sourceLabel(prim.source);
   const alt = mk.slice(1).map(m => `${m.source} ${pct(1 - m.pHome)}/${pct(m.pHome)}`).join(', ');
   const side = (s, text) => pre ? pickBtn(s, text) : `<b>${text}</b>`;
+  // A moving line takes the middle slot; the source is still one tap away in the game preview.
+  const mid = lineMove(g) || (prim.url ? `<a href="${esc(prim.url)}" target="_blank" rel="noopener">${esc(label)}</a>` : esc(label)) + (alt ? ` · ${esc(alt)}` : '');
   return `${meter(g, prim.pHome, label)}
     <div class="odds">${side('away', `${esc(g.away.abbr)} ${pa}%`)}
-      <span class="src">${prim.url ? `<a href="${esc(prim.url)}" target="_blank" rel="noopener">${esc(label)}</a>` : esc(label)}${alt ? ` · ${esc(alt)}` : ''}</span>
+      <span class="src">${mid}</span>
       ${side('home', `${ph}% ${esc(g.home.abbr)}`)}</div>`;
 }
 

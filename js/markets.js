@@ -8,7 +8,8 @@ function kPrice(m){
   const bid = n(m.yes_bid_dollars) ?? (m.yes_bid != null ? m.yes_bid / 100 : null);
   const ask = n(m.yes_ask_dollars) ?? (m.yes_ask != null ? m.yes_ask / 100 : null);
   const last = n(m.last_price_dollars) ?? (m.last_price != null ? m.last_price / 100 : null);
-  if (bid > 0 && ask > 0 && ask < 1) return (bid + ask) / 2;
+  // A quote wider than 15c is an empty order book, not a price (same rule as scripts/fetch_markets.py).
+  if (ask > 0 && ask <= 1) return ask - (bid || 0) <= .15 ? ((bid || 0) + ask) / 2 : null;
   return last > 0 ? last : null;
 }
 async function fetchKalshi(){
@@ -19,12 +20,15 @@ async function fetchKalshi(){
     const j = await r.json(); all.push(...(j.markets || [])); cursor = j.cursor; if (!cursor) break;
   }
   const by = {};
-  for (const m of all){
-    const p = kPrice(m); if (p == null) continue;
+  for (const m of all)
     (by[m.event_ticker] ??= { source:'Kalshi', title:m.title, close: m.expected_expiration_time || m.close_time, teams:[],
-      url:'https://kalshi.com/markets/kxncaafgame' }).teams.push({ name: m.yes_sub_title || m.subtitle || '', p });
-  }
-  return Object.values(by);
+      url:'https://kalshi.com/markets/kxncaafgame' }).teams.push({ name: m.yes_sub_title || m.subtitle || '', p: kPrice(m) });
+  // Each team is its own market; when only one side has a real quote, the other is its complement.
+  return Object.values(by).filter(ev => {
+    const [a, b] = ev.teams; if (!b) return false;
+    if (a.p == null && b.p != null) a.p = 1 - b.p; else if (b.p == null && a.p != null) b.p = 1 - a.p;
+    return a.p != null;
+  });
 }
 async function fetchPoly(){
   for (const tag of ['cfb','ncaaf','college-football']){
@@ -70,7 +74,7 @@ export async function loadMarkets(force){
   return true;
 }
 
-function nameMatch(mName, t){
+export function nameMatch(mName, t){
   const n = norm(mName); if (!n) return false;
   return [t.name, t.short, t.full, t.abbr].filter(Boolean).map(norm)
     .some(k => k === n || (k.length > 3 && n.startsWith(k + ' ')) || (n.length > 3 && k.startsWith(n + ' ')));

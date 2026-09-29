@@ -1,13 +1,15 @@
 """Fetch open college football game markets from Kalshi and Polymarket.
 
 Writes data/markets.json, which index.html reads first (same origin, so no
-browser CORS problems). Standard library only, so the GitHub Action needs no installs.
+browser CORS problems), and appends to the price history in data/lines.json (see lines.py). Standard library only, so the GitHub Action needs no installs.
 """
 import json
 import pathlib
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+
+import lines
 
 KALSHI = "https://api.elections.kalshi.com/trade-api/v2/markets"
 POLY = "https://gamma-api.polymarket.com/events"
@@ -29,6 +31,11 @@ def num(x):
         return None
 
 
+# A quote wider than this is an empty order book (often a 1c bid and 99c ask), not a price. Those games fall back
+# to the sportsbook line instead of showing the midpoint as a coin flip.
+MAX_SPREAD = 0.15
+
+
 def kalshi_price(m):
     bid = num(m.get("yes_bid_dollars"))
     ask = num(m.get("yes_ask_dollars"))
@@ -39,8 +46,9 @@ def kalshi_price(m):
         ask = m["yes_ask"] / 100
     if last is None and m.get("last_price") is not None:
         last = m["last_price"] / 100
-    if bid and ask and 0 < bid and ask < 1:
-        return round((bid + ask) / 2, 4)
+    if ask is not None and 0 < ask <= 1:
+        bid = bid or 0
+        return round((bid + ask) / 2, 4) if ask - bid <= MAX_SPREAD else None
     return last if last and last > 0 else None
 
 
@@ -57,16 +65,25 @@ def kalshi():
             break
     events = {}
     for m in markets:
-        p = kalshi_price(m)
-        if p is None:
-            continue
         ev = events.setdefault(m["event_ticker"], {
             "source": "Kalshi", "title": m.get("title"),
             "close": m.get("expected_expiration_time") or m.get("close_time"),
             "teams": [], "url": "https://kalshi.com/markets/kxncaafgame",
         })
-        ev["teams"].append({"name": m.get("yes_sub_title") or m.get("subtitle") or "", "p": p})
-    return list(events.values())
+        ev["teams"].append({"name": m.get("yes_sub_title") or m.get("subtitle") or "", "p": kalshi_price(m)})
+    # Each team is its own market; when only one side has a real quote, the other is its complement.
+    out = []
+    for ev in events.values():
+        t = ev["teams"]
+        if len(t) != 2:
+            continue
+        if t[0]["p"] is None and t[1]["p"] is not None:
+            t[0]["p"] = round(1 - t[1]["p"], 4)
+        elif t[1]["p"] is None and t[0]["p"] is not None:
+            t[1]["p"] = round(1 - t[0]["p"], 4)
+        if t[0]["p"] is not None:
+            out.append(ev)
+    return out
 
 
 def polymarket():
@@ -100,7 +117,8 @@ def polymarket():
 
 
 def main():
-    data = {"updated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "kalshi": [], "polymarket": [], "errors": []}
+    now = datetime.now(timezone.utc)
+    data = {"updated": now.isoformat(timespec="seconds"), "kalshi": [], "polymarket": [], "errors": []}
     for key, fn in (("kalshi", kalshi), ("polymarket", polymarket)):
         try:
             data[key] = fn()
@@ -108,7 +126,11 @@ def main():
             data["errors"].append(f"{key}: {e}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1))
-    print(f"kalshi={len(data['kalshi'])} polymarket={len(data['polymarket'])} errors={data['errors']}")
+    hist = lines.load()
+    lines.record(hist, data["kalshi"] + data["polymarket"], now)
+    lines.prune(hist, now)
+    lines.save(hist, now)
+    print(f"tracked={len(hist['m'])} kalshi={len(data['kalshi'])} polymarket={len(data['polymarket'])} errors={data['errors']}")
 
 
 if __name__ == "__main__":

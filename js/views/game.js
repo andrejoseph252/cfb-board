@@ -1,15 +1,15 @@
-import { esc, pct, fmtTime, fmtDay } from '../util.js';
-import { state, apRank } from '../state.js';
+import { esc } from '../util.js';
+import { state } from '../state.js';
 import * as api from '../api.js';
 import { parseSummary, parseProbabilities } from '../models.js';
 import { loadPredictions } from '../data.js';
-import { marketsFor, sourceLabel } from '../markets.js';
 import { realizedExcitement } from '../excitement.js';
-import { pollP } from './compare.js';
 import { useData } from '../resource.js';
-import { teamLink, logo, panel, meter, excitementBadge, barColors, ballClass } from './components.js';
+import { teamLink, logo, panel } from './components.js';
 import { chartHTML } from './wpchart.js';
+import { banner, theLine, lineChart, storylinesPanel, hype, tape, recentForm } from './preview.js';
 import { threadsFor, searchUrl } from '../threads.js';
+import { lineFor } from '../lines.js';
 
 const liveIds = new Set();
 export const isLive = id => liveIds.has(id) || state.byId[id]?.state === 'in';
@@ -26,31 +26,16 @@ export function viewGame(id){
   if (!g.book && s.line) g.book = { pHome: null, details: s.line.details, ou: s.line.ou };
   g.state === 'in' ? liveIds.add(id) : liveIds.delete(id);
 
-  let h = head(g) + threadLinks(g);
+  let h = banner(g, s) + threadLinks(g);
   if (g.state === 'pre'){
     loadPredictions([g]);
-    h += preview(g, s);
+    h += theLine(g, s) + storylinesPanel(g) + hype(g) + tape(g) + recentForm(g);
   } else {
-    h += lineScore(g) + wpPanel(g, s) + scoring(g, s) + teamStats(g, s) + drives(g, s) + players(g, s);
+    // Finished and live games only show the pregame line when it actually moved.
+    const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';
+    h += lineScore(g) + wpPanel(g, s) + scoring(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + drives(g, s) + players(g, s);
   }
   return h;
-}
-
-function head(g){
-  const side = t => {
-    const ap = t.rank || apRank(t.id);
-    return `<div class="gteam">
-      ${t.id ? `<a href="#team/${esc(t.id)}" tabindex="-1" aria-hidden="true">${logo(t.logo, 'logo lg')}</a>` : logo(t.logo, 'logo lg')}
-      <div class="gname${ballClass(g, t)}">${teamLink({ ...t, rank: ap })}</div><div class="muted small">${esc(t.record || '')}</div></div>`;
-  };
-  const done = g.state === 'post';
-  const score = g.state === 'pre' ? `<div class="gvs">${g.neutral ? 'vs' : 'at'}</div>`
-    : `<div class="gnums"><span class="${done && !g.away.winner && g.home.winner ? 'muted' : ''}">${esc(g.away.score)}</span><span class="dash">–</span><span class="${done && !g.home.winner && g.away.winner ? 'muted' : ''}">${esc(g.home.score)}</span></div>`;
-  const when = g.state === 'pre' ? `${fmtDay(g.date)} ${fmtTime(new Date(g.date))}` : g.detail;
-  const [ca, ch] = barColors(g);
-  return `<header class="dhead game" data-title="${esc(`${g.away.name} ${g.neutral ? 'vs' : 'at'} ${g.home.name}`)}" style="--away:${esc(ca)};--home:${esc(ch)}">${side(g.away)}
-    <div class="gmid">${score}<div class="status${g.state === 'in' ? ' live' : ''}">${esc(when || '')}</div>${g.sit && g.state === 'in' ? `<div class="muted small">${esc(g.sit)}</div>` : ''}</div>
-    ${side(g.home)}</header>`;
 }
 
 const REDDIT = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#FF4500"/><path fill="#fff" d="M16.7 10a1.5 1.5 0 0 0-2.5-1 7.2 7.2 0 0 0-3.8-1.2l.7-3 2.1.5a1 1 0 1 0 .1-.6l-2.4-.5a.3.3 0 0 0-.4.2l-.8 3.4a7.2 7.2 0 0 0-3.9 1.2 1.5 1.5 0 1 0-1.6 2.4 2.8 2.8 0 0 0 0 .5c0 2.2 2.6 4 5.8 4s5.8-1.8 5.8-4v-.5a1.5 1.5 0 0 0 .9-1.4zM6.7 11a1 1 0 1 1 1 1 1 1 0 0 1-1-1zm5.6 2.7a3.7 3.7 0 0 1-2.3.7 3.7 3.7 0 0 1-2.3-.7.3.3 0 0 1 .4-.4 3.1 3.1 0 0 0 1.9.5 3.1 3.1 0 0 0 1.9-.5.3.3 0 1 1 .4.4zm-.1-1.7a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>';
@@ -68,41 +53,6 @@ function threadLinks(g){
     post ? btn(post, 'Postgame thread') : g.state === 'post' ? find('Postgame Thread', 'Find postgame thread') : ''
   ].filter(Boolean);
   return links.length ? `<div class="rlinks">${links.join('')}</div>` : '';
-}
-
-function preview(g, s){
-  const mk = marketsFor(g), m = mk[0];
-  const fp = state.preds.get(g.id)?.pHome ?? s.pred?.pHome ?? null, pp = pollP(g);
-  const rows = [
-    m && [sourceLabel(m.source), m.pHome],
-    ...mk.slice(1).map(x => [sourceLabel(x.source), x.pHome]),
-    fp != null && ['ESPN FPI', fp],
-    pp != null && ['Rankings model', pp]
-  ].filter(Boolean);
-  const probs = rows.length ? `${meter(g, rows[0][1], rows[0][0])}
-    <table class="tbl compact"><thead><tr><th>Source</th><th class="num">${esc(g.away.abbr)}</th><th class="num">${esc(g.home.abbr)}</th></tr></thead>
-    <tbody>${rows.map(([l, p]) => `<tr><td>${esc(l)}</td><td class="num">${pct(1 - p)}%</td><td class="num">${pct(p)}%</td></tr>`).join('')}</tbody></table>`
-    : '<p class="muted">No prices or projections yet.</p>';
-  const facts = [g.book?.details && `Line: ${g.book.details}`, g.book?.ou && `O/U ${g.book.ou}`, g.tv, s.venue && `${s.venue}${s.city ? ', ' + s.city : ''}`, s.weather && `Forecast ${s.weather}`]
-    .filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('');
-  return panel('Win probability', probs + (facts ? `<div class="facts">${facts}</div>` : '')) +
-    panel('Excitement', excitementBadge(g, { open: true })) +
-    compareTeams(g);
-}
-
-function compareTeams(g){
-  const col = t => {
-    const f = state.fpi?.byTeam[t.id], st = state.standings?.byTeam[t.id];
-    return {
-      'AP rank': t.rank || apRank(t.id) || '–', 'FPI rank': f?.rank ?? '–', 'FPI rating': f?.fpi?.toFixed(1) ?? '–',
-      'Offense efficiency': f?.off?.toFixed(1) ?? '–', 'Defense efficiency': f?.def?.toFixed(1) ?? '–',
-      'Record': t.record || '–', 'Conference': st?.confRec ? `${st.confRec.w}-${st.confRec.l}` : '–',
-      'Points per game': st?.ppg?.toFixed(1) ?? '–',
-      'Allowed per game': st?.pa != null && st.overall ? (st.pa / Math.max(1, st.overall.w + st.overall.l + st.overall.t)).toFixed(1) : '–'
-    };
-  };
-  const a = col(g.away), h = col(g.home);
-  return panel('Tale of the tape', statTable(g, Object.keys(a).map(k => [k, a[k], h[k]])));
 }
 
 const statTable = (g, rows) => `<table class="tbl compact vs"><thead><tr><th class="num">${esc(g.away.abbr)}</th><th></th><th class="num">${esc(g.home.abbr)}</th></tr></thead>

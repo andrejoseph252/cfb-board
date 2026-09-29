@@ -2,6 +2,8 @@ import { esc, norm } from '../util.js';
 import { state } from '../state.js';
 import { pins } from '../picks.js';
 import { excitement, isHot } from '../excitement.js';
+import { lineFor } from '../lines.js';
+import { recapBanner } from './recap.js';
 import { grid, sec, empty, chips, group } from './components.js';
 
 const ranked = g => g.home.rank || g.away.rank;
@@ -18,12 +20,14 @@ export function viewWeek(){
     .map(g => [g, excitement(g).score]).filter(([, s]) => s >= 65).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
   let h = '';
   if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. An orange outline marks the tightest games late.</p>' + grid(live);
+  // The one-line recap bar opens on tap; it sits under live games and above Best games.
+  h += recapBanner();
   if (must.length) h += sec('Best games to watch', must.length) + grid(must);
   h += sec('Pinned', pinned.length);
   h += pinned.length ? grid(pinned) : empty('Tap the pin on any game to keep it here and in the live strip.');
   h += sec('Games', null) + `<div class="filters"><input class="search" id="q" type="search" placeholder="Search all teams" value="${esc(state.q)}" aria-label="Search games by team">
     ${chips(TIERS.map(([k, l, f]) => [k, `${l} ${gs.filter(f).length}`]), state.tier, 'tier')}
-    ${chips([['time', 'By time'], ['xc', 'Most exciting']], state.sort || 'time', 'sort')}</div><div id="list">${weekList()}</div>`;
+    ${chips([['time', 'By time'], ['xc', 'Most exciting'], ['moves', 'Line moves']], state.sort || 'time', 'sort')}</div><div id="list">${weekList()}</div>`;
   return h;
 }
 
@@ -48,6 +52,11 @@ export function weekList(){
   if (state.sort === 'xc'){
     const score = g => g.state === 'post' ? -1 : excitement(g).score;
     return grid([...gs].sort((a, b) => score(b) - score(a)));
+  }
+  if (state.sort === 'moves'){
+    const move = g => { const l = g.state === 'pre' && lineFor(g); return l ? Math.abs(l.move) : -1; };
+    const moved = gs.filter(g => move(g) >= .03).sort((a, b) => move(b) - move(a));
+    return moved.length ? grid(moved) : empty('No line has moved 3 points or more yet. Markets usually settle in by midweek.');
   }
   const days = {};
   for (const g of gs){ const k = new Date(g.date).toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'}); (days[k] ??= []).push(g); }

@@ -39,4 +39,5 @@ export const summary = (id, live) => getJSON(summaryUrl(id), live ? 25e3 : 10 * 
 export const probabilities = (id, live) => getJSON(`${CORE}/events/${id}/competitions/${id}/probabilities?limit=1000`, live ? 25e3 : 10 * 60e3);
 // Same-origin file refreshed by the GitHub Action; the query string sidesteps GitHub Pages' 10-minute cache.
 export const threads = () => getJSON(`data/threads.json?t=${Math.floor(Date.now() / 120e3)}`, 2 * MIN);
-export const predictor = id => getJSON(`${CORE}/events/${id}/competitions/${id}/predictor`, 60 * MIN);
+export const lines = () => getJSON(`data/lines.json?t=${Math.floor(Date.now() / 300e3)}`, 5 * MIN);
+export const predictor =id => getJSON(`${CORE}/events/${id}/competitions/${id}/predictor`, 60 * MIN);

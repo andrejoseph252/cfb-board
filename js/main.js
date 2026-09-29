@@ -90,6 +90,7 @@ document.addEventListener('input', e => {
   if (e.target.id === 'q'){ state.q = e.target.value; const l = $('#list'); if (l) l.innerHTML = weekList(); lastMain = ''; }
 });
 document.addEventListener('toggle', e => {
+  const rc = e.target.dataset?.recap; if (rc){ store.set(rc, e.target.open); lastMain = ''; return; }
   const id = e.target.dataset?.xc; if (!id) return;
   e.target.open ? openXc.add(id) : openXc.delete(id);
 }, true);

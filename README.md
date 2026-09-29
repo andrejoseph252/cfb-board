@@ -43,6 +43,12 @@ Adding a tab means adding a file in `js/views/` and one line in the `TABS` list 
   `data/markets.json` first, then tries the market APIs directly, then falls back to
   de-vigged sportsbook moneylines.
 
+- Line movement: the same Action appends each Kalshi/Polymarket price to `data/lines.json` (a point only when the price
+  moves a full percent; recording stops at kickoff; games drop out 10 days after they're played). Cards show which side
+  the line has moved toward, the game preview charts it, and the recap uses the kickoff price to rank upsets.
+  `python3 scripts/backfill_lines.py` rebuilds the file from the `markets.json` snapshots in git history.
+- Kalshi quotes wider than 15¢ (empty order books) are ignored, so those games fall back to the sportsbook line.
+
 - r/CFB game and postgame threads: u/CFB_Referee's post feed (RSS), falling back to r/CFB search.
   Collected by the same GitHub Action into `data/threads.json`; finished games without a match get a
   "Find postgame thread" search link.
@@ -59,5 +65,10 @@ A 0-100 pregame score, shown as an itemized sum on every card (tap "Why?"):
 - Competitiveness, up to 25: how close the market price is to 50/50.
 - Scoring pace, up to 10: the over/under, or both teams' points per game when there's no total.
 - Stakes, up to 10: ranked teams, conference game, both teams with 1 loss or fewer.
+
+## Recap
+All week, a "Week N in review" bar sits at the top of This week (below any live games): the biggest upset by kickoff price,
+the game of the week (biggest win-probability swing among close FBS games), ranked teams that lost, poll movers and your
+picks. Tap it to open the cards.
 
 Box scores also show an in-game excitement index, the total swing in ESPN's win probability during the game.

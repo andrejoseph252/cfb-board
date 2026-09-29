@@ -3,6 +3,7 @@ import * as api from './api.js';
 import { parseEvent, parseStandings, parseFpi, parsePredictor, parseRankings } from './models.js';
 import { state, invalidate } from './state.js';
 import { loadMarkets } from './markets.js';
+import { loadLines } from './lines.js';
 import { pool } from './util.js';
 import { resolvePicks, backfillPicks } from './picks.js';
 
@@ -25,6 +26,7 @@ export async function loadBoard({ silent = false, fresh = false } = {}){
   invalidate('main', 'header');
   schedulePoll();
   loadPredictions(state.games);
+  loadLines();
   backfillPicks();
   refreshStandings();
   refreshFpi();
