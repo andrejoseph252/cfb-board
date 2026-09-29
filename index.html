@@ -21,6 +21,32 @@
 <script>try{const s=JSON.parse(localStorage.getItem('cfbboard.settings')||'{}'),r=document.documentElement,m=s.mode||'dark',p=s.palette||'mono';if(m!=='system')r.dataset.theme=m;if(p!=='field')r.dataset.palette=p}catch{}</script>
 <link rel="stylesheet" href="css/app.css">
 <script type="module" src="js/main.js"></script>
+<!-- Every module main.js imports, so the browser fetches them in parallel instead of discovering them one level at a
+     time. Keep in step with the imports (scripts/check_preload.py lists any that are missing). -->
+<link rel="modulepreload" href="js/api.js">
+<link rel="modulepreload" href="js/data.js">
+<link rel="modulepreload" href="js/detail.js">
+<link rel="modulepreload" href="js/excitement.js">
+<link rel="modulepreload" href="js/lines.js">
+<link rel="modulepreload" href="js/markets.js">
+<link rel="modulepreload" href="js/models.js">
+<link rel="modulepreload" href="js/picks.js">
+<link rel="modulepreload" href="js/recap.js">
+<link rel="modulepreload" href="js/resource.js">
+<link rel="modulepreload" href="js/settings.js">
+<link rel="modulepreload" href="js/state.js">
+<link rel="modulepreload" href="js/threads.js">
+<link rel="modulepreload" href="js/util.js">
+<link rel="modulepreload" href="js/views/components.js">
+<link rel="modulepreload" href="js/views/conferences.js">
+<link rel="modulepreload" href="js/views/game.js">
+<link rel="modulepreload" href="js/views/picks.js">
+<link rel="modulepreload" href="js/views/preview.js">
+<link rel="modulepreload" href="js/views/rankings.js">
+<link rel="modulepreload" href="js/views/recap.js">
+<link rel="modulepreload" href="js/views/slate.js">
+<link rel="modulepreload" href="js/views/team.js">
+<link rel="modulepreload" href="js/views/wpchart.js">
 </head>
 <body>
 <div class="wrap">

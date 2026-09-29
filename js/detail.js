@@ -3,7 +3,7 @@
 import { $ } from './util.js';
 import { viewTeam } from './views/team.js';
 import { viewGame, isLive } from './views/game.js';
-import { invalidate } from './state.js';
+import { state, invalidate } from './state.js';
 
 export function route(){
   const m = /^#(team|game)\/(.+)$/.exec(location.hash);
@@ -50,8 +50,9 @@ export function renderDetail(){
   if (key !== lastKey){ $('#drawerScroll').scrollTop = 0; $('#drawerClose').focus({ preventScroll: true }); lastKey = key; }
 }
 
-/* While a live game is open, refresh its box score. */
+/* Live games on this week's board refresh with each board poll (see loadBoard). One opened from elsewhere, like
+   a team schedule while you're viewing another week, refreshes on its own at the same pace. */
 setInterval(() => {
   const r = route();
-  if (r?.type === 'game' && isLive(r.id) && !document.hidden) invalidate('detail');
-}, 30e3);
+  if (r?.type === 'game' && isLive(r.id) && !state.byId[r.id] && !document.hidden) invalidate('detail');
+}, 12e3);

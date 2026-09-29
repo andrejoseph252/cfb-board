@@ -8,7 +8,14 @@ import { lineFor } from '../lines.js';
 export const teamHref = id => `#team/${encodeURIComponent(id)}`;
 export const gameHref = id => `#game/${encodeURIComponent(id)}`;
 
-export const logo = (src, cls = 'logo') => src ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy">` : `<span class="${cls}"></span>`;
+/* ESPN's team logos are 500px originals; its image resizer serves them near display size instead (about 9x smaller).
+   Big logos (drawer headers) get 180px, everything else 72px, both enough for 3x phone screens. */
+const ESPN_LOGO = /^https:\/\/a\.espncdn\.com\/(i\/teamlogos\/[^?#]+\.png)$/;
+export function logoUrl(src, px){
+  const m = ESPN_LOGO.exec(src || '');
+  return m ? `https://a.espncdn.com/combiner/i?img=/${m[1]}&w=${px}&h=${px}` : src;
+}
+export const logo = (src, cls = 'logo') => src ? `<img class="${cls}" src="${esc(logoUrl(src, /\b(lg|mh-logo)\b/.test(cls) ? 180 : 72))}" alt="" loading="lazy">` : `<span class="${cls}"></span>`;
 
 /* Team name that opens the schedule drawer. Pass {logo:true} to include the logo inside the link. */
 export function teamLink(t, { rank = true, withLogo = false, label } = {}){
@@ -84,8 +91,18 @@ export function lineMove(g){
     <b>${esc(t.abbr)}</b> ▲${Math.round(Math.abs(L.move) * 100)}<span class="sr"> points since ${esc(dayName(L.since))}</span></span>`;
 }
 
+/* Live: ESPN's win probability as of the latest play, which arrives with every scoreboard poll. (Market prices come
+   through the bot and can be hours old mid-game, so they're only shown before kickoff and after.) */
+function liveOdds(g){
+  if (g.liveWp == null) return '';
+  const pa = pct(1 - g.liveWp), ph = 100 - pa;
+  return `${meter(g, g.liveWp, 'ESPN live win probability')}
+    <div class="odds"><b>${esc(g.away.abbr)} ${pa}%</b><span class="src">Live win %</span><b>${ph}% ${esc(g.home.abbr)}</b></div>`;
+}
+
 /* Before kickoff the two percentages (or team abbreviations, with no line yet) are the pick buttons. */
 function oddsBlock(g){
+  if (g.state === 'in') return liveOdds(g);
   const mk = marketsFor(g), prim = mk[0], pre = g.state === 'pre', pk = picks[g.id]?.side;
   const pickBtn = (s, text) => `<button class="opick${pk === s ? ' mine' : ''}" data-pick="${s}" aria-pressed="${pk === s}" title="${pk === s ? 'Your pick. Tap to clear' : `Pick ${esc(g[s].name)}`}">${pk === s ? '✓ ' : ''}${text}</button>`;
   if (!prim) return pre ? `<div class="odds">${pickBtn('away', esc(g.away.abbr))}<span class="src">No line yet</span>${pickBtn('home', esc(g.home.abbr))}</div>` : '';

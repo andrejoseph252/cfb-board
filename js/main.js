@@ -1,6 +1,6 @@
 import { $, esc, store, fmtTime } from './util.js';
 import { state, onRender, invalidate } from './state.js';
-import { loadBoard, refreshStandings, refreshFpi, refreshRankings } from './data.js';
+import { loadBoard, refreshStandings, refreshFpi, refreshRankings, anyLive, LIVE_POLL } from './data.js';
 import { initSettings } from './settings.js';
 import { picks, weekLabel, togglePin, setPick, removePick } from './picks.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
@@ -30,7 +30,26 @@ function renderHeader(){
   const tabs = TABS.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}${counts[k] ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('');
   if (tabs !== lastTabs){ $('#tabs').innerHTML = tabs; lastTabs = tabs; }
   buildWeekSelect();
+  renderStale();
 }
+
+/* During live games, a chip under the tab bar says when the scores have stopped updating (three missed polls,
+   or no connection), so an old score never passes for a current one. */
+const staleEl = Object.assign(document.createElement('div'), { className: 'stale', hidden: true });
+staleEl.setAttribute('role', 'status');
+$('.tabs').append(staleEl);
+function renderStale(){
+  const age = state.updated ? Date.now() - state.updated : 0;
+  const offline = navigator.onLine === false;
+  const show = anyLive() && (offline || age > 3 * LIVE_POLL + 5e3);
+  staleEl.hidden = !show;
+  if (!show) return;
+  const s = Math.round(age / 1000), ago = s < 90 ? `${s}s ago` : `${Math.round(s / 60)} min ago`;
+  staleEl.textContent = `${offline ? 'Offline' : 'Reconnecting'} · scores from ${ago}`;
+}
+// The chip's age has to count up even when no new data arrives.
+setInterval(() => { if (anyLive() && !document.hidden) renderStale(); }, 5e3);
+window.addEventListener('offline', renderStale);
 
 let lastWeekOpts = '';
 function buildWeekSelect(){

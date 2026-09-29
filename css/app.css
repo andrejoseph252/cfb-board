@@ -593,3 +593,11 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .hype .xc-bar{background:var(--soft)}
 .nw{white-space:nowrap}
 .grid + .rc{margin-top:26px}
+
+/* "Reconnecting · scores from 45s ago": hangs just under the sticky tab bar during live games when updates stop. */
+.tabs{position:sticky}
+.stale{position:absolute;right:12px;top:calc(100% + 8px);z-index:6;background:var(--live);color:#fff;font:700 12px/1 var(--body);
+  padding:7px 11px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.25);white-space:nowrap;pointer-events:none}
+.stale::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:7px;vertical-align:0;animation:pulse 1.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.stale::before{animation:none}}
+@media (min-width:900px){.stale{right:20px}}

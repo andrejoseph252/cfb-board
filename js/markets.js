@@ -1,4 +1,5 @@
 import { norm } from './util.js';
+import { withTimeout } from './api.js';
 
 const KALSHI = 'https://api.elections.kalshi.com/trade-api/v2/markets';
 const POLY = 'https://gamma-api.polymarket.com/events';
@@ -15,7 +16,7 @@ function kPrice(m){
 async function fetchKalshi(){
   let cursor = '', all = [];
   for (let i = 0; i < 5; i++){
-    const r = await fetch(`${KALSHI}?series_ticker=KXNCAAFGAME&status=open&limit=1000${cursor ? '&cursor=' + cursor : ''}`);
+    const r = await fetch(`${KALSHI}?series_ticker=KXNCAAFGAME&status=open&limit=1000${cursor ? '&cursor=' + cursor : ''}`, withTimeout());
     if (!r.ok) throw new Error('Kalshi ' + r.status);
     const j = await r.json(); all.push(...(j.markets || [])); cursor = j.cursor; if (!cursor) break;
   }
@@ -33,7 +34,7 @@ async function fetchKalshi(){
 async function fetchPoly(){
   for (const tag of ['cfb','ncaaf','college-football']){
     try{
-      const r = await fetch(`${POLY}?tag_slug=${tag}&closed=false&limit=500`); if (!r.ok) continue;
+      const r = await fetch(`${POLY}?tag_slug=${tag}&closed=false&limit=500`, withTimeout()); if (!r.ok) continue;
       const out = [];
       for (const ev of (await r.json()) || []) for (const m of ev.markets || []){
         let oc = m.outcomes, pr = m.outcomePrices;
@@ -56,7 +57,7 @@ export async function loadMarkets(force){
   if (!force && Date.now() - loadedAt < 5 * 60e3) return false;
   matchCache.clear();
   try{
-    const r = await fetch('data/markets.json', {cache:'no-store'});
+    const r = await fetch('data/markets.json', {cache:'no-store', ...withTimeout()});
     if (r.ok){
       const j = await r.json();
       if ((j.kalshi?.length || 0) + (j.polymarket?.length || 0) > 0){

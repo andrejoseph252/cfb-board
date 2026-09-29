@@ -58,6 +58,11 @@ None of these need an API key.
 ## Using it
 - Tap any game card to open its box score or preview. Before kickoff, tap a team's odds to pick it.
 - The team with the ball glows (red in the red zone); an orange outline marks close, late games.
+- While games are live the board refreshes every 12 seconds (every 5 minutes otherwise), and an open game refreshes
+  on the same tick. Live cards show ESPN's live win probability. If scores stop updating, a red "Reconnecting" chip
+  appears under the tabs with how old they are.
+- Every request gives up after 10 seconds. After adding or removing a JS module, run `python3 scripts/check_preload.py`
+  (index.html and demo.html preload every module so they download in parallel).
 
 ## Excitement score
 A 0-100 pregame score, shown as an itemized sum on every card (tap "Why?"):

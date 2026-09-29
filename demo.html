@@ -31,6 +31,32 @@ for(const m of ['getItem','setItem','removeItem']){const f=S[m];S[m]=function(ke
 <!-- Simulated live games (js/demo-live.js). Must load before main.js. -->
 <script type="module" src="js/demo-live.js"></script>
 <script type="module" src="js/main.js"></script>
+<!-- Every module main.js imports, so the browser fetches them in parallel instead of discovering them one level at a
+     time. Keep in step with the imports (scripts/check_preload.py lists any that are missing). -->
+<link rel="modulepreload" href="js/api.js">
+<link rel="modulepreload" href="js/data.js">
+<link rel="modulepreload" href="js/detail.js">
+<link rel="modulepreload" href="js/excitement.js">
+<link rel="modulepreload" href="js/lines.js">
+<link rel="modulepreload" href="js/markets.js">
+<link rel="modulepreload" href="js/models.js">
+<link rel="modulepreload" href="js/picks.js">
+<link rel="modulepreload" href="js/recap.js">
+<link rel="modulepreload" href="js/resource.js">
+<link rel="modulepreload" href="js/settings.js">
+<link rel="modulepreload" href="js/state.js">
+<link rel="modulepreload" href="js/threads.js">
+<link rel="modulepreload" href="js/util.js">
+<link rel="modulepreload" href="js/views/components.js">
+<link rel="modulepreload" href="js/views/conferences.js">
+<link rel="modulepreload" href="js/views/game.js">
+<link rel="modulepreload" href="js/views/picks.js">
+<link rel="modulepreload" href="js/views/preview.js">
+<link rel="modulepreload" href="js/views/rankings.js">
+<link rel="modulepreload" href="js/views/recap.js">
+<link rel="modulepreload" href="js/views/slate.js">
+<link rel="modulepreload" href="js/views/team.js">
+<link rel="modulepreload" href="js/views/wpchart.js">
 <style>.demo-flag{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);transform:translateX(-50%);z-index:40;background:#111;color:#fff;
   font:700 11px/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:8px 12px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.3);pointer-events:none;white-space:nowrap}</style>
 </head>

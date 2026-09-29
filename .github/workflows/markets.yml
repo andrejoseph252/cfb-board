@@ -26,8 +26,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/fetch_markets.py
+      # The steps below still run if one above failed, so one bad source doesn't throw away the others' data.
+      # The run is still marked failed (and GitHub emails you) when any step fails.
       - run: python scripts/fetch_threads.py
+        if: ${{ !cancelled() }}
       - name: Commit if changed
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
