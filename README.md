@@ -2,7 +2,7 @@
 
 Personal college football board: weekly FBS slate, Top 25, conference standings and games, AP and ESPN FPI
 rankings, live scores and box scores, team schedules, Kalshi/Polymarket odds, a poll-vs-FPI-vs-market
-view, pregame excitement scores, themes (gear button), and pins and picks (saved in your browser).
+view, pregame excitement scores, themes (gear button; dark Mono by default), and pins and picks (saved in your browser).
 
 ## Run locally
     python3 -m http.server 8000

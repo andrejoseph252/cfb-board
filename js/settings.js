@@ -3,13 +3,19 @@ import { $, store } from './util.js';
 const MODES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 export const PALETTES = [['field', 'Field', '#1F6F43'], ['stadium', 'Stadium', '#C44E14'], ['paper', 'Paper', '#8A4B1C'], ['mono', 'Mono', '#111111']];
 
-const settings = { mode: 'system', palette: 'field', ...store.get('settings', {}) };
+// Defaults are dark Mono; the pre-paint script in index.html and demo.html uses the same defaults.
+const settings = { mode: 'dark', palette: 'mono', ...store.get('settings', {}) };
 
 function apply(){
   const root = document.documentElement;
   if (settings.mode === 'system') delete root.dataset.theme; else root.dataset.theme = settings.mode;
   if (settings.palette === 'field') delete root.dataset.palette; else root.dataset.palette = settings.palette;
+  // Match the phone's browser bar to the page background of whatever theme is showing.
+  const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
+  if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
 }
+// With "System", follow the phone when it switches between light and dark.
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (settings.mode === 'system') apply(); });
 
 function panelHTML(){
   const seg = (key, items) => `<div class="seg seg-${key}" role="group">${items.map(([v, l, c]) =>

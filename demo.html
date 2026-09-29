@@ -19,14 +19,14 @@ for(const m of ['getItem','setItem','removeItem']){const f=S[m];S[m]=function(ke
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CFB Board">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#F3F5F2" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121B17" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0D0D0D">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://site.api.espn.com" crossorigin>
 <link rel="preconnect" href="https://sports.core.api.espn.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>try{const s=JSON.parse(localStorage.getItem('cfbboard.settings')||'{}'),r=document.documentElement;if(s.mode&&s.mode!=='system')r.dataset.theme=s.mode;if(s.palette&&s.palette!=='field')r.dataset.palette=s.palette}catch{}</script>
+<!-- Apply the saved theme (default: dark Mono) before first paint; keep the defaults in step with js/settings.js. -->
+<script>try{const s=JSON.parse(localStorage.getItem('cfbboard.settings')||'{}'),r=document.documentElement,m=s.mode||'dark',p=s.palette||'mono';if(m!=='system')r.dataset.theme=m;if(p!=='field')r.dataset.palette=p}catch{}</script>
 <link rel="stylesheet" href="css/app.css">
 <!-- Simulated live games (js/demo-live.js). Must load before main.js. -->
 <script type="module" src="js/demo-live.js"></script>
