@@ -625,7 +625,9 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .rc-card .chipbtn{justify-self:start}
 @media (max-width:640px){
   .rc-heads{display:none}
-  .rc-cards{grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:78%;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain}
+  /* Snapping lines cards up with the scroll padding, not the edge, so the first card keeps the same inset as desktop. */
+  .rc-cards{grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:78%;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+    scroll-padding-inline:12px}
   .rc-card{scroll-snap-align:start}
 }
 .hype .xc-bar{background:var(--soft)}
