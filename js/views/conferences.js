@@ -1,6 +1,7 @@
 import { esc, winPct } from '../util.js';
 import { state, CONF, CONF_ORDER, apRank } from '../state.js';
 import { teamLink, grid, sec, empty, chips, logo, group } from './components.js';
+import { mineRow } from '../myteam.js';
 
 const rec = r => r ? `${r.w}-${r.l}${r.t ? '-' + r.t : ''}` : '–';
 
@@ -16,7 +17,7 @@ function standingsTable(c){
     <thead><tr><th class="num">#</th><th>Team</th><th class="num">Conf</th><th class="num">Overall</th><th class="num">Diff</th><th class="num hide-sm">Strk</th><th class="num">AP</th><th class="num">FPI</th></tr></thead>
     <tbody>${teams.map((t, i) => {
       const f = state.fpi?.byTeam[t.id], ap = apRank(t.id);
-      return `<tr><td class="num muted">${i + 1}</td>
+      return `<tr${mineRow(t.id)}><td class="num muted">${i + 1}</td>
         <td class="team">${logo(t.logo, 'logo sm')}${teamLink({ ...t, rank: null })}</td>
         <td class="num strong">${rec(t.confRec)}</td><td class="num">${rec(t.overall)}</td>
         <td class="num ${t.diff > 0 ? 'pos' : t.diff < 0 ? 'neg' : ''}">${t.diff > 0 ? '+' : ''}${t.diff ?? '–'}</td>

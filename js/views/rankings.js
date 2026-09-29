@@ -2,6 +2,7 @@ import { esc, pct, fmtTime } from '../util.js';
 import { state, CONF, CONF_ORDER, apRank, teamConf } from '../state.js';
 import { realMarket } from '../markets.js';
 import { teamLink, sec, chips, logo, gameHref } from './components.js';
+import { mineRow } from '../myteam.js';
 
 function weekGame(id){
   for (const g of state.games){
@@ -42,7 +43,7 @@ function apTable(){
   const list = r.ranks.filter(t => inConf(t.id)), others = r.others.filter(t => inConf(t.id));
   const rows = list.map(t => {
     const f = state.fpi?.byTeam[t.id];
-    return `<tr><td class="num rk">${t.rank}</td><td class="num">${trend(t)}</td>
+    return `<tr${mineRow(t.id)}><td class="num rk">${t.rank}</td><td class="num">${trend(t)}</td>
       <td class="team">${logo(t.logo, 'logo sm')}${teamLink({ id: t.id, name: t.name })}${t.fpv ? ` <span class="muted small">(${t.fpv})</span>` : ''}</td>
       <td class="num">${esc(t.record || '–')}</td><td class="num hide-sm">${t.points ?? '–'}</td><td class="num">${f?.rank ?? '–'}</td>${thisWeek(t.id)}</tr>`;
   }).join('');
@@ -61,7 +62,7 @@ function fpiTable(){
       <th class="num hide-sm">Proj</th><th class="num hide-sm">Playoff</th><th class="grp">This week</th></tr></thead>
     <tbody>${list.map(t => {
       const st = state.standings?.byTeam[t.id];
-      return `<tr><td class="num rk">${t.rank}</td>
+      return `<tr${mineRow(t.id)}><td class="num rk">${t.rank}</td>
         <td class="team">${logo(t.logo, 'logo sm')}${teamLink({ id: t.id, name: st?.name || t.name })}</td>
         <td class="num">${t.fpi?.toFixed(1) ?? '–'}</td>
         <td class="num">${st?.overall ? `${st.overall.w}-${st.overall.l}` : '–'}</td><td class="num">${apRank(t.id) ?? ''}</td>

@@ -5,6 +5,7 @@ import { initSettings } from './settings.js';
 import { picks, weekLabel, togglePin, setPick, removePick } from './picks.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc } from './views/components.js';
+import { isMine, setMyTeam } from './myteam.js';
 import { viewWeek, weekList, viewTop25 } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
@@ -96,6 +97,7 @@ document.addEventListener('click', e => {
   if (d.rk){ state.rk = d.rk; store.set('rk', d.rk); return invalidate('main'); }
   if (d.rkconf){ state.rkConf = d.rkconf; return invalidate('main'); }
   if (d.unpick) return removePick(d.unpick);
+  if (d.mine) return setMyTeam(isMine(d.mine) ? null : { id: d.mine, name: d.name, color: d.color, logo: d.logo });
   if (t.id === 'retry') return loadBoard({ fresh: true });
   if (t.id === 'drawerClose' || t.id === 'scrim') return closeDrawer();
   if (t.id === 'drawerBack') return back();

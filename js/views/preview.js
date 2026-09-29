@@ -7,11 +7,12 @@ import { parseSchedule } from '../models.js';
 import { marketsFor, realMarket, sourceLabel } from '../markets.js';
 import { lineFor } from '../lines.js';
 import { excitement } from '../excitement.js';
+import { upset, upsetWhy, BOLT } from '../upset.js';
 import { useData } from '../resource.js';
 import { logo, panel, barColors, ballClass, stepPath, teamHref, gameHref } from './components.js';
 
 /* Black or white text, whichever reads better on a team color. */
-function inkOn(hex){
+export function inkOn(hex){
   const n = parseInt(String(hex).replace('#', '').padEnd(6, '0').slice(0, 6), 16) || 0;
   const lin = c => { c /= 255; return c <= .04 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; };
   const L = .2126 * lin(n >> 16 & 255) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255);
@@ -21,7 +22,7 @@ const day = t => new Date(t).toLocaleDateString(undefined, {weekday:'short'});
 const other = s => s === 'home' ? 'away' : 'home';
 
 /* ---------- matchup banner ---------- */
-function countdown(g){
+export function countdown(g){
   const ms = new Date(g.date) - Date.now();
   if (g.tbd) return 'Kickoff time TBD';
   if (ms <= 0) return 'Kickoff';
@@ -44,8 +45,9 @@ export function banner(g, s){
   const mid = g.state === 'pre' ? `<div class="mh-vs">${g.neutral ? 'vs' : 'at'}</div>`
     : `<div class="mh-score"><span class="${done && g.home.winner ? 'dim' : ''}">${esc(g.away.score)}</span><i></i><span class="${done && g.away.winner ? 'dim' : ''}">${esc(g.home.score)}</span></div>
        <div class="mh-status${g.state === 'in' ? ' live' : ''}">${esc(g.detail || '')}</div>`;
-  const d = new Date(g.date);
+  const d = new Date(g.date), up = upset(g);
   const strip = [
+    up ? `<b class="mh-upset${up.big ? ' big' : ''}">${BOLT}${up.big ? 'Big upset' : 'Upset'}</b><span>${esc(upsetWhy(g, up))}</span>` : null,
     g.state === 'pre' ? `<b>${esc(countdown(g))}</b>` : null,
     g.state === 'pre' ? esc(`${d.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'})}${g.tbd ? '' : ' · ' + fmtTime(d)}`) : g.state === 'in' && g.sit ? `<b>${esc(g.sit)}</b>` : null,
     g.tv ? `<span class="mh-tv">${esc(g.tv)}</span>` : null,

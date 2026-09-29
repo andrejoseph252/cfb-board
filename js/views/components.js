@@ -4,6 +4,8 @@ import { marketsFor, sourceLabel } from '../markets.js';
 import { pins, picks } from '../picks.js';
 import { excitement, isHot } from '../excitement.js';
 import { lineFor } from '../lines.js';
+import { upset, upsetWhy, BOLT } from '../upset.js';
+import { isMine, mySide, myColor, STAR } from '../myteam.js';
 
 export const teamHref = id => `#team/${encodeURIComponent(id)}`;
 export const gameHref = id => `#game/${encodeURIComponent(id)}`;
@@ -17,10 +19,11 @@ export function logoUrl(src, px){
 }
 export const logo = (src, cls = 'logo') => src ? `<img class="${cls}" src="${esc(logoUrl(src, /\b(lg|mh-logo)\b/.test(cls) ? 180 : 72))}" alt="" loading="lazy">` : `<span class="${cls}"></span>`;
 
-/* Team name that opens the schedule drawer. Pass {logo:true} to include the logo inside the link. */
+/* Team name that opens the schedule drawer. Pass {logo:true} to include the logo inside the link. My team gets a star. */
 export function teamLink(t, { rank = true, withLogo = false, label } = {}){
   if (!t?.id) return esc(label ?? t?.name ?? 'TBD');
-  return `<a class="tlink" href="${teamHref(t.id)}">${withLogo ? logo(t.logo, 'logo sm') : ''}${rank && t.rank ? `<span class="rank">${t.rank}</span>` : ''}${esc(label ?? t.name)}</a>`;
+  const star = isMine(t.id) ? `<span class="mine-star" title="Your team">${STAR}</span>` : '';
+  return `<a class="tlink" href="${teamHref(t.id)}">${withLogo ? logo(t.logo, 'logo sm') : ''}${rank && t.rank ? `<span class="rank">${t.rank}</span>` : ''}${esc(label ?? t.name)}${star}</a>`;
 }
 
 export const sec = (title, n, unit = 'game') => `<h2 class="sec">${esc(title)}${n != null ? `<span class="n">${plural(n, unit)}</span>` : ''}</h2>`;
@@ -144,13 +147,19 @@ export function excitementBadge(g, { open = false } = {}){
       <span class="xc-pts">${p.pts.toFixed(0)}/${p.max}</span><span class="xc-why">${esc(p.why)}</span></li>`).join('')}</ul></details>`;
 }
 
+/* Final cards: a quiet tag when the winner had a low chance at kickoff, e.g. "Upset 22%". */
+function upsetTag(g, u){
+  if (!u) return '';
+  return `<span class="upset${u.big ? ' big' : ''}" title="${esc(upsetWhy(g, u))}">${BOLT}${u.big ? 'Big upset' : 'Upset'}${u.p != null ? ` ${pct(u.p)}%` : ''}</span>`;
+}
+
 /* The whole card opens the game (see main.js); close, late live games get an orange outline. */
 export function card(g){
-  const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id);
+  const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id), up = upset(g), mine = mySide(g);
   const info = [live ? g.sit : null, g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, g.neutral ? 'Neutral site' : null].filter(Boolean);
-  return `<article class="game${live ? ' is-live' : ''}${hot ? ' is-hot' : ''}${pinned ? ' is-pinned' : ''}" data-id="${esc(g.id)}">
+  return `<article class="game${live ? ' is-live' : ''}${hot ? ' is-hot' : ''}${pinned ? ' is-pinned' : ''}${up ? ` is-upset${up.big ? ' is-big-upset' : ''}` : ''}${mine ? ' is-mine' : ''}" data-id="${esc(g.id)}"${mine ? ` style="--mine:${esc(myColor())}"` : ''}>
     ${teamRow(g, 'away')}${teamRow(g, 'home')}${oddsBlock(g)}${excitementBadge(g)}
-    <div class="foot">${statusHTML(g, true)}<span class="finfo">${esc(info.join(' · '))}</span>
+    <div class="foot">${statusHTML(g, true)}${upsetTag(g, up)}<span class="finfo">${esc(info.join(' · '))}</span>
       <button class="pinbtn" data-pin aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} ${esc(g.away.name)} at ${esc(g.home.name)}" title="${pinned ? 'Unpin' : 'Pin'}">${PIN}</button></div>
   </article>`;
 }

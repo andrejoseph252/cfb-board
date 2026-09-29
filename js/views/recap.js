@@ -1,6 +1,7 @@
 /* The "Week N in review" banner: one line of headlines, tap to open the full recap cards. */
 import { esc, pct, store } from '../util.js';
 import { recap, showRecap } from '../recap.js';
+import { upsetWhy, BOLT } from '../upset.js';
 import { weekLabel } from '../picks.js';
 import { logo, gameHref, teamHref, barColors } from './components.js';
 
@@ -23,8 +24,8 @@ const matchup = (g, ws) => { const ls = ws === 'home' ? 'away' : 'home';
 function cards(r){
   const out = [];
   const u = r.upsets[0];
-  if (u) out.push(`<a class="rc-card" href="${gameHref(u.g.id)}"><span class="rc-kick">Upset of the week</span>${matchup(u.g, u.ws)}
-    <p>${u.p != null ? `The market gave ${esc(u.g[u.ws].name)} <b>${pct(u.p)}%</b> at kickoff.` : `Unranked or lower-ranked team takes down ${esc(rk(u.g[u.ls]) + u.g[u.ls].name)}.`}</p>
+  if (u) out.push(`<a class="rc-card" href="${gameHref(u.g.id)}"><span class="rc-kick rc-upset">${BOLT}Upset of the week</span>${matchup(u.g, u.ws)}
+    <p>${esc(upsetWhy(u.g, u.u))}</p>
     ${r.upsets.length > 1 ? `<ul class="rc-list">${r.upsets.slice(1, 4).map(x => `<li>${esc(x.g[x.ws].abbr)} over ${esc(rk(x.g[x.ls]) + x.g[x.ls].abbr)}${x.p != null ? ` <span class="muted">${pct(x.p)}%</span>` : ''}</li>`).join('')}</ul>` : ''}</a>`);
   if (r.classic){
     const c = r.classic, ws = c.g.home.winner ? 'home' : 'away';

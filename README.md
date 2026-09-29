@@ -5,8 +5,9 @@ rankings, live scores and box scores, team schedules, Kalshi/Polymarket odds,
 pregame excitement scores, themes (gear button; dark Mono by default), and pins and picks (saved in your browser).
 
 ## Run locally
-    python3 -m http.server 8000
-then open http://localhost:8000. The app uses ES modules, so it must be served over HTTP;
+    python3 scripts/serve.py
+then open http://localhost:8000. It's Python's built-in server with browser caching turned off (so edits never mix
+old and new modules) and room for the page's parallel downloads. The app uses ES modules, so it must be served over HTTP;
 opening index.html straight from disk won't work.
 
 ## Deploy to GitHub Pages
@@ -61,8 +62,11 @@ None of these need an API key.
 - While games are live the board refreshes every 12 seconds (every 5 minutes otherwise), and an open game refreshes
   on the same tick. Live cards show ESPN's live win probability. If scores stop updating, a red "Reconnecting" chip
   appears under the tabs with how old they are.
-- Every request gives up after 10 seconds. After adding or removing a JS module, run `python3 scripts/check_preload.py`
-  (index.html and demo.html preload every module so they download in parallel).
+- Every request gives up after 10 seconds.
+- **After changing anything in `js/` or `css/`, run `python3 scripts/stamp.py` before committing.** It rebuilds the
+  script/style block in index.html and demo.html: every module is preloaded (downloaded in parallel) and every file
+  address carries a fingerprint of its contents, so a browser can never mix a new file with a cached old one after a
+  deploy. `--check` only reports. A local git hook refuses commits when the pages are out of date.
 
 ## Excitement score
 A 0-100 pregame score, shown as an itemized sum on every card (tap "Why?"):

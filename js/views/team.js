@@ -6,6 +6,7 @@ import { loadPredictions } from '../data.js';
 import { realMarket } from '../markets.js';
 import { useData } from '../resource.js';
 import { teamLink, logo, detailHead, panel, gameHref } from './components.js';
+import { isMine, STAR } from '../myteam.js';
 
 export function viewTeam(id){
   const e = useData('team:' + id, () => api.teamSchedule(id), parseSchedule);
@@ -55,7 +56,10 @@ export function viewTeam(id){
   }).join('');
 
   const rankTag = ap ? `<span class="rank">${ap}</span>` : '';
-  return detailHead({ title: rankTag + esc(t.full), label: t.full, sub: facts, logoSrc: t.logo, color: t.color }) +
+  const mine = isMine(t.id);
+  const myBtn = `<button class="mine-btn" type="button" data-mine="${esc(t.id)}" data-name="${esc(t.name)}" data-color="${esc(t.color || '')}" data-logo="${esc(t.logo || '')}" aria-pressed="${mine}"
+    title="${mine ? 'Your team. Tap to unset' : 'Follow this team: always pinned, with a ring in its color'}">${STAR}<span>${mine ? 'My team' : 'Make my team'}</span></button>`;
+  return detailHead({ title: rankTag + esc(t.full), label: t.full, sub: facts, logoSrc: t.logo, color: t.color, right: myBtn }) +
     panel(`${e.data.season || ''} schedule`, `<div class="shead"><span>Date</span><span>Opponent</span><span>Result</span><span>Record</span></div><ol class="sched">${rows}</ol>`) +
     `<p class="note">Tap any opponent to jump to their schedule, or a result for the box score. Back returns to the previous team.</p>`;
 }

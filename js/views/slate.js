@@ -4,6 +4,8 @@ import { pins } from '../picks.js';
 import { excitement, isHot } from '../excitement.js';
 import { lineFor } from '../lines.js';
 import { recapBanner } from './recap.js';
+import { mySide } from '../myteam.js';
+import { myTeamBar } from './mybar.js';
 import { grid, sec, empty, chips, group } from './components.js';
 
 const ranked = g => g.home.rank || g.away.rank;
@@ -13,15 +15,16 @@ export function viewWeek(){
   const gs = state.games;
   // Ranked and pinned games hold their spot by rank across refreshes; close, late unranked games join at the end.
   const byKick = (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
-  const core = gs.filter(g => g.state === 'in' && (ranked(g) || pins.has(g.id))).sort((a, b) => bestRank(a) - bestRank(b) || byKick(a, b));
+  const mineFirst = (a, b) => (mySide(b) ? 1 : 0) - (mySide(a) ? 1 : 0);
+  const core = gs.filter(g => g.state === 'in' && (ranked(g) || pins.has(g.id) || mySide(g))).sort((a, b) => mineFirst(a, b) || bestRank(a) - bestRank(b) || byKick(a, b));
   const live = [...core, ...gs.filter(g => g.state === 'in' && !core.includes(g) && isHot(g)).sort(byKick)];
-  const pinned = gs.filter(g => pins.has(g.id));
+  const pinned = gs.filter(g => pins.has(g.id) || mySide(g)).sort(mineFirst);
   const must = gs.filter(g => g.state === 'pre' && !excitement(g).pending)
     .map(g => [g, excitement(g).score]).filter(([, s]) => s >= 65).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
   let h = '';
   if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. An orange outline marks the tightest games late.</p>' + grid(live);
   // The one-line recap bar opens on tap; it sits under live games and above Best games.
-  h += recapBanner();
+  h += recapBanner() + myTeamBar();
   if (must.length) h += sec('Best games to watch', must.length) + grid(must);
   h += sec('Pinned', pinned.length);
   h += pinned.length ? grid(pinned) : empty('Tap the pin on any game to keep it here and in the live strip.');

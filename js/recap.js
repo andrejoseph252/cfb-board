@@ -4,8 +4,8 @@ import * as api from './api.js';
 import { state, invalidate, CONF } from './state.js';
 import { parseEvent, parseProbabilities } from './models.js';
 import { realizedExcitement } from './excitement.js';
-import { closingP } from './lines.js';
-import { picks } from './picks.js';
+import { picks, winnerSide } from './picks.js';
+import { upset } from './upset.js';
 import { pool } from './util.js';
 
 /* The week to recap: this week once every game is final, otherwise the one before it on ESPN's calendar. */
@@ -54,7 +54,6 @@ function loadSwings(k, finals){
 
 const margin = g => Math.abs(Number(g.home.score) - Number(g.away.score));
 const ranked = g => (g.home.rank ? 1 : 0) + (g.away.rank ? 1 : 0);
-const winSide = g => g.home.winner ? 'home' : g.away.winner ? 'away' : Number(g.home.score) > Number(g.away.score) ? 'home' : 'away';
 
 export function recap(){
   const w = recapWeek(); if (!w) return null;
@@ -64,15 +63,12 @@ export function recap(){
   if (!finals.length) return null;
   loadSwings(`${w.st}-${w.week}`, finals);
 
-  // Upsets: the winner's closing price, or failing that a ranked team losing to a lower-ranked or unranked one.
-  const upsets = finals.map(g => {
-    const ws = winSide(g), ls = ws === 'home' ? 'away' : 'home', p = closingP(g, ws);
-    const rankUpset = g[ls].rank && (!g[ws].rank || g[ws].rank > g[ls].rank);
-    return { g, ws, ls, p, rankUpset };
-  }).filter(u => u.p != null ? u.p < .5 : u.rankUpset)
+  // Upsets by the same rule as the final cards (js/upset.js), least likely winner first.
+  const upsets = finals.map(g => { const u = upset(g); return u && { g, u, ws: u.side, ls: u.side === 'home' ? 'away' : 'home', p: u.p }; })
+    .filter(Boolean)
     .sort((a, b) => (a.p ?? .5) - (b.p ?? .5) || (a.g[a.ls].rank || 99) - (b.g[b.ls].rank || 99));
 
-  const fallen = finals.map(g => ({ g, ls: winSide(g) === 'home' ? 'away' : 'home' })).filter(x => x.g[x.ls].rank)
+  const fallen = finals.map(g => ({ g, ls: winnerSide(g) === 'home' ? 'away' : 'home' })).filter(x => x.g[x.ls].rank)
     .sort((a, b) => a.g[a.ls].rank - b.g[b.ls].rank);
 
   // Drama first, with a nudge toward games involving ranked teams.

@@ -20,7 +20,7 @@ export function weekLabel(st, wk){
 
 /* ESPN can flip a game to final a moment before it sets the winner flag, so fall back to the score,
    and treat a game with neither as not settled yet (college football has no ties). */
-function winnerSide(g){
+export function winnerSide(g){
   if (g.home.winner) return 'home';
   if (g.away.winner) return 'away';
   const h = Number(g.home.score), a = Number(g.away.score);
