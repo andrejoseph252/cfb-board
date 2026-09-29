@@ -126,11 +126,17 @@ def main():
             data["errors"].append(f"{key}: {e}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1))
-    hist = lines.load()
-    lines.record(hist, data["kalshi"] + data["polymarket"], now)
-    lines.prune(hist, now)
-    lines.save(hist, now)
-    print(f"tracked={len(hist['m'])} kalshi={len(data['kalshi'])} polymarket={len(data['polymarket'])} errors={data['errors']}")
+    # Line history is extra; if it fails, today's odds still go out and the error shows in the run log.
+    tracked = "?"
+    try:
+        hist = lines.load()
+        lines.record(hist, data["kalshi"] + data["polymarket"], now)
+        lines.prune(hist, now)
+        lines.save(hist, now)
+        tracked = len(hist["m"])
+    except Exception as e:
+        print(f"::warning::line history not updated: {e}")
+    print(f"tracked={tracked} kalshi={len(data['kalshi'])} polymarket={len(data['polymarket'])} errors={data['errors']}")
 
 
 if __name__ == "__main__":

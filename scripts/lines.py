@@ -27,15 +27,22 @@ def parse_time(s):
 
 
 def load():
-    try:
-        return json.loads(OUT.read_text())
-    except (OSError, ValueError):
+    """The saved history, or an empty one on the very first run. A file that exists but can't be read raises
+    instead, so a bad file is never silently replaced by an empty history."""
+    if not OUT.exists():
         return {"m": []}
+    hist = json.loads(OUT.read_text())
+    if not isinstance(hist.get("m"), list):
+        raise ValueError(f"{OUT.name} has no market list")
+    return hist
 
 
 def save(hist, now):
     hist["updated"] = now.isoformat(timespec="seconds")
-    OUT.write_text(json.dumps(hist, separators=(",", ":")))
+    # Write to a temp file and swap it in, so an interrupted run can't leave half a file behind.
+    tmp = OUT.with_suffix(".tmp")
+    tmp.write_text(json.dumps(hist, separators=(",", ":")))
+    tmp.replace(OUT)
 
 
 def find(hist, s, names, close):
