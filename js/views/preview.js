@@ -1,13 +1,12 @@
-/* Game drawer pieces with some broadcast flavor: the matchup banner, the line and its movement, storylines,
+/* Game drawer pieces with some broadcast flavor: the matchup banner, the line and its movement,
    the hype gauge, a mirrored tale of the tape and each team's recent form. */
-import { esc, pct, fmtTime, parseRecord } from '../util.js';
+import { esc, pct, fmtTime } from '../util.js';
 import { state, CONF, apRank } from '../state.js';
 import * as api from '../api.js';
 import { parseSchedule } from '../models.js';
 import { marketsFor, realMarket, sourceLabel } from '../markets.js';
 import { lineFor } from '../lines.js';
 import { excitement } from '../excitement.js';
-import { pollP } from './compare.js';
 import { useData } from '../resource.js';
 import { logo, panel, barColors, ballClass, stepPath, teamHref, gameHref } from './components.js';
 
@@ -60,6 +59,13 @@ export function banner(g, s){
 }
 
 /* ---------- the line ---------- */
+/* Poll-implied win prob: logistic on AP rank gap + home field (unranked treated as #35). */
+function pollP(g){
+  if (!g.home.rank && !g.away.rank) return null;
+  const x = 0.085 * ((g.away.rank ?? 35) - (g.home.rank ?? 35)) + (g.neutral ? 0 : 0.35);
+  return 1 / (1 + Math.exp(-x));
+}
+
 const SRC_DOT = { Market: 'mkt', FPI: 'fpi', Poll: 'poll' };
 
 function tugOfWar(g, p, label){
@@ -116,57 +122,6 @@ export function theLine(g, s){
   if (!main) return panel('The line', '<p class="muted">No prices or projections yet. Markets usually open early in the week.</p>');
   return panel('The line', tugOfWar(g, main[2], main[1]) + forecastStrip(g, rows) + lineChart(g) +
     (facts.length ? `<div class="facts">${facts.map(x => `<span>${x}</span>`).join('')}</div>` : ''));
-}
-
-/* ---------- storylines ---------- */
-function storylines(g){
-  const out = [], A = g.away, H = g.home;
-  const rk = t => t.rank || apRank(t.id), ra = rk(A), rh = rk(H);
-  const nm = t => (rk(t) ? `#${rk(t)} ` : '') + t.name;
-  const m = realMarket(g), p = m?.pHome ?? state.preds.get(g.id)?.pHome ?? null;
-  const src = m ? (m.source === 'Book' ? 'the sportsbooks' : m.source) : 'ESPN\'s FPI';
-
-  if (ra && rh) out.push(ra <= 10 && rh <= 10 ? ['Top-10 showdown', `${nm(A)} and ${nm(H)}, both in the top ten.`] : ['Ranked matchup', `${nm(A)} vs ${nm(H)}.`]);
-  if (p != null){
-    const favSide = p >= .5 ? 'home' : 'away', fav = g[favSide], dog = g[other(favSide)], dp = Math.min(p, 1 - p);
-    if (dp >= .45) out.push(['Coin flip', `${src} can't separate them: ${pct(1 - dp)}-${pct(dp)}.`]);
-    else if (dp >= .28 && (rk(fav) || dp >= .35)) out.push(['Upset watch', `${src} gives ${dog.name} a ${pct(dp)}% shot at ${nm(fav)}.`]);
-    else if (dp < .1) out.push(['Heavy favorite', `${fav.name} wins this ${pct(1 - dp)}% of the time, per ${src}.`]);
-  }
-  const L = lineFor(g);
-  if (L && g.state === 'pre' && Math.abs(L.move) >= .05){
-    const t = g[L.move > 0 ? 'home' : 'away'], flipped = (L.open - .5) * (L.now - .5) < 0;
-    out.push(['Line moving', `The ${L.src} price has moved ${Math.round(Math.abs(L.move) * 100)} points toward ${t.name} since ${day(L.since)}${flipped ? ', flipping the favorite' : ''}.`]);
-  }
-  const fp = state.preds.get(g.id)?.pHome;
-  if (m && fp != null && (m.pHome - .5) * (fp - .5) < 0){
-    const ms = m.pHome >= .5 ? H : A, fs = fp >= .5 ? H : A;
-    out.push(['Split decision', `The market likes ${ms.name} (${pct(Math.max(m.pHome, 1 - m.pHome))}%); ESPN's FPI likes ${fs.name} (${pct(Math.max(fp, 1 - fp))}%).`]);
-  }
-  const ca = parseRecord(A.record), chr = parseRecord(H.record), unbeaten = r => r && !r.l && r.w >= 3;
-  if (unbeaten(ca) && unbeaten(chr)) out.push(['Unbeatens collide', `${A.name} (${A.record}) and ${H.name} (${H.record}). One of them leaves with a loss.`]);
-  else for (const t of [A, H]) if (unbeaten(parseRecord(t.record))) out.push(['Perfect season on the line', `${t.name} is ${t.record}.`]);
-  const sa = state.standings?.byTeam[A.id], sh = state.standings?.byTeam[H.id];
-  if (g.confGame && sa?.confRec?.w && sh?.confRec?.w && !sa.confRec.l && !sh.confRec.l)
-    out.push(['Conference race', `Both are unbeaten in ${CONF[H.conf] || 'conference'} play. Only one stays that way.`]);
-  const fa = state.fpi?.byTeam[A.id], fh = state.fpi?.byTeam[H.id];
-  if ((fa?.playoff ?? 0) >= 15 || (fh?.playoff ?? 0) >= 15)
-    out.push(['Playoff stakes', `FPI playoff odds: ${A.abbr} ${(fa?.playoff ?? 0).toFixed(0)}%, ${H.abbr} ${(fh?.playoff ?? 0).toFixed(0)}%.`]);
-  for (const [t, st] of [[A, sa], [H, sh]]){
-    const k = /^([WL])(\d+)$/.exec(st?.streak || '');
-    if (k && k[1] === 'W' && +k[2] >= 4) out.push(['Hot streak', `${t.name} has won ${k[2]} straight.`]);
-    if (k && k[1] === 'L' && +k[2] >= 3) out.push(['Skid', `${t.name} has lost ${k[2]} in a row.`]);
-  }
-  const ou = Number(g.book?.ou);
-  if (ou >= 62) out.push(['Shootout alert', `The total is ${ou}. Expect points.`]);
-  else if (ou && ou <= 42) out.push(['Defensive grind', `The total is only ${ou}.`]);
-  return out.slice(0, 5);
-}
-
-export function storylinesPanel(g){
-  const list = storylines(g);
-  if (!list.length) return '';
-  return panel('Storylines', `<ul class="story">${list.map(([k, t]) => `<li><b>${esc(k)}</b><span>${esc(t)}</span></li>`).join('')}</ul>`);
 }
 
 /* ---------- hype gauge ---------- */

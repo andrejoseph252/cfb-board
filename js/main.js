@@ -8,15 +8,13 @@ import { openXc } from './views/components.js';
 import { viewWeek, weekList, viewTop25 } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
-import { viewCompare } from './views/compare.js';
 import { viewPicks } from './views/picks.js';
 
 const TABS = [
   ['week', 'This week', viewWeek, true], ['top25', 'Top 25', viewTop25, true], ['conf', 'Conferences', viewConferences, false],
   ['rankings', 'Rankings', viewRankings, false],
-  ['compare', 'Forecasts', viewCompare, true], ['picks', 'My picks', viewPicks, false]
+  ['picks', 'My picks', viewPicks, false]
 ];
-if (state.tab === 'mvp') state.tab = 'compare';
 if (state.tab === 'standings') state.tab = 'conf';
 if (state.tab === 'power') state.tab = 'rankings';
 if (!TABS.some(([k]) => k === state.tab)) state.tab = 'week';

@@ -7,7 +7,7 @@ import { realizedExcitement } from '../excitement.js';
 import { useData } from '../resource.js';
 import { teamLink, logo, panel } from './components.js';
 import { chartHTML } from './wpchart.js';
-import { banner, theLine, lineChart, storylinesPanel, hype, tape, recentForm } from './preview.js';
+import { banner, theLine, lineChart, hype, tape, recentForm } from './preview.js';
 import { threadsFor, searchUrl } from '../threads.js';
 import { lineFor } from '../lines.js';
 
@@ -29,7 +29,7 @@ export function viewGame(id){
   let h = banner(g, s) + threadLinks(g);
   if (g.state === 'pre'){
     loadPredictions([g]);
-    h += theLine(g, s) + storylinesPanel(g) + hype(g) + tape(g) + recentForm(g);
+    h += theLine(g, s) + hype(g) + tape(g) + recentForm(g);
   } else {
     // Finished and live games only show the pregame line when it actually moved.
     const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';

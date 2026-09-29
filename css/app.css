@@ -343,40 +343,6 @@ main > .chips:first-child{margin-bottom:18px}
 @media (max-width:900px){.split{grid-template-columns:minmax(0,1fr)}}
 .split > div{min-width:0}
 
-/* forecasts */
-.fc-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:0 0 8px}
-.fc-legend > div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:3px;font-size:13px;color:var(--muted)}
-.fc-legend b{color:var(--ink);font-size:14px}
-.fc-legend i,.fc-src i,.fc-score i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
-.fc-score{max-width:620px;grid-template-columns:repeat(3,1fr)}
-.fc-score .stat{padding:9px 12px}
-.fc-score .v{font-size:28px}
-.fc-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
-@media (max-width:420px){.fc-list{grid-template-columns:minmax(0,1fr)}}
-.fc{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:8px;min-width:0}
-.fc-head{display:flex;align-items:center;gap:10px}
-.fc-teams{display:flex;align-items:center;gap:8px;font-weight:600;min-width:0;flex:1}
-.fc-teams .logo{width:22px;height:22px;flex:none}
-.fc-teams > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fc-verdict{font-size:13px;color:var(--ink);display:flex;gap:8px;align-items:baseline}
-.fc-verdict b{flex:none;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--soft);color:var(--muted)}
-.fc-verdict.split b{background:var(--live);color:#fff}
-.fc-bars{display:grid;gap:5px}
-.fc-row{display:grid;grid-template-columns:6.4em minmax(0,1fr) 1.2em;gap:8px;align-items:center}
-.fc-src{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fc-bar{position:relative;display:flex;height:20px;border-radius:5px;overflow:hidden;background:var(--soft)}
-.fc-bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--surface);opacity:.9}
-.fc-bar span{display:flex;align-items:center;font:700 11px/1 var(--body);color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);opacity:.55;white-space:nowrap;overflow:hidden}
-.fc-bar span:first-child{padding-left:6px}
-.fc-bar span:last-child{justify-content:flex-end;padding-right:6px}
-.fc-bar span.lead{opacity:1}
-.fc-axis > div{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted)}
-.fc-na{font-size:12px;color:var(--muted);font-style:italic}
-.fc-mark{font-weight:800;text-align:center}
-.fc-foot{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:7px}
-.fc-final{color:var(--ink);font-weight:600}
-.fc-gap{font:800 17px/1 var(--display);color:var(--ink)}
-
 /* rankings */
 .rk-switch .chips{margin-bottom:8px}
 .rk-switch .chip{font-size:15px;padding:8px 18px}
@@ -546,12 +512,6 @@ main > .chips:first-child{margin-bottom:18px}
 .lc-dot.end{width:12px;height:12px;margin:-6px 0 0 -6px;background:var(--ink);border-color:var(--surface)}
 .wpc-ticks .end{right:0;left:auto;transform:none}
 .lc .note{margin-top:8px}
-
-/* ---------- storylines ---------- */
-.story{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.story li{display:grid;gap:2px;padding-left:12px;border-left:3px solid var(--accent)}
-.story b{font:800 15px/1.1 var(--display);letter-spacing:.05em;text-transform:uppercase}
-.story span{font-size:14px}
 
 /* ---------- hype gauge ---------- */
 .hype{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:8px 18px;align-items:center}
