@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29T13:27:34+00:00",
+ "updated": "2026-09-29T18:55:47+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2982,72 +2982,6 @@
    "teams": [
     "Stanford",
     "Duke"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Delaware Defeats Coastal Carolina 22-14",
-   "url": "https://www.reddit.com/r/CFB/comments/1wktzz4/postgame_thread_delaware_defeats_coastal_carolina/",
-   "published": "2026-09-19T18:42:09+00:00",
-   "gameId": "401869940",
-   "teams": [
-    "Delaware",
-    "Coastal Carolina"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Stonehill @ UMass (3:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wktp7b/game_thread_stonehill_umass_330_pm_et/",
-   "published": "2026-09-19T18:30:25+00:00",
-   "gameId": null,
-   "teams": [
-    "Stonehill",
-    "UMass"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Duquesne @ Washington State (3:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wktp6j/game_thread_duquesne_washington_state_330_pm_et/",
-   "published": "2026-09-19T18:30:24+00:00",
-   "gameId": null,
-   "teams": [
-    "Duquesne",
-    "Washington State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] USC @ Rutgers (3:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wktp5n/game_thread_usc_rutgers_330_pm_et/",
-   "published": "2026-09-19T18:30:23+00:00",
-   "gameId": null,
-   "teams": [
-    "USC",
-    "Rutgers"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] UTEP @ Michigan (3:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wktp4w/game_thread_utep_michigan_330_pm_et/",
-   "published": "2026-09-19T18:30:22+00:00",
-   "gameId": null,
-   "teams": [
-    "UTEP",
-    "Michigan"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Wagner @ California (3:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wktp44/game_thread_wagner_california_330_pm_et/",
-   "published": "2026-09-19T18:30:20+00:00",
-   "gameId": null,
-   "teams": [
-    "Wagner",
-    "California"
    ]
   }
  ],
