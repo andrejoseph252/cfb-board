@@ -12,7 +12,7 @@ import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
 import { viewPicks } from './views/picks.js';
 import { viewMyTeam, picking, pickList } from './views/teamtab.js';
-import { news, hasUnseen, setNewsFilter } from './news.js';
+import { news, hasUnseen, setNewsFilter, markRead, toggleStory } from './news.js';
 
 const TABS = [
   ['week', 'This week', viewWeek, true], ['top25', 'Top 25', viewTop25, true], ['conf', 'Conferences', viewConferences, false],
@@ -116,6 +116,16 @@ document.addEventListener('click', e => {
   const g = state.byId[t.closest('.game')?.dataset.id]; if (!g) return;
   if ('pin' in d) togglePin(g.id);
   else if (d.pick) setPick(g, d.pick);
+});
+/* News stories: opening one on ESPN marks it read. On phones, tapping a story with a summary unfolds it instead;
+   its "Read on ESPN" link opens it. */
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[data-read]'); if (!a) return;
+  const it = a.closest('.news-item');
+  if (a.classList.contains('news-main') && it && 'desc' in it.dataset && matchMedia('(max-width: 520px)').matches){
+    e.preventDefault(); return toggleStory(it.dataset.story);
+  }
+  markRead(a.dataset.read);
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'q'){ state.q = e.target.value; const l = $('#list'); if (l) l.innerHTML = weekList(); lastMain = ''; }

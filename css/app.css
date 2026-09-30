@@ -819,10 +819,10 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .news-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 2px var(--surface)}
 .news-dot[hidden]{display:none}
 .news-list{display:grid}
-.news-item{display:grid;grid-template-columns:128px minmax(0,1fr);gap:12px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
-.news-item:first-child{padding-top:4px}
+.news-item{border-bottom:1px solid var(--line)}
 .news-item:last-child{border-bottom:0}
-.news-item:hover .news-h{text-decoration:underline}
+.news-main{display:grid;grid-template-columns:128px minmax(0,1fr);gap:12px;align-items:start;padding:12px 0;color:var(--ink);text-decoration:none}
+.news-main:hover .news-h,.news-lead:hover .news-h,.news-vid:hover .news-h{text-decoration:underline}
 .news-img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--soft)}
 .news-t{display:flex;flex-direction:column;gap:4px;min-width:0}
 .news-h{font-weight:700;font-size:15px;line-height:1.3}
@@ -831,9 +831,35 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .news-logos{display:flex;gap:3px}
 .news-logos .logo{width:16px;height:16px}
 .news-tag{border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11px;font-weight:600}
-.news-item.sm{grid-template-columns:96px minmax(0,1fr);gap:10px;padding:10px 0}
-.news-item.sm:first-child{padding-top:0}
+/* Opened stories fade back */
+.news-item.read .news-main,.news-lead.read,.news-vid.read{opacity:.55}
+/* Phones: the unfolded summary under a tapped story */
+.news-x{display:none}
+.news-item.open .news-x{display:grid;gap:10px;justify-items:start;padding:0 0 12px}
+.news-x p{margin:0;font-size:14px;line-height:1.45;color:var(--ink)}
+@media (min-width:521px){.news-item.open .news-x{display:none}}
+.news-go{font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:5px 12px;text-decoration:none}
+/* Lead story */
+.news-lead{display:grid;gap:6px;color:var(--ink);text-decoration:none;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.news-lead .news-img{border-radius:10px;margin-bottom:4px;aspect-ratio:2/1}
+.news-lead .news-h{font:800 26px/1.05 var(--display);letter-spacing:.005em}
+.news-lead .news-d{-webkit-line-clamp:3;font-size:14px}
+/* Videos: a sideways row */
+.news-vids{display:grid;grid-auto-flow:column;grid-auto-columns:200px;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:thin}
+.news-vid{display:grid;gap:5px;align-content:start;color:var(--ink);text-decoration:none;scroll-snap-align:start}
+.news-vid .news-h{font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-vid .news-m{margin:0}
+.news-vimg{position:relative;display:block}
+.news-vimg i{position:absolute;left:8px;bottom:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;display:grid;place-items:center}
+.news-vimg svg{width:14px;height:14px;margin-left:2px}
+/* Day headings and the "Last visit" line */
+.news-day{margin:18px 0 2px;font:700 11px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.news-new{display:flex;align-items:center;gap:8px;margin:4px 0;font:700 10.5px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--live)}
+.news-new::before,.news-new::after{content:"";height:1px;flex:1;background:var(--live);opacity:.5}
+/* My team panel: smaller rows */
+.news-item.sm .news-main{grid-template-columns:96px minmax(0,1fr);gap:10px;padding:10px 0}
+.news-item.sm:first-child .news-main{padding-top:0}
 .news-item.sm .news-h{font-size:13.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .news-more{margin-top:6px}
 #drawerBody .chips{margin-bottom:10px}
-@media (max-width:520px){.news-item{grid-template-columns:104px minmax(0,1fr)}.news-h{font-size:14px}.news-d{display:none}}
+@media (max-width:520px){.news-main{grid-template-columns:104px minmax(0,1fr)}.news-h{font-size:14px}.news-main .news-d{display:none}.news-lead .news-h{font-size:23px}.news-vids{grid-auto-columns:168px}}
