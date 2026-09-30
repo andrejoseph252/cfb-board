@@ -1,11 +1,13 @@
-/* Drawer for team schedules and game detail, driven by the URL hash (#team/ID, #game/ID)
+/* Drawer for team schedules, game detail and news, driven by the URL hash (#team/ID, #game/ID, #news)
    so browser back/forward pages through the teams and games you've opened. */
 import { $ } from './util.js';
 import { viewTeam } from './views/team.js';
 import { viewGame, isLive } from './views/game.js';
+import { viewNews } from './views/news.js';
 import { state, invalidate } from './state.js';
 
 export function route(){
+  if (location.hash === '#news') return { type: 'news', id: '' };
   const m = /^#(team|game)\/(.+)$/.exec(location.hash);
   return m ? { type: m[1], id: decodeURIComponent(m[2]) } : null;
 }
@@ -39,7 +41,7 @@ export function renderDetail(){
   }
   const key = r.type + ':' + r.id;
   if (el.hidden){ restoreFocus = document.activeElement; el.hidden = false; document.body.classList.add('drawer-open'); }
-  const html = r.type === 'team' ? viewTeam(r.id) : viewGame(r.id);
+  const html = r.type === 'news' ? viewNews() : r.type === 'team' ? viewTeam(r.id) : viewGame(r.id);
   if (html !== lastHtml || key !== lastKey){
     const open = key === lastKey ? [...body.querySelectorAll('details[open][data-k]')].map(d => d.dataset.k) : [];
     body.innerHTML = html; lastHtml = html;

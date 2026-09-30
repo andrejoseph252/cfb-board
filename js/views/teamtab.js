@@ -1,15 +1,16 @@
 /* The My team tab: header, this week's game, a season outlook built from ESPN's FPI win chance for every remaining
    game, the season timeline and the conference race. With no team set, it's the team picker. */
-import { esc, pct, fmtTime } from '../util.js';
+import { esc, pct, fmtTime, norm } from '../util.js';
 import { state, CONF, CONF_ORDER, apRank } from '../state.js';
 import { loadPredictions } from '../data.js';
-import { myTeam, mySide, mySchedule, myNextGame, myColor, mineRow, STAR } from '../myteam.js';
+import { myTeam, isMine, mySide, mySchedule, myNextGame, myColor, mineRow, STAR } from '../myteam.js';
 import { winnerSide } from '../picks.js';
 import { upset, BOLT } from '../upset.js';
 import { realMarket } from '../markets.js';
 import { logo, card, sec, panel, gameHref, teamHref } from './components.js';
 import { inkOn } from './preview.js';
 import { order, rec } from './conferences.js';
+import { newsPanel } from './news.js';
 
 const side = (g, id) => String(g.home.id) === String(id) ? 'home' : 'away';
 const other = s => s === 'home' ? 'away' : 'home';
@@ -168,21 +169,64 @@ function header(t, color){
   return `<header class="tt-head" style="--mt:${esc(color)};--mt-ink:${inkOn(color)}">
     <span class="mt-disc tt-disc">${logo(t.logo, 'logo')}</span>
     <div class="tt-main"><h2 title="${esc(t.full || t.name)}">${STAR}${esc(t.name || t.full)}</h2><div class="tt-facts">${facts.map(x => `<span>${x}</span>`).join('')}</div></div>
-    <button class="tt-change" type="button" data-teamclear>Change team</button></header>`;
+    <button class="tt-change" type="button" data-teamchange>Change team</button></header>`;
 }
 
-/* ---------- no team yet: pick one ---------- */
+/* ---------- team picker: search, or open one of the Power 4 or everyone else, then tap a team ---------- */
+/* Open with no team set, or after "Change team" (which keeps the current team until another is picked). */
+export const picking = { on: false, q: '', conf: null };
+const byName = (a, b) => a.name.localeCompare(b.name);
+const P4 = [8, 5, 4, 1];
+const isP4 = t => P4.includes(Number(t.conf));
+// Strongest first by FPI (then by name), for the logo fan on each card.
+const byFpi = (a, b) => (state.fpi?.byTeam[b.id]?.fpi ?? -99) - (state.fpi?.byTeam[a.id]?.fpi ?? -99) || byName(a, b);
+const confName = id => CONF[id] || state.standings.confs.find(c => String(c.id) === String(id))?.name || 'Other';
+
+const tile = t => `<button class="pick-team${isMine(t.id) ? ' current' : ''}" type="button" data-mine="${esc(t.id)}" data-name="${esc(t.name)}" data-logo="${esc(t.logo || '')}">
+    ${logo(t.logo, 'logo')}<span>${esc(t.name)}</span></button>`;
+const grid = list => `<div class="pick-grid">${list.map(tile).join('')}</div>`;
+
+export function pickList(){
+  const s = state.standings; if (!s) return '';
+  const all = Object.values(s.byTeam), q = norm(picking.q);
+  // A search always looks at every team, whatever card is open.
+  if (q){
+    const hits = all.filter(t => [t.name, t.abbr].some(x => norm(x).includes(q))).sort(byName);
+    return hits.length ? grid(hits) : `<p class="pick-none">No team matches “${esc(picking.q)}”.</p>`;
+  }
+  if (!picking.conf) return '';
+  if (picking.conf !== 'rest') return grid(all.filter(t => String(t.conf) === picking.conf).sort(byName));
+  // Everyone else, one section per conference in the usual order, independents last.
+  const confs = [...new Set(all.filter(t => !isP4(t)).map(t => Number(t.conf)))]
+    .sort((a, b) => (CONF_ORDER.indexOf(a) + 1 || 99) - (CONF_ORDER.indexOf(b) + 1 || 99));
+  return confs.map(c => `<h3 class="pick-sub">${esc(confName(c))}</h3>${grid(all.filter(t => Number(t.conf) === c).sort(byName))}`).join('');
+}
+
+/* One big card per Power 4 conference plus one for everyone else, each with a fan of its best teams' logos. */
+function confCards(all){
+  const card = (key, name, teams, sub) => `<button class="pick-conf${picking.conf === key && !picking.q ? ' on' : ''}" type="button" data-pickconf="${key}"
+      aria-pressed="${picking.conf === key && !picking.q}"><span class="pc-fan">${[...teams].sort(byFpi).slice(0, 5).map(t => logo(t.logo, 'logo')).join('')}</span>
+      <b>${esc(name)}</b><small>${sub}</small></button>`;
+  const rest = all.filter(t => !isP4(t)), nConf = new Set(rest.map(t => t.conf)).size;
+  return `<div class="pick-confs${picking.conf && !picking.q ? ' has-on' : ''}">${P4.filter(id => all.some(t => Number(t.conf) === id)).map(id => {
+    const teams = all.filter(t => Number(t.conf) === id);
+    return card(String(id), CONF[id], teams, `${teams.length} teams`);
+  }).join('')}${rest.length ? card('rest', 'Group of 5 & more', rest, `${nConf} conferences · ${rest.length} teams`) : ''}</div>`;
+}
+
 function picker(){
   const s = state.standings;
   if (!s) return sec('Pick your team') + (state.standingsErr ? `<div class="err">${esc(state.standingsErr)}</div>` : '<div class="skeleton tall"></div>');
-  const confs = CONF_ORDER.map(id => s.confs.find(c => c.id === id)).filter(Boolean);
-  return sec('Pick your team') + `<p class="note">Its game stays pinned every week, its cards get a ring in its color, and this tab follows its season.</p>` +
-    confs.map(c => `<h3 class="sec sm">${esc(CONF[c.id] || c.name)}</h3><div class="pick-grid">${[...c.teams].sort((a, b) => a.name.localeCompare(b.name)).map(t =>
-      `<button class="pick-team" type="button" data-mine="${esc(t.id)}" data-name="${esc(t.name)}" data-logo="${esc(t.logo || '')}">${logo(t.logo, 'logo')}<span>${esc(t.name)}</span></button>`).join('')}</div>`).join('');
+  return `<div class="picker"><div class="pick-head"><h2 class="sec">${myTeam ? 'Change your team' : 'Pick your team'}</h2>
+      ${myTeam ? '<button class="chipbtn" type="button" data-pickcancel>Cancel</button>' : ''}</div>
+    <p class="pick-note">Its game stays pinned every week and this tab follows its season.</p>
+    <input class="search pick-q" id="tq" type="search" placeholder="Search ${Object.keys(s.byTeam).length} teams" value="${esc(picking.q)}" autocomplete="off" enterkeyhint="go" aria-label="Search teams">
+    ${confCards(Object.values(s.byTeam))}
+    <div id="pickList">${pickList()}</div></div>`;
 }
 
 export function viewMyTeam(){
-  if (!myTeam) return picker();
+  if (!myTeam || picking.on) return picker();
   const s = mySchedule();
   if (s === undefined) return '<div class="skeleton"></div><div class="skeleton tall"></div>';
   // Games also on this week's board use the board's copy, which refreshes every 12s during games.
@@ -196,6 +240,6 @@ export function viewMyTeam(){
   // Wide screens: this week, profile and race on the left; outlook and season on the right. Phones: one column,
   // most-used first (order set in CSS).
   return `<div class="tt" style="--mine:${esc(color)}">${header(s.team, c)}<div class="tt-grid">
-    <div class="tt-col">${week}${profile(s.team.id)}${race(s.team.id)}</div>
+    <div class="tt-col">${week}${profile(s.team.id)}${race(s.team.id)}${newsPanel(s.team)}</div>
     <div class="tt-col">${outlookPanel(outlook(games, s.team.id), color)}${timeline(all, s.team.id)}</div></div></div>`;
 }

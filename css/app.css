@@ -664,7 +664,7 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 @media (max-width:900px){
   .tt-grid{grid-template-columns:minmax(0,1fr)}
   .tt-col{display:contents}
-  [data-tt="week"]{order:1} [data-tt="outlook"]{order:2} [data-tt="season"]{order:3} [data-tt="profile"]{order:4} [data-tt="race"]{order:5}
+  [data-tt="week"]{order:1} [data-tt="outlook"]{order:2} [data-tt="season"]{order:3} [data-tt="profile"]{order:4} [data-tt="race"]{order:5} [data-tt="news"]{order:6}
 }
 .tt .panel{margin:0;padding:12px 14px 14px}
 .tt .panel h3{font-size:18px;margin:0 0 10px;letter-spacing:.01em}
@@ -761,10 +761,58 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .tt .tbl.race .logo.sm{width:18px;height:18px}
 .tbl tr.gap td{text-align:center;color:var(--muted);padding:0 !important;font-size:11px;line-height:1.2}
 
-/* Team picker */
+/* Team picker: search, Power 4 / everyone-else cards, then a grid of logo + name rectangles */
+.picker{max-width:980px}
+.pick-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pick-head .sec{margin:0}
+.pick-note{margin:6px 0 12px;font-size:13px;color:var(--muted)}
+.pick-q{display:block;width:100%;max-width:520px;margin-bottom:10px}
+.pick-confs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.pick-conf{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border:1px solid var(--line);background:var(--surface);
+  border-radius:12px;color:var(--ink);text-align:left;transition:opacity .15s,border-color .15s,transform .15s}
+.pick-conf:hover,.pick-conf:focus-visible{border-color:var(--muted);transform:translateY(-1px)}
+.pick-conf b{font:800 22px/1.05 var(--display);text-transform:uppercase;letter-spacing:.01em;margin-top:8px}
+.pick-conf small{font-size:12px;color:var(--muted);font-weight:600}
+.pc-fan{display:flex;gap:6px;overflow:hidden;max-width:100%}
+.pc-fan .logo{width:24px;height:24px;flex:none;object-fit:contain}
+.pick-conf.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.pick-confs.has-on .pick-conf:not(.on){opacity:.55}
+.pick-confs.has-on .pick-conf:not(.on):hover{opacity:1}
+.pick-confs.searching .pick-conf{opacity:.55;box-shadow:none;border-color:var(--line)}
+.pick-sub{font:800 15px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin:18px 0 8px}
+.pick-sub:first-child{margin-top:0}
+@media (max-width:760px){.pick-confs{grid-template-columns:repeat(2,minmax(0,1fr))}.pick-conf:last-child{grid-column:1/-1}}
 .pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
 .pick-team{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);background:var(--surface);border-radius:10px;
-  font-weight:600;font-size:13.5px;text-align:left;color:var(--ink)}
-.pick-team:hover{border-color:var(--muted)}
+  font-weight:600;font-size:13.5px;text-align:left;color:var(--ink);min-width:0}
+.pick-team:hover,.pick-team:focus-visible{border-color:var(--muted)}
 .pick-team .logo{width:28px;height:28px;flex:none}
 .pick-team span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-team i{font:800 13px/1 var(--display);font-style:normal;color:var(--muted);margin-right:4px}
+.pick-team.current{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+@media (max-width:520px){.pick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pick-none{color:var(--muted);font-size:14px;margin:6px 0}
+
+/* News: header button (dot = stories you haven't seen), the drawer list and the My team panel */
+.newsbtn{position:relative}
+.news-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 2px var(--surface)}
+.news-dot[hidden]{display:none}
+.news-list{display:grid}
+.news-item{display:grid;grid-template-columns:128px minmax(0,1fr);gap:12px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+.news-item:first-child{padding-top:4px}
+.news-item:last-child{border-bottom:0}
+.news-item:hover .news-h{text-decoration:underline}
+.news-img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--soft)}
+.news-t{display:flex;flex-direction:column;gap:4px;min-width:0}
+.news-h{font-weight:700;font-size:15px;line-height:1.3}
+.news-d{font-size:13px;line-height:1.4;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-m{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:2px}
+.news-logos{display:flex;gap:3px}
+.news-logos .logo{width:16px;height:16px}
+.news-tag{border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11px;font-weight:600}
+.news-item.sm{grid-template-columns:96px minmax(0,1fr);gap:10px;padding:10px 0}
+.news-item.sm:first-child{padding-top:0}
+.news-item.sm .news-h{font-size:13.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.news-more{margin-top:6px}
+#drawerBody .chips{margin-bottom:10px}
+@media (max-width:520px){.news-item{grid-template-columns:104px minmax(0,1fr)}.news-h{font-size:14px}.news-d{display:none}}

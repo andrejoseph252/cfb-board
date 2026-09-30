@@ -10,7 +10,8 @@ import { viewWeek, weekList, viewTop25 } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
 import { viewPicks } from './views/picks.js';
-import { viewMyTeam } from './views/teamtab.js';
+import { viewMyTeam, picking, pickList } from './views/teamtab.js';
+import { news, hasUnseen, setNewsFilter } from './news.js';
 
 const TABS = [
   ['week', 'This week', viewWeek, true], ['top25', 'Top 25', viewTop25, true], ['conf', 'Conferences', viewConferences, false],
@@ -35,6 +36,8 @@ function renderHeader(){
   if (tabs !== lastTabs){ $('#tabs').innerHTML = tabs; lastTabs = tabs; }
   buildWeekSelect();
   renderStale();
+  news();   // keeps the league feed fresh for the news button's dot
+  $('#newsDot').hidden = !hasUnseen();
 }
 
 /* During live games, a chip under the tab bar says when the scores have stopped updating (three missed polls,
@@ -76,9 +79,12 @@ function mainHTML(){
 function renderMain(){
   const html = mainHTML();
   if (html === lastMain) return;
-  const v = $('#view'), focused = document.activeElement?.id === 'q';
+  const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq';
   v.innerHTML = html; lastMain = html;
-  if (focused){ const q = $('#q'); if (q){ q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+  const box = keep ? $('#' + fid) : null;
+  if (box){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+  // Team picker: put the cursor in its search box (desktop only; on phones that would pop the keyboard).
+  else if ($('#tq') && matchMedia('(pointer: fine)').matches && !document.activeElement?.closest('#view')) $('#tq').focus({ preventScroll: true });
 }
 onRender({ header: renderHeader, main: () => { renderHeader(); renderMain(); }, detail: renderDetail });
 
@@ -100,8 +106,18 @@ document.addEventListener('click', e => {
   if (d.rk){ state.rk = d.rk; store.set('rk', d.rk); return invalidate('main'); }
   if (d.rkconf){ state.rkConf = d.rkconf; return invalidate('main'); }
   if (d.unpick) return removePick(d.unpick);
-  if (d.mine) return setMyTeam(isMine(d.mine) ? null : { id: d.mine, name: d.name, color: d.color, logo: d.logo });
-  if ('teamclear' in d) return setMyTeam(null);
+  if (d.mine){
+    // From the picker: choose (tapping the current team just closes it). From a team page: toggle.
+    const fromPicker = !!t.closest('.picker'), team = { id: d.mine, name: d.name, color: d.color, logo: d.logo };
+    if (fromPicker){ Object.assign(picking, { on: false, q: '', conf: null }); window.scrollTo({ top: 0 }); return isMine(d.mine) ? invalidate('main') : setMyTeam(team); }
+    return setMyTeam(isMine(d.mine) ? null : team);
+  }
+  if ('teamchange' in d){ Object.assign(picking, { on: true, q: '', conf: null }); return invalidate('main'); }
+  if ('pickcancel' in d){ picking.on = false; return invalidate('main'); }
+  if (d.pickconf){ Object.assign(picking, { conf: picking.conf === d.pickconf && !picking.q ? null : d.pickconf, q: '' }); return invalidate('main'); }
+  if (t.id === 'newsBtn'){ location.hash = '#news'; return; }
+  if (d.newsf) return setNewsFilter(d.newsf);
+  if (d.newsopen){ setNewsFilter(d.newsopen); location.hash = '#news'; return; }
   if (t.id === 'retry') return loadBoard({ fresh: true });
   if (t.id === 'drawerClose' || t.id === 'scrim') return closeDrawer();
   if (t.id === 'drawerBack') return back();
@@ -111,13 +127,18 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'q'){ state.q = e.target.value; const l = $('#list'); if (l) l.innerHTML = weekList(); lastMain = ''; }
+  if (e.target.id === 'tq'){ picking.q = e.target.value; const l = $('#pickList'); if (l) l.innerHTML = pickList(); $('.pick-confs')?.classList.toggle('searching', !!picking.q); lastMain = ''; }
 });
 document.addEventListener('toggle', e => {
   const rc = e.target.dataset?.recap; if (rc){ store.set(rc, e.target.open); lastMain = ''; return; }
   const id = e.target.dataset?.xc; if (!id) return;
   e.target.open ? openXc.add(id) : openXc.delete(id);
 }, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && route()) closeDrawer(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && route()) closeDrawer();
+  // Team picker: Enter picks the first match.
+  if (e.key === 'Enter' && e.target.id === 'tq'){ e.preventDefault(); $('#pickList .pick-team')?.click(); }
+});
 window.addEventListener('hashchange', onHashChange);
 $('#week').addEventListener('change', e => {
   const [st, wk] = e.target.value.split('-'); state.st = st; state.week = wk; state.q = '';
