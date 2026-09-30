@@ -29,7 +29,7 @@
   "./js/detail.js": "./js/detail.js?v=03e2049d",
   "./js/excitement.js": "./js/excitement.js?v=103b7c4a",
   "./js/lines.js": "./js/lines.js?v=6a7c0280",
-  "./js/main.js": "./js/main.js?v=fa076938",
+  "./js/main.js": "./js/main.js?v=a25be753",
   "./js/markets.js": "./js/markets.js?v=06e1ae85",
   "./js/models.js": "./js/models.js?v=46b1b19c",
   "./js/myteam.js": "./js/myteam.js?v=c9eb5776",
@@ -54,12 +54,13 @@
   "./js/views/slate.js": "./js/views/slate.js?v=ad6ed3e6",
   "./js/views/team.js": "./js/views/team.js?v=c890d63a",
   "./js/views/teamtab.js": "./js/views/teamtab.js?v=efb0e9ce",
-  "./js/views/wpchart.js": "./js/views/wpchart.js?v=7b9d14f5"
+  "./js/views/wpchart.js": "./js/views/wpchart.js?v=7b9d14f5",
+  "./js/weekpicker.js": "./js/weekpicker.js?v=e328e8ad"
  }
 }
 </script>
-<link rel="stylesheet" href="css/app.css?v=c2d1ee27">
-<script type="module" src="js/main.js?v=fa076938"></script>
+<link rel="stylesheet" href="css/app.css?v=27d5ec24">
+<script type="module" src="js/main.js?v=a25be753"></script>
 <link rel="modulepreload" href="js/api.js?v=a75804ee">
 <link rel="modulepreload" href="js/data.js?v=e030c544">
 <link rel="modulepreload" href="js/detail.js?v=03e2049d">
@@ -90,6 +91,7 @@
 <link rel="modulepreload" href="js/views/team.js?v=c890d63a">
 <link rel="modulepreload" href="js/views/teamtab.js?v=efb0e9ce">
 <link rel="modulepreload" href="js/views/wpchart.js?v=7b9d14f5">
+<link rel="modulepreload" href="js/weekpicker.js?v=e328e8ad">
 <!-- /build:assets -->
 </head>
 <body>
@@ -100,8 +102,12 @@
       <div class="sub" id="wkSub">Loading the slate…</div>
     </div>
     <div class="ctrl">
-      <label class="sr" for="week">Week</label>
-      <select id="week" aria-label="Week"></select>
+      <div class="wkstep">
+        <button id="wkPrev" class="wkarrow" type="button" aria-label="Previous week"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button id="week" class="wkbtn" type="button" aria-label="Choose week" aria-expanded="false" aria-controls="wkpanel"></button>
+        <button id="wkNext" class="wkarrow" type="button" aria-label="Next week"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div id="wkpanel" class="setpanel wkpanel" role="dialog" aria-label="Choose week" hidden></div>
+      </div>
       <button id="newsBtn" class="gear newsbtn" type="button" aria-label="News">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 5h12v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2V5zm12 4h4v9a2 2 0 0 1-4 0M7.5 9h5M7.5 12.5h5M7.5 16h3"/></svg><span id="newsDot" class="news-dot" hidden></span></button>
       <div class="settings">

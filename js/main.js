@@ -2,6 +2,7 @@ import { $, esc, store, fmtTime } from './util.js';
 import { state, onRender, invalidate } from './state.js';
 import { loadBoard, refreshStandings, refreshFpi, refreshRankings, anyLive, LIVE_POLL } from './data.js';
 import { initSettings } from './settings.js';
+import { initWeekPicker, renderWeekPicker } from './weekpicker.js';
 import { picks, weekLabel, togglePin, setPick, removePick } from './picks.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc } from './views/components.js';
@@ -34,7 +35,7 @@ function renderHeader(){
   const label = (k, l) => k === 'team' && myTeam ? esc(myTeam.name) : l;
   const tabs = TABS.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${label(k, l)}${counts[k] ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('');
   if (tabs !== lastTabs){ $('#tabs').innerHTML = tabs; lastTabs = tabs; }
-  buildWeekSelect();
+  renderWeekPicker();
   renderStale();
   news();   // keeps the league feed fresh for the news button's dot
   $('#newsDot').hidden = !hasUnseen();
@@ -57,15 +58,6 @@ function renderStale(){
 // The chip's age has to count up even when no new data arrives.
 setInterval(() => { if (anyLive() && !document.hidden) renderStale(); }, 5e3);
 window.addEventListener('offline', renderStale);
-
-let lastWeekOpts = '';
-function buildWeekSelect(){
-  const opts = [];
-  for (const s of state.cal) for (const e of s.entries || []) opts.push([`${s.value}-${e.value}`, e.label + (s.value == 3 ? ' (post)' : '')]);
-  if (!opts.length && state.week) opts.push([`${state.st}-${state.week}`, `Week ${state.week}`]);
-  const html = opts.map(([v, l]) => `<option value="${esc(v)}"${v === `${state.st}-${state.week}` ? ' selected' : ''}>${esc(l)}</option>`).join('');
-  if (html !== lastWeekOpts){ $('#week').innerHTML = html; lastWeekOpts = html; }
-}
 
 function mainHTML(){
   const [, , fn, needsGames] = TABS.find(([k]) => k === state.tab);
@@ -140,16 +132,19 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'tq'){ e.preventDefault(); $('#pickList .pick-team')?.click(); }
 });
 window.addEventListener('hashchange', onHashChange);
-$('#week').addEventListener('change', e => {
-  const [st, wk] = e.target.value.split('-'); state.st = st; state.week = wk; state.q = '';
-  state.pickedWeek = e.target.value !== state.current;
+/* Week picker (see weekpicker.js). Picking the current week goes back to following ESPN's current week. */
+function goWeek(v){
+  if (!v || v === `${state.st}-${state.week}`) return;
+  const [st, wk] = v.split('-'); state.st = st; state.week = wk; state.q = '';
+  state.pickedWeek = v !== state.current;
   loadBoard();
-});
+}
 
 /* ---------- boot ---------- */
 // Sticky group headers sit just below the sticky tab bar, whose height depends on font and screen size.
 new ResizeObserver(([e]) => document.documentElement.style.setProperty('--tabs-h', e.target.offsetHeight + 'px')).observe($('.tabs'));
 initSettings();
+initWeekPicker(goWeek);
 initHistory();
 invalidate();
 loadBoard();
