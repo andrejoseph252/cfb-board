@@ -1,6 +1,47 @@
 {
- "updated": "2026-10-02T19:35:43+00:00",
+ "updated": "2026-10-02T23:20:07+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Penn State @ Northwestern (8:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1ww7smu/game_thread_penn_state_northwestern_800_pm_et/",
+   "published": "2026-10-02T23:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Penn State",
+    "Northwestern"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Liberty @ Delaware (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1ww6hli/game_thread_liberty_delaware_700_pm_et/",
+   "published": "2026-10-02T22:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Liberty",
+    "Delaware"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Pittsburgh @ Virginia Tech (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1ww6hkw/game_thread_pittsburgh_virginia_tech_700_pm_et/",
+   "published": "2026-10-02T22:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Pittsburgh",
+    "Virginia Tech"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Non-D1 Games \u2014 Friday, October 2",
+   "url": "https://www.reddit.com/r/CFB/comments/1ww52lj/game_thread_nond1_games_friday_october_2/",
+   "published": "2026-10-02T21:00:05+00:00",
+   "gameId": null,
+   "teams": null
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] North Texas Defeats Tulsa 45-44",
