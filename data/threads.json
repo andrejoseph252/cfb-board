@@ -1,6 +1,28 @@
 {
- "updated": "2026-10-02T01:07:41+00:00",
+ "updated": "2026-10-02T07:36:06+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] North Texas Defeats Tulsa 45-44",
+   "url": "https://www.reddit.com/r/CFB/comments/1wvlc8z/postgame_thread_north_texas_defeats_tulsa_4544/",
+   "published": "2026-10-02T05:13:26+00:00",
+   "gameId": "401862786",
+   "teams": [
+    "North Texas",
+    "Tulsa"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] New Mexico State Defeats WKU 34-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1wvjf1w/postgame_thread_new_mexico_state_defeats_wku_3413/",
+   "published": "2026-10-02T03:26:42+00:00",
+   "gameId": "401871049",
+   "teams": [
+    "New Mexico State",
+    "WKU"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] North Texas @ Tulsa (9:00 PM ET)",
