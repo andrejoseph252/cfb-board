@@ -1,6 +1,187 @@
 {
- "updated": "2026-10-03T13:59:09+00:00",
+ "updated": "2026-10-03T17:43:05+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Toledo @ Ball State (2:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wws5i1/game_thread_toledo_ball_state_200_pm_et/",
+   "published": "2026-10-03T17:00:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Toledo",
+    "Ball State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Western Michigan @ Buffalo (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwqra7/game_thread_western_michigan_buffalo_100_pm_et/",
+   "published": "2026-10-03T16:00:17+00:00",
+   "gameId": null,
+   "teams": [
+    "Western Michigan",
+    "Buffalo"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Vanderbilt @ Georgia (12:45 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwqecm/game_thread_vanderbilt_georgia_1245_pm_et/",
+   "published": "2026-10-03T15:45:04+00:00",
+   "gameId": null,
+   "teams": [
+    "Vanderbilt",
+    "Georgia"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Michigan State @ Wisconsin (12:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwq1yz/game_thread_michigan_state_wisconsin_1230_pm_et/",
+   "published": "2026-10-03T15:30:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Michigan State",
+    "Wisconsin"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Non-D1 Games \u2014 Saturday, October 3",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpcdq/game_thread_nond1_games_saturday_october_3/",
+   "published": "2026-10-03T15:00:21+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Michigan @ Minnesota (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpccl/game_thread_michigan_minnesota_1200_pm_et/",
+   "published": "2026-10-03T15:00:19+00:00",
+   "gameId": null,
+   "teams": [
+    "Michigan",
+    "Minnesota"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Stanford @ Wake Forest (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpcbz/game_thread_stanford_wake_forest_1200_pm_et/",
+   "published": "2026-10-03T15:00:18+00:00",
+   "gameId": null,
+   "teams": [
+    "Stanford",
+    "Wake Forest"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] West Virginia @ Iowa State (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpcbg/game_thread_west_virginia_iowa_state_1200_pm_et/",
+   "published": "2026-10-03T15:00:17+00:00",
+   "gameId": null,
+   "teams": [
+    "West Virginia",
+    "Iowa State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Middle Tennessee @ Kansas (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpcaj/game_thread_middle_tennessee_kansas_1200_pm_et/",
+   "published": "2026-10-03T15:00:16+00:00",
+   "gameId": null,
+   "teams": [
+    "Middle Tennessee",
+    "Kansas"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] UCF @ Houston (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpc97/game_thread_ucf_houston_1200_pm_et/",
+   "published": "2026-10-03T15:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "UCF",
+    "Houston"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Boston College @ SMU (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpc7v/game_thread_boston_college_smu_1200_pm_et/",
+   "published": "2026-10-03T15:00:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Boston College",
+    "SMU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Alabama @ Mississippi State (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpc71/game_thread_alabama_mississippi_state_1200_pm_et/",
+   "published": "2026-10-03T15:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "Alabama",
+    "Mississippi State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Notre Dame @ North Carolina (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpc69/game_thread_notre_dame_north_carolina_1200_pm_et/",
+   "published": "2026-10-03T15:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Notre Dame",
+    "North Carolina"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] FCS Games \u2014 Saturday, October 3",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpc5l/game_thread_fcs_games_saturday_october_3/",
+   "published": "2026-10-03T15:00:09+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Navy @ Air Force (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpc4f/game_thread_navy_air_force_1200_pm_et/",
+   "published": "2026-10-03T15:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Navy",
+    "Air Force"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Syracuse @ UConn (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwpc3l/game_thread_syracuse_uconn_1200_pm_et/",
+   "published": "2026-10-03T15:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Syracuse",
+    "UConn"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Memphis @ Charlotte (11:00 AM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwnysc/game_thread_memphis_charlotte_1100_am_et/",
+   "published": "2026-10-03T14:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Memphis",
+    "Charlotte"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Idaho Defeats Montana State 35-34",
