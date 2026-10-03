@@ -1,6 +1,50 @@
 {
- "updated": "2026-10-03T02:28:34+00:00",
+ "updated": "2026-10-03T08:36:22+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Idaho Defeats Montana State 35-34",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwfs8u/postgame_thread_idaho_defeats_montana_state_3534/",
+   "published": "2026-10-03T06:07:35+00:00",
+   "gameId": "401868094",
+   "teams": [
+    "Idaho",
+    "Montana State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Northwestern Defeats Penn State 34-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwd8xs/postgame_thread_northwestern_defeats_penn_state/",
+   "published": "2026-10-03T03:40:36+00:00",
+   "gameId": "401858476",
+   "teams": [
+    "Northwestern",
+    "Penn State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Pittsburgh Defeats Virginia Tech 35-33",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwc9hc/postgame_thread_pittsburgh_defeats_virginia_tech/",
+   "published": "2026-10-03T02:47:27+00:00",
+   "gameId": "401858245",
+   "teams": [
+    "Pittsburgh",
+    "Virginia Tech"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Liberty Defeats Delaware 30-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwbxfq/postgame_thread_liberty_defeats_delaware_3014/",
+   "published": "2026-10-03T02:29:29+00:00",
+   "gameId": "401871050",
+   "teams": [
+    "Liberty",
+    "Delaware"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Montana State @ Idaho (10:30 PM ET)",
