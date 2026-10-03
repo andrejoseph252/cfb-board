@@ -1,6 +1,17 @@
 {
- "updated": "2026-10-02T23:20:07+00:00",
+ "updated": "2026-10-03T02:28:34+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Montana State @ Idaho (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wwatn3/game_thread_montana_state_idaho_1030_pm_et/",
+   "published": "2026-10-03T01:30:04+00:00",
+   "gameId": null,
+   "teams": [
+    "Montana State",
+    "Idaho"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Penn State @ Northwestern (8:00 PM ET)",
