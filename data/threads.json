@@ -1,6 +1,105 @@
 {
- "updated": "2026-10-04T02:58:19+00:00",
+ "updated": "2026-10-04T05:08:26+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Fresno State Defeats Washington State 26-6",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx7aoo/postgame_thread_fresno_state_defeats_washington/",
+   "published": "2026-10-04T05:07:37+00:00",
+   "gameId": "401860921",
+   "teams": [
+    "Fresno State",
+    "Washington State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Miami Defeats Clemson 41-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx5fim/postgame_thread_miami_defeats_clemson_4113/",
+   "published": "2026-10-04T03:20:38+00:00",
+   "gameId": "401858249",
+   "teams": [
+    "Miami",
+    "Clemson"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Indiana Defeats Rutgers 47-15",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx5d1q/postgame_thread_indiana_defeats_rutgers_4715/",
+   "published": "2026-10-04T03:16:48+00:00",
+   "gameId": "401858477",
+   "teams": [
+    "Indiana",
+    "Rutgers"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] LSU Defeats McNeese 63-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx5bmh/postgame_thread_lsu_defeats_mcneese_6314/",
+   "published": "2026-10-04T03:14:38+00:00",
+   "gameId": "401856706",
+   "teams": [
+    "LSU",
+    "McNeese"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] USC Defeats Washington 25-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx595i/postgame_thread_usc_defeats_washington_2521/",
+   "published": "2026-10-04T03:10:43+00:00",
+   "gameId": "401858478",
+   "teams": [
+    "USC",
+    "Washington"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas Tech Defeats Colorado 29-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx56gh/postgame_thread_texas_tech_defeats_colorado_297/",
+   "published": "2026-10-04T03:06:38+00:00",
+   "gameId": "401856821",
+   "teams": [
+    "Texas Tech",
+    "Colorado"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisiana Defeats Arkansas State 23-20",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx52jz/postgame_thread_louisiana_defeats_arkansas_state/",
+   "published": "2026-10-04T03:00:51+00:00",
+   "gameId": "401869932",
+   "teams": [
+    "Louisiana",
+    "Arkansas State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] San Jos\u00e9 State @ Hawai'i (11:59 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx51yf/game_thread_san_jos\u00e9_state_hawaii_1159_pm_et/",
+   "published": "2026-10-04T03:00:04+00:00",
+   "gameId": null,
+   "teams": [
+    "San Jos\u00e9 State",
+    "Hawai'i"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisiana Tech Defeats Army 31-29",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx50w8/postgame_thread_louisiana_tech_defeats_army_3129/",
+   "published": "2026-10-04T02:58:32+00:00",
+   "gameId": "401869842",
+   "teams": [
+    "Louisiana Tech",
+    "Army"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Boise State Defeats Utah State 37-18",
