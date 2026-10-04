@@ -1,6 +1,204 @@
 {
- "updated": "2026-10-03T23:24:11+00:00",
+ "updated": "2026-10-04T02:44:36+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Georgia Southern Defeats Coastal Carolina 31-24",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx4m8w/postgame_thread_georgia_southern_defeats_coastal/",
+   "published": "2026-10-04T02:36:35+00:00",
+   "gameId": "401869942",
+   "teams": [
+    "Georgia Southern",
+    "Coastal Carolina"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] South Alabama Defeats ULM 52-35",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx4ibc/postgame_thread_south_alabama_defeats_ulm_5235/",
+   "published": "2026-10-04T02:30:47+00:00",
+   "gameId": "401871089",
+   "teams": [
+    "South Alabama",
+    "ULM"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UTSA Defeats Rice 16-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx4bml/postgame_thread_utsa_defeats_rice_1614/",
+   "published": "2026-10-04T02:20:42+00:00",
+   "gameId": "401862788",
+   "teams": [
+    "UTSA",
+    "Rice"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas A&M Defeats Arkansas 34-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx47li/postgame_thread_texas_am_defeats_arkansas_347/",
+   "published": "2026-10-04T02:14:37+00:00",
+   "gameId": "401856711",
+   "teams": [
+    "Texas A&M",
+    "Arkansas"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] BYU Defeats TCU 17-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx469n/postgame_thread_byu_defeats_tcu_1710/",
+   "published": "2026-10-04T02:12:36+00:00",
+   "gameId": "401856818",
+   "teams": [
+    "BYU",
+    "TCU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] South Dakota State Defeats Illinois State 31-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx438a/postgame_thread_south_dakota_state_defeats/",
+   "published": "2026-10-04T02:07:56+00:00",
+   "gameId": "401867848",
+   "teams": [
+    "South Dakota State",
+    "Illinois State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Cincinnati @ Arizona (11:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx3xpn/game_thread_cincinnati_arizona_1100_pm_et/",
+   "published": "2026-10-04T02:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Cincinnati",
+    "Arizona"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Baylor @ Arizona State (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx3dng/game_thread_baylor_arizona_state_1030_pm_et/",
+   "published": "2026-10-04T01:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Baylor",
+    "Arizona State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Eastern Washington @ UC Davis (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx3dmq/game_thread_eastern_washington_uc_davis_1030_pm_et/",
+   "published": "2026-10-04T01:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Eastern Washington",
+    "UC Davis"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Texas State @ San Diego State (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx3dmd/game_thread_texas_state_san_diego_state_1030_pm_et/",
+   "published": "2026-10-04T01:30:04+00:00",
+   "gameId": null,
+   "teams": [
+    "Texas State",
+    "San Diego State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] FAU Defeats Texas Southern 66-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx3bzo/postgame_thread_fau_defeats_texas_southern_6610/",
+   "published": "2026-10-04T01:27:46+00:00",
+   "gameId": "401862790",
+   "teams": [
+    "FAU",
+    "Texas Southern"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Oregon State Defeats Colorado State 56-26",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx3ang/postgame_thread_oregon_state_defeats_colorado/",
+   "published": "2026-10-04T01:25:43+00:00",
+   "gameId": "401860899",
+   "teams": [
+    "Oregon State",
+    "Colorado State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Fresno State @ Washington State (9:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx28fs/game_thread_fresno_state_washington_state_930_pm/",
+   "published": "2026-10-04T00:30:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Fresno State",
+    "Washington State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Kentucky Defeats South Carolina 35-34",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx1ql3/postgame_thread_kentucky_defeats_south_carolina/",
+   "published": "2026-10-04T00:04:41+00:00",
+   "gameId": "401856709",
+   "teams": [
+    "Kentucky",
+    "South Carolina"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Nebraska Defeats Maryland 48-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx1nuq/postgame_thread_nebraska_defeats_maryland_4823/",
+   "published": "2026-10-04T00:00:58+00:00",
+   "gameId": "401858475",
+   "teams": [
+    "Nebraska",
+    "Maryland"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UNLV Defeats California 39-31",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx1aad/postgame_thread_unlv_defeats_california_3931/",
+   "published": "2026-10-03T23:42:31+00:00",
+   "gameId": "401858247",
+   "teams": [
+    "UNLV",
+    "California"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] James Madison Defeats Marshall 45-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx13mt/postgame_thread_james_madison_defeats_marshall/",
+   "published": "2026-10-03T23:32:40+00:00",
+   "gameId": "401869962",
+   "teams": [
+    "James Madison",
+    "Marshall"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Purdue Defeats Illinois 24-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx12g9/postgame_thread_purdue_defeats_illinois_2417/",
+   "published": "2026-10-03T23:30:56+00:00",
+   "gameId": "401858472",
+   "teams": [
+    "Purdue",
+    "Illinois"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] New Mexico Defeats UTEP 61-7",
