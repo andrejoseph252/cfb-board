@@ -1,6 +1,28 @@
 {
- "updated": "2026-10-04T02:44:36+00:00",
+ "updated": "2026-10-04T02:58:19+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Boise State Defeats Utah State 37-18",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx4ww4/postgame_thread_boise_state_defeats_utah_state/",
+   "published": "2026-10-04T02:52:32+00:00",
+   "gameId": "401860898",
+   "teams": [
+    "Boise State",
+    "Utah State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Temple Defeats USF 17-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx4svs/postgame_thread_temple_defeats_usf_1713/",
+   "published": "2026-10-04T02:46:39+00:00",
+   "gameId": "401862792",
+   "teams": [
+    "Temple",
+    "USF"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Georgia Southern Defeats Coastal Carolina 31-24",
