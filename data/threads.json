@@ -1,6 +1,61 @@
 {
- "updated": "2026-10-04T05:08:26+00:00",
+ "updated": "2026-10-04T09:16:18+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] San Jos\u00e9 State Defeats Hawai'i 20-16",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx9fw6/postgame_thread_san_jos\u00e9_state_defeats_hawaii_2016/",
+   "published": "2026-10-04T07:17:39+00:00",
+   "gameId": "401864513",
+   "teams": [
+    "San Jos\u00e9 State",
+    "Hawai'i"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Arizona Defeats Cincinnati 34-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx8k4w/postgame_thread_arizona_defeats_cincinnati_347/",
+   "published": "2026-10-04T06:23:42+00:00",
+   "gameId": "401856820",
+   "teams": [
+    "Arizona",
+    "Cincinnati"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] San Diego State Defeats Texas State 31-29",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx8hqi/postgame_thread_san_diego_state_defeats_texas/",
+   "published": "2026-10-04T06:19:32+00:00",
+   "gameId": "401860900",
+   "teams": [
+    "San Diego State",
+    "Texas State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Baylor Defeats Arizona State 55-19",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx8d5k/postgame_thread_baylor_defeats_arizona_state_5519/",
+   "published": "2026-10-04T06:11:39+00:00",
+   "gameId": "401856817",
+   "teams": [
+    "Baylor",
+    "Arizona State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UC Davis Defeats Eastern Washington 49-38",
+   "url": "https://www.reddit.com/r/CFB/comments/1wx8c1n/postgame_thread_uc_davis_defeats_eastern/",
+   "published": "2026-10-04T06:09:44+00:00",
+   "gameId": "401868086",
+   "teams": [
+    "UC Davis",
+    "Eastern Washington"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Fresno State Defeats Washington State 26-6",
