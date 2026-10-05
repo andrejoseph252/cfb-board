@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-05T16:28:22+00:00",
+ "updated": "2026-10-05T22:57:06+00:00",
  "threads": [
   {
    "kind": "post",
@@ -3020,50 +3020,6 @@
    "teams": [
     "Northwestern",
     "Indiana"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Harvard @ Brown (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wq97u4/game_thread_harvard_brown_700_pm_et/",
-   "published": "2026-09-25T22:00:10+00:00",
-   "gameId": null,
-   "teams": [
-    "Harvard",
-    "Brown"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Navy @ UAB (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wq97te/game_thread_navy_uab_700_pm_et/",
-   "published": "2026-09-25T22:00:09+00:00",
-   "gameId": null,
-   "teams": [
-    "Navy",
-    "UAB"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Howard @ Rutgers (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wq97sc/game_thread_howard_rutgers_700_pm_et/",
-   "published": "2026-09-25T22:00:08+00:00",
-   "gameId": null,
-   "teams": [
-    "Howard",
-    "Rutgers"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Army @ Temple (4:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wq4rg8/game_thread_army_temple_400_pm_et/",
-   "published": "2026-09-25T19:00:05+00:00",
-   "gameId": null,
-   "teams": [
-    "Army",
-    "Temple"
    ]
   }
  ],
