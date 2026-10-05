@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-05T01:20:04+00:00",
+ "updated": "2026-10-05T07:46:31+00:00",
  "threads": [
   {
    "kind": "post",
@@ -3064,28 +3064,6 @@
    "teams": [
     "Army",
     "Temple"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Liberty Defeats Coastal Carolina 34-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1wpm1jb/postgame_thread_liberty_defeats_coastal_carolina/",
-   "published": "2026-09-25T03:40:24+00:00",
-   "gameId": "401869941",
-   "teams": [
-    "Liberty",
-    "Coastal Carolina"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Tuskegee Defeats Benedict 20-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1wpktub/postgame_thread_tuskegee_defeats_benedict_2017/",
-   "published": "2026-09-25T02:38:19+00:00",
-   "gameId": "401906938",
-   "teams": [
-    "Tuskegee",
-    "Benedict"
    ]
   }
  ],
