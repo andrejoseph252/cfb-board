@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-05T22:57:06+00:00",
+ "updated": "2026-10-06T02:37:07+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2954,72 +2954,6 @@
    "teams": [
     "Indiana",
     "Northwestern"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] UAB Defeats Navy 24-20",
-   "url": "https://www.reddit.com/r/CFB/comments/1wqeune/postgame_thread_uab_defeats_navy_2420/",
-   "published": "2026-09-26T02:24:51+00:00",
-   "gameId": "401862778",
-   "teams": [
-    "UAB",
-    "Navy"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Rutgers Defeats Howard 58-7",
-   "url": "https://www.reddit.com/r/CFB/comments/1wqeqfg/postgame_thread_rutgers_defeats_howard_587/",
-   "published": "2026-09-26T02:18:46+00:00",
-   "gameId": "401858468",
-   "teams": [
-    "Rutgers",
-    "Howard"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Harvard Defeats Brown 14-10",
-   "url": "https://www.reddit.com/r/CFB/comments/1wqekkj/postgame_thread_harvard_defeats_brown_1410/",
-   "published": "2026-09-26T02:10:35+00:00",
-   "gameId": "401867806",
-   "teams": [
-    "Harvard",
-    "Brown"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Clemson @ California (10:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wqdrhf/game_thread_clemson_california_1030_pm_et/",
-   "published": "2026-09-26T01:30:05+00:00",
-   "gameId": null,
-   "teams": [
-    "Clemson",
-    "California"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Army Defeats Temple 21-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1wqb5mg/postgame_thread_army_defeats_temple_2117/",
-   "published": "2026-09-25T23:25:28+00:00",
-   "gameId": "401862779",
-   "teams": [
-    "Army",
-    "Temple"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Northwestern @ Indiana (8:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1wqal4c/game_thread_northwestern_indiana_800_pm_et/",
-   "published": "2026-09-25T23:00:06+00:00",
-   "gameId": null,
-   "teams": [
-    "Northwestern",
-    "Indiana"
    ]
   }
  ],
