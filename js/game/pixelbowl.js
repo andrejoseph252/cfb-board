@@ -16,6 +16,7 @@ const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
 const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...store.get('pixelbowl', {}) };
 delete saved.record; saved.results ||= {};
+saved.practice = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, ...saved.practice };
 const save = () => store.set('pixelbowl', saved);
 const coarse = () => matchMedia('(pointer: coarse)').matches;
 const ord = n => ['1ST', '2ND', '3RD', '4TH'][n - 1] || `${n}TH`;
@@ -147,7 +148,7 @@ function update(dt){
   if (phase === 'presnap'){
     if (!S.tickRunoff(G, dt)) clockOut();
   } else if (phase === 'live'){
-    if (!G.ot) S.useClock(G, dt);
+    if (!G.ot && !G.practice) S.useClock(G, dt);
     S.step(G, dt, input);
     input.juke = 0; input.dive = false;
     if (aim && !S.canThrow(G)) aim = null;
@@ -191,6 +192,7 @@ function setup(){
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label></div>
     <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
+    <button class="pb-go alt" type="button" data-pb="practice">PRACTICE</button>
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
   </div>`);
@@ -242,11 +244,13 @@ function doSnap(){
   closeModal();
   G.runoff = 0; snaps++;
   S.snap(G); phase = 'live';
+  if (G.call === 'run') S.handoff(G);
 }
 
 function playOver(){
   const r = G.play.result;
   phase = 'dead'; deadT = 0; aim = null; deadWait = 1.25;
+  if (G.practice) return practicePlayOver(r);
   if (r.type === 'td'){ banner(G.twoPt ? 'TWO POINTS!' : 'TOUCHDOWN!', G.twoPt ? '' : G.me.name.toUpperCase(), G.me.color, 2300); sfx('td'); G.cheer = 3; deadWait = 2.5; }
   else if (r.type === 'int'){ banner('INTERCEPTED', '', '#ff5a4e', 1800); sfx('turnover'); deadWait = 2; }
   else if (r.type === 'fumble'){ banner('FUMBLE!', '', '#ff5a4e', 1800); sfx('turnover'); deadWait = 2; }
@@ -257,6 +261,7 @@ function playOver(){
 
 function afterPlay(){
   phase = 'wait';
+  if (G.practice) return practiceAfter();
   const out = S.applyResult(G), lp = G.lastPlay;
   if (G.twoPt){
     G.twoPt = false;
@@ -407,6 +412,189 @@ function otCheck(){
   G.ot++; myOT();
 }
 
+/* ---------- play calling (in a game) ---------- */
+/* A compact sheet of play cards before the snap. The call sticks until you change it; Random is the default. */
+function playSheet(){
+  if (phase !== 'presnap' || G.practice || $('.pb-modal').classList.contains('on')) return;
+  const all = S.PRACTICE_ROLES, card = (v, name, tip, routes) => `<button type="button" data-pb="callpick" data-v="${v}" aria-pressed="${(G.call || '') === v}">
+      ${formationSVG(all, routes, true)}<b>${esc(name)}</b><small>${esc(tip)}</small></button>`;
+  modal(`<div class="pb-card pb-calls"><div class="pb-ph"><b>CALL A PLAY</b><button class="pb-x" type="button" data-pb="callclose" aria-label="Close">${ICON.x}</button></div>
+    <div class="pb-callrow">${card('', 'Random', 'Mix it up, like always', {})}
+      ${Object.entries(S.CONCEPTS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('')}
+      ${card('run', S.RUN_CALL.name, S.RUN_CALL.tip, S.RUN_CALL.routes)}</div>
+    <p class="pb-sub">Your call sticks until you change it.</p></div>`, true, 'call');
+  const row = $('.pb-callrow'), on = row.querySelector('[aria-pressed="true"]');
+  if (on) row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
+}
+
+/* ---------- practice: no defense, no clock, same spot every rep ---------- */
+const SPOTS = [[25, 'Own 25'], [50, 'Midfield'], [80, 'Red zone'], [95, 'Goal line']];
+const practiceRoles = () => S.PRACTICE_ROLES.slice(0, saved.practice.count);
+function practiceRoutes(){
+  const P = saved.practice;
+  if (P.mode === 'concept') return S.CONCEPTS[P.concept]?.routes || {};
+  if (P.mode === 'pick') return P.routes;
+  return {};
+}
+
+/* Play diagrams. Field yards: lateral (y, + is to the right) and depth (x, + is downfield). Receivers on the left
+   break inside to the right, as in the game. */
+const FORM = { X: [-19, -.9, 1], TE: [-5, -.9, 1], SL: [10.5, -1.2, -1], Z: [19, -.9, -1], RB: [-2.6, -5, 1] };
+/* Cuts a route where it leaves the diagram (long routes keep going downfield). */
+function clipPath(pts, box){
+  const [x0, y0, x1, y1] = box, inBox = ([x, y]) => x >= x0 - 1e-6 && x <= x1 + 1e-6 && y >= y0 - 1e-6 && y <= y1 + 1e-6;
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++){
+    const a = out[out.length - 1], b = pts[i];
+    if (inBox(b)){ out.push(b); continue; }
+    let t = 1;
+    for (const [k, lim] of [[0, x0], [0, x1], [1, y0], [1, y1]]){
+      const d = b[k] - a[k]; if (!d) continue;
+      const tt = (lim - a[k]) / d;
+      if (tt > 0 && tt < t && inBox([a[0] + (b[0] - a[0]) * tt, a[1] + (b[1] - a[1]) * tt])) t = tt;
+    }
+    out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    return { pts: out, cut: true };
+  }
+  return { pts: out, cut: false };
+}
+function routePath(name, sx, sy, inside, toPx, box){
+  const wps = Array.isArray(name) ? name : S.ROUTES[name] || [], last = wps[wps.length - 1];
+  const field = [[sx, sy], ...wps.map(([dx, dy]) => [sx + dy * inside, sy + dx])];
+  const { pts, cut } = clipPath(field, box);
+  const px = pts.map(([x, y]) => toPx(x, y));
+  let h = `<polyline points="${px.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  if (px.length > 1){
+    const [x1, y1] = px[px.length - 2], [x2, y2] = px[px.length - 1], a = Math.atan2(y2 - y1, x2 - x1), L = 4;
+    if (last?.[2] && !cut){   // a route that sits down: a bar, playbook style
+      const nx = Math.cos(a + Math.PI / 2) * 3, ny = Math.sin(a + Math.PI / 2) * 3;
+      h += `<line x1="${(x2 - nx).toFixed(1)}" y1="${(y2 - ny).toFixed(1)}" x2="${(x2 + nx).toFixed(1)}" y2="${(y2 + ny).toFixed(1)}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`;
+    } else h += `<path d="M${x2.toFixed(1)},${y2.toFixed(1)} L${(x2 - L * Math.cos(a - .5)).toFixed(1)},${(y2 - L * Math.sin(a - .5)).toFixed(1)} L${(x2 - L * Math.cos(a + .5)).toFixed(1)},${(y2 - L * Math.sin(a + .5)).toFixed(1)}Z" fill="currentColor"/>`;
+  }
+  return h;
+}
+/* A single route for a route chip: a receiver on the left side of the formation. */
+function routeSVG(name){
+  const toPx = (x, y) => [9 + x * 1.15, 40 - y * 1.25];
+  return `<svg viewBox="0 0 44 46" aria-hidden="true"><line x1="2" y1="41" x2="42" y2="41" class="los"/><circle cx="9" cy="40" r="2.4" class="dot"/>${routePath(name, 0, 0, 1, toPx, [-7, -3, 30, 29])}</svg>`;
+}
+/* The whole formation, with routes for the receivers who are out (or "?" for random). */
+function formationSVG(roles, routes, small){
+  const toPx = (x, y) => [100 + x * 3.9, 90 - y * 3.3];
+  let h = `<svg viewBox="0 0 200 ${small ? 112 : 116}" aria-hidden="true"><line x1="4" y1="${toPx(0, 0)[1]}" x2="196" y2="${toPx(0, 0)[1]}" class="los"/>`;
+  for (const dy of [-3.2, -1.6, 0, 1.6, 3.2]){ const [x, y] = toPx(dy, -.7); h += `<rect x="${x - 2.4}" y="${y - 2.4}" width="4.8" height="4.8" class="ol"/>`; }
+  const [qx, qy] = toPx(0, -4.5); h += `<circle cx="${qx}" cy="${qy}" r="2.6" class="qb"/>`;
+  for (const role of ['X', 'TE', 'RB', 'SL', 'Z']){
+    const [lx, ly, inside] = FORM[role], [x, y] = toPx(lx, ly), on = roles.includes(role);
+    if (!on && role !== 'RB') continue;
+    if (on && routes[role]) h += `<g class="rt">${routePath(routes[role], lx, ly, inside, toPx, [-26, -8, 26, 25])}</g>`;
+    h += `<circle cx="${x}" cy="${y}" r="3.2" class="${on ? 'dot' : 'qb'}"/>`;
+    if (on && !routes[role]) h += `<text x="${x}" y="${y - 6}" class="q">?</text>`;
+  }
+  return h + '</svg>';
+}
+
+/* The drill at a glance: a short strip of field with your receivers in team color (labeled), empty spots as faint
+   outlines, and the first stretch of each route ("?" when it's random). */
+const ROLE_TAGS = { X: 'WR', Z: 'WR', SL: 'SLOT', TE: 'TE', RB: 'RB' };
+function drillPreview(roles, routes, color){
+  const W = 240, H = 92, LOS = 54, toPx = (x, y) => [W / 2 + x * 4.6, LOS - y * 2.9];
+  const c = esc(color || '#ffd84a');
+  // With no routes to draw (all random), crop to the formation itself.
+  const top = roles.some(r => routes[r]) ? 0 : 28;
+  let h = `<svg viewBox="0 ${top} ${W} ${H - top}" aria-hidden="true"><rect y="${top}" width="${W}" height="${H - top}" fill="#2f6e34"/>`;
+  for (const yd of [5, 10, 15]){ const y = toPx(0, yd)[1]; h += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(255,255,255,.12)" stroke-width="1"/>`; }
+  h += `<line x1="0" y1="${LOS}" x2="${W}" y2="${LOS}" stroke="rgba(90,150,255,.9)" stroke-width="1.4"/>`;
+  // routes first, so the players sit on top of them
+  for (const role of ['X', 'TE', 'SL', 'Z', 'RB']){
+    if (!roles.includes(role) || !routes[role]) continue;
+    const [lx, ly, inside] = FORM[role];
+    h += `<g class="rt" opacity=".95">${routePath(routes[role], lx, ly, inside, toPx, [-25, -6, 25, 17])}</g>`;
+  }
+  for (const dy of [-3.2, -1.6, 0, 1.6, 3.2]){ const [x, y] = toPx(dy, -.7); h += `<rect x="${x - 2.6}" y="${y - 2}" width="5.2" height="4" rx="1" fill="rgba(255,255,255,.28)"/>`; }
+  const [qx, qy] = toPx(0, -4.5);
+  h += `<circle cx="${qx}" cy="${qy}" r="3.2" fill="rgba(255,255,255,.45)"/><text x="${qx}" y="${qy + 10}" class="tag dim">QB</text>`;
+  for (const role of ['X', 'TE', 'RB', 'SL', 'Z']){
+    const [lx, ly] = FORM[role], [x, y] = toPx(lx, ly), on = roles.includes(role);
+    if (!on){ if (role !== 'RB') h += `<circle cx="${x}" cy="${y}" r="3.6" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1" stroke-dasharray="2 1.6"/>`; continue; }
+    h += `<circle cx="${x}" cy="${y}" r="4.6" fill="${c}" stroke="#fff" stroke-width="1.3"/><text x="${x}" y="${y + 12}" class="tag">${ROLE_TAGS[role]}</text>`;
+    if (!routes[role]) h += `<circle cx="${x}" cy="${y - 10}" r="4.4" fill="#ffd84a" stroke="#000" stroke-width="1"/><text x="${x}" y="${y - 7.6}" class="tag q">?</text>`;
+  }
+  return h + '</svg>';
+}
+
+function practiceSetup(keepScroll){
+  const prevScroll = keepScroll ? $('.pb-setup')?.scrollTop : 0;
+  phase = 'setup'; paused = false; behind = null;
+  if (!G || G.practice){ G = S.newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); }
+  showHud(false);
+  const P = saved.practice, roles = practiceRoles(), routes = practiceRoutes();
+  const seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k]) === String(v)}">${l}</button>`).join('')}</div>`;
+  let routesUI = '';
+  if (P.mode === 'concept') routesUI = `<div class="pb-concepts">${Object.entries(S.CONCEPTS).map(([k, c]) =>
+    `<button type="button" data-pb="pset" data-k="concept" data-v="${k}" aria-pressed="${P.concept === k}">${formationSVG(roles, c.routes, true)}<span>${c.name}</span></button>`).join('')}</div>`;
+  else if (P.mode === 'pick') routesUI = roles.map((role, i) => `<div class="pb-rrow"><span>${S.ROLE_NAMES[role]}</span><div class="pb-rchips">
+      <button type="button" data-pb="proute" data-role="${role}" data-v="" aria-pressed="${!P.routes[role]}"><b class="pb-rq">?</b><small>Random</small></button>
+      ${Object.entries(S.ROUTE_NAMES).map(([r, l]) => `<button type="button" data-pb="proute" data-role="${role}" data-v="${r}" aria-pressed="${P.routes[role] === r}">${routeSVG(r)}<small>${l}</small></button>`).join('')}</div></div>`).join('');
+  modal(`<div class="pb-setup pb-practice">
+    <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
+    <p class="pb-sub">No defense, no clock: every rep starts from the same spot. Throwing for ${esc(G.me.name)}.</p>
+    <div class="pb-form">${drillPreview(roles, routes, G.me.color)}
+      <p>${roles.length} receiver${roles.length === 1 ? '' : 's'} out · ${P.mode === 'concept' ? esc(S.CONCEPTS[P.concept]?.name || '') : P.mode === 'pick' ? 'Your routes' : 'Random routes'}</p></div>
+    <div class="pb-opt"><span>Receivers out</span>${seg('count', [1, 2, 3, 4, 5].map(n => [n, n]))}</div>
+    <div class="pb-opt"><span>Routes</span>${seg('mode', [['random', 'Random'], ['concept', 'Concepts'], ['pick', 'Pick routes']])}</div>
+    ${routesUI}
+    <div class="pb-opt"><span>Start at</span>${seg('spot', SPOTS)}</div>
+    <button class="pb-go" type="button" data-pb="pstart">START PRACTICE</button>
+  </div>`);
+  if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
+}
+
+function startPractice(){
+  initAudio(saved.sound);
+  const me = G.me, opp = G.opp;
+  closeModal();
+  G = S.newGame(me, opp, saved.diff, saved.len);
+  G.practice = { roles: practiceRoles(), mode: saved.practice.mode, routes: practiceRoutes() };
+  G.ps = { att: 0, comp: 0, yds: 0, td: 0, long: 0, runs: 0, runYds: 0, last: '' };
+  snaps = 0; showHud(true);
+  practiceRep(true);
+}
+function practiceRep(snapCam){
+  S.startDrive(G, saved.practice.spot); G.y = S.MID;
+  if (snapCam) R.snapCamera(G);
+  S.setupPlay(G); phase = 'presnap'; aim = null; resetInput();
+}
+function practicePlayOver(r){
+  const P = G.play, gain = Math.round(Math.min(r.x ?? P.los, 100) - P.los);
+  if (r.type === 'td'){ banner('TOUCHDOWN!', '', G.me.color, 1300); sfx('td'); G.cheer = 2; deadWait = 1.6; }
+  else if (r.type === 'inc'){ sfx('drop'); P.pops.push({ x: P.ball.tx, y: P.ball.ty, text: (r.why || 'Incomplete').toUpperCase(), color: '#fff', t: 0 }); }
+  else { sfx('whistle'); P.pops.push({ x: r.x, y: r.y, text: `${gain >= 0 ? '+' : ''}${gain} YDS`, color: gain >= 10 ? '#4cff7a' : '#fff', t: 0 }); }
+}
+function practiceAfter(){
+  const P = G.play, r = P.result, ps = G.ps, gain = Math.round(Math.min(r.x ?? P.los, 100) - P.los);
+  const who = P.carrier ? S.ROLE_NAMES[P.carrier.role] || 'QB' : '';
+  if (P.thrown){
+    ps.att++;
+    if (r.type !== 'inc'){ ps.comp++; ps.yds += gain; ps.long = Math.max(ps.long, gain); if (r.type === 'td') ps.td++; ps.last = `${who}: ${gain} yds${r.type === 'td' ? ', TD' : ''}`; }
+    else ps.last = r.why || 'Incomplete';
+  } else if (P.carrier){ ps.runs++; ps.runYds += gain; if (r.type === 'td') ps.td++; ps.last = `Run: ${gain} yds${r.type === 'td' ? ', TD' : ''}`; }
+  practiceRep(false);
+}
+function practiceHud(){
+  const ps = G.ps, spot = SPOTS.find(([v]) => v === saved.practice.spot)?.[1] || yardLine(G.los);
+  const btns = phase === 'presnap' && !paused ? '<button type="button" data-pb="psetup">CHANGE DRILL</button>' : '';
+  const hint = hintText();
+  const key = ['P', ps.att, ps.comp, ps.yds, ps.td, ps.long, ps.runs, ps.last, btns, hint, spot].join('|');
+  if (key === lastHud) return; lastHud = key;
+  const pct = ps.att ? Math.round(ps.comp / ps.att * 100) : 0;
+  $('.pb-bug').innerHTML = `<div class="pb-tm" style="--c:${esc(G.me.color)};--k:${inkOn(G.me.color)}">${G.me.logo ? `<img src="${esc(logoUrl(G.me.logo, 72))}" alt="">` : ''}<b>PRACTICE</b></div>
+    <div class="pb-mid"><span>CMP</span><b>${ps.comp}/${ps.att}</b></div><div class="pb-mid"><span>YDS</span><b>${ps.yds}</b></div><div class="pb-mid"><span>TD</span><b>${ps.td}</b></div>`;
+  $('.pb-dd').innerHTML = `<span>${esc(spot)}</span>${ps.att ? `<span>${pct}% · LONG ${ps.long}</span>` : ''}${ps.last ? `<span>${esc(ps.last.toUpperCase())}</span>` : ''}`;
+  $('.pb-bar').innerHTML = btns;
+  $('.pb-hint').textContent = hint;
+}
+
 /* ---------- the end ---------- */
 function final(){
   phase = 'final'; showHud(true);
@@ -446,10 +634,14 @@ let lastHud = '';
 function showHud(on){ $('.pb-hud').hidden = !on; $('.pb-tools').hidden = !on; if (!on){ $('.pb-bar').innerHTML = ''; $('.pb-hint').textContent = ''; } lastHud = ''; }
 function hud(){
   if (!root || !G || $('.pb-hud').hidden) return;
+  if (G.practice) return practiceHud();
   const q = G.ot ? (G.ot === 1 ? 'OT' : `${G.ot}OT`) : `Q${G.quarter}`;
   const dd = G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
   const late = S.lateInHalf(G), live = phase === 'presnap';
+  const callName = G.call === 'run' ? S.RUN_CALL.name : S.CONCEPTS[G.call]?.name || 'Random';
+  const sheetUp = $('.pb-modal').classList.contains('on');
   const btns = !live || paused ? '' : [
+    sheetUp ? '' : `<button type="button" data-pb="call" class="pb-call">PLAY: ${esc(callName.toUpperCase())} ▾</button>`,
     G.runoff > 0 && G.timeouts > 0 && !G.ot ? `<button type="button" data-pb="timeout">TIMEOUT (${G.timeouts})</button>` : '',
     late && G.runoff > 0 && G.down < 4 && !G.twoPt ? '<button type="button" data-pb="spike">SPIKE</button>' : '',
     late && G.score[0] > G.score[1] && !G.twoPt && G.quarter === 4 ? '<button type="button" data-pb="kneel">KNEEL</button>' : '',
@@ -474,7 +666,7 @@ function hintText(){
     return '';
   }
   if (snaps > 8 && saved.diff !== 'rookie') return '';
-  if (phase === 'presnap') return touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
+  if (phase === 'presnap') return G.call === 'run' ? (touch ? 'Tap to snap and run' : 'Click or press Space to snap and run') : touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
   if (phase === 'live'){
     if (G.play.carrier) return touch ? 'Drag to steer · flick sideways to juke · flick ahead to dive' : `${R.portrait ? '← →' : '↑ ↓'} steer · Space juke · X dive · or drag`;
     if (S.canThrow(G)) return touch ? 'Pull back and release to throw · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · H hand off';
@@ -509,6 +701,14 @@ function onClick(e){
   switch (a){
     case 'exit': return onExit();
     case 'start': return startGame();
+    case 'practice': return practiceSetup();
+    case 'call': return playSheet();
+    case 'callpick': { G.call = b.dataset.v || null; closeModal(); if (phase === 'presnap') S.setupPlay(G); return; }
+    case 'callclose': return closeModal();
+    case 'pset': { const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save(); return practiceSetup(true); }
+    case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return practiceSetup(true); }
+    case 'pstart': return startPractice();
+    case 'psetup': return practiceSetup();
     case 'swap': [pick.me, pick.opp] = [pick.opp, pick.me]; return setup();
     case 'pickme': return teamPicker('me');
     case 'pickopp': return teamPicker('opp');
@@ -567,6 +767,7 @@ function down(e){
   // highlighted running back, hands off): one motion, no separate tap to snap.
   let fresh = false;
   if (phase === 'presnap'){
+    if ($('.pb-modal').dataset.kind === 'call'){ closeModal(); ptr = null; return; }   // tap outside the play sheet closes it
     if ($('.pb-modal').classList.contains('on')) return;   // 4th-down choice still open
     doSnap(); fresh = true;
   }
@@ -629,6 +830,7 @@ function keydown(e){
     }
     return;
   }
+  if (k === 'c' && phase === 'presnap' && !G.practice){ e.preventDefault(); return $('.pb-modal').dataset.kind === 'call' ? closeModal() : playSheet(); }
   if (k === 'h' && phase === 'presnap' && !$('.pb-modal').classList.contains('on')){ e.preventDefault(); doSnap(); S.handoff(G); return; }
   if (phase !== 'live') return;
   if (/^[1-5]$/.test(k)){ e.preventDefault(); S.throwToReceiver(G, Number(k)); return; }
@@ -762,6 +964,43 @@ body.pb-open{overflow:hidden}
 .pb-tbl td{padding:5px 4px;border-bottom:2px solid #1b1f24}
 .pb-tbl td:first-child{color:#9aa4ae;white-space:nowrap}
 .pb-4th{max-width:380px}
+.pb-bar .pb-call{color:#fff;box-shadow:0 0 0 2px #7df9ff,0 3px 0 #000}
+.pb-calls{max-width:620px;text-align:left;gap:8px;padding:12px}
+.pb-calls .pb-sub{text-align:center}
+.pb-callrow{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.pb-callrow button{flex:none;width:132px;display:grid;gap:3px;align-content:start;padding:4px 4px 7px;background:#2f6e34;border:2px solid #000;color:#ffd84a;text-align:left}
+.pb-callrow button b{font-weight:400;font-size:8px;color:#fff;padding:0 3px}
+.pb-callrow button small{font-size:6px;line-height:1.5;color:#cfe8b0;padding:0 3px}
+.pb-callrow button[aria-pressed="true"]{box-shadow:0 0 0 2px #ffd84a;background:#3d8b39}
+.pb-callrow svg{display:block;width:100%;height:auto}
+.pb-callrow .los{stroke:rgba(255,255,255,.45);stroke-width:1;stroke-dasharray:3 3}
+.pb-callrow .dot{fill:#fff} .pb-callrow .ol{fill:#c9d1d9} .pb-callrow .qb{fill:#9aa4ae}
+.pb-callrow .q{fill:#fff;font:7px 'Press Start 2P',monospace;text-anchor:middle}
+.pb-practice{gap:12px}
+.pb-sub{margin:0;font-size:8px;color:#9aa4ae;line-height:1.8}
+.pb-form{border:2px solid #000;color:#ffd84a;background:#101215}
+.pb-form p{margin:0;padding:6px 8px;font-size:7.5px;color:#c9d1d9;border-top:2px solid #000}
+.pb-form .tag{fill:#fff;font:5px 'Press Start 2P',monospace;text-anchor:middle}
+.pb-form .tag.dim{fill:rgba(255,255,255,.55)}
+.pb-form .tag.q{fill:#111;font-size:5.5px}
+.pb-form svg,.pb-concepts svg{display:block;width:100%;height:auto}
+.pb-form .los,.pb-concepts .los,.pb-rchips .los{stroke:rgba(255,255,255,.45);stroke-width:1;stroke-dasharray:3 3}
+.pb-form .dot,.pb-concepts .dot,.pb-rchips .dot{fill:#fff}
+.pb-form .ol,.pb-concepts .ol{fill:#c9d1d9}
+.pb-form .qb,.pb-concepts .qb{fill:#9aa4ae}
+.pb-form .q,.pb-concepts .q{fill:#fff;font:7px 'Press Start 2P',monospace;text-anchor:middle}
+.pb-concepts{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+.pb-concepts button{display:grid;gap:4px;padding:4px 4px 6px;background:#2f6e34;border:2px solid #000;color:#ffd84a;font-size:8px}
+.pb-concepts button span{color:#fff}
+.pb-concepts button[aria-pressed="true"]{box-shadow:0 0 0 2px #ffd84a}
+.pb-rrow{display:grid;gap:4px}
+.pb-rrow > span{font-size:8px;color:#9aa4ae}
+.pb-rchips{display:flex;gap:5px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.pb-rchips button{flex:none;display:grid;justify-items:center;gap:2px;width:54px;padding:4px 2px;background:#2f6e34;border:2px solid #000;color:#ffd84a}
+.pb-rchips button svg{width:40px;height:42px}
+.pb-rchips button small{font-size:6.5px;color:#fff}
+.pb-rchips button[aria-pressed="true"]{box-shadow:0 0 0 2px #ffd84a;background:#3d8b39}
+.pb-rq{display:grid;place-items:center;width:40px;height:42px;font-size:16px;font-weight:400;color:#fff}
 @media (max-width:440px){.pb-hud{left:calc(env(safe-area-inset-left,0px) + 8px);transform:none;justify-items:start}}
 @media (max-width:520px){.pb-tm{padding:4px 6px}.pb-tm img{display:none}.pb-mid{min-width:54px}.pb-team b{font-size:8px}.pb-team img{width:36px;height:36px}.pb-hint{font-size:7px}}
 `;

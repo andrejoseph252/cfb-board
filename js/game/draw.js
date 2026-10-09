@@ -285,7 +285,7 @@ export function createRenderer(canvas){
     const P = G.play, L = P ? P.los : G.los;
     rect(L - .12, 0, L + .12, FW, 'rgba(70,140,255,.85)');
     const fd = L + G.toGo;
-    if (fd < 100 && !G.twoPt) rect(fd - .12, 0, fd + .12, FW, 'rgba(255,214,0,.9)');
+    if (fd < 100 && !G.twoPt && !G.practice) rect(fd - .12, 0, fd + .12, FW, 'rgba(255,214,0,.9)');
   }
   function effects(P, dt){
     for (const f of P.fx){

@@ -55,7 +55,7 @@ export function useClock(G, sec){
 }
 
 /* ---------- formations and routes ---------- */
-const ROUTES = {
+export const ROUTES = {
   go: [[30, 0], [70, 0]], slant: [[2, 0], [9, 7], [40, 30]], post: [[11, 0], [28, 9], [60, 18]],
   corner: [[11, 0], [26, -10], [45, -18]], out: [[7, 0], [7, -18]], dig: [[12, 0], [12, 26]],
   curl: [[11, 0], [9, 1.5, 1]], comeback: [[15, 0], [12, -3, 1]], hitch: [[6, 0], [5, .5, 1]],
@@ -63,6 +63,26 @@ const ROUTES = {
   wheel: [[0, -6], [5, -11], [30, -12], [60, -12]], stick: [[6, 0], [6, .5, 1]], in: [[6, 0], [6, 20]],
   fade: [[20, -3], [55, -5]], block: []
 };
+export const ROUTE_NAMES = { go: 'Go', slant: 'Slant', post: 'Post', corner: 'Corner', out: 'Out', dig: 'Dig', curl: 'Curl', comeback: 'Comeback',
+  hitch: 'Hitch', seam: 'Seam', flat: 'Flat', drag: 'Drag', swing: 'Swing', wheel: 'Wheel', stick: 'Stick', in: 'In', fade: 'Fade' };
+
+/* Practice mode. Receivers come out in this order as you add them; concepts are classic pass patterns. */
+export const PRACTICE_ROLES = ['X', 'Z', 'SL', 'TE', 'RB'];
+export const ROLE_NAMES = { X: 'Left wideout', Z: 'Right wideout', SL: 'Slot', TE: 'Tight end', RB: 'Running back' };
+export const CONCEPTS = {
+  verts:   { name: 'Four Verts', tip: 'Stretch the safeties deep', routes: { X: 'go', Z: 'go', SL: 'seam', TE: 'seam', RB: 'flat' } },
+  slants:  { name: 'Slants', tip: 'Quick and inside; beats the blitz', routes: { X: 'slant', Z: 'slant', SL: 'slant', TE: 'stick', RB: 'flat' } },
+  smash:   { name: 'Smash', tip: 'Hitch under, corner over', routes: { X: 'hitch', Z: 'hitch', SL: 'corner', TE: 'corner', RB: 'swing' } },
+  mesh:    { name: 'Mesh', tip: 'Crossers underneath', routes: { X: 'dig', Z: 'corner', SL: 'drag', TE: 'drag', RB: 'wheel' } },
+  flood:   { name: 'Flood', tip: 'Three levels to one side', routes: { X: 'post', Z: 'fade', SL: 'out', TE: 'stick', RB: 'flat' } },
+  curlflat:{ name: 'Curl-Flat', tip: 'Short and safe', routes: { X: 'curl', Z: 'curl', SL: 'flat', TE: 'flat', RB: 'swing' } },
+  dagger:  { name: 'Dagger', tip: 'Seam clears out the dig', routes: { X: 'dig', Z: 'post', SL: 'seam', TE: 'stick', RB: 'flat' } },
+  outs:    { name: 'Outs', tip: 'Timing throws to the sideline', routes: { X: 'out', Z: 'out', SL: 'out', TE: 'out', RB: 'flat' } }
+};
+/* In a game, a called play: null (random routes, the default), a concept above, or 'run' (snap goes straight to
+   the back; the receivers run short routes and turn into blockers). */
+export const RUN_CALL = { name: 'Inside Run', tip: 'Snap goes straight to the back', routes: { X: 'hitch', Z: 'hitch', SL: 'hitch', TE: 'hitch', RB: [[1, .5], [4, .8], [11, 1]] } };
+
 const POOL = {
   X: ['go', 'slant', 'post', 'corner', 'out', 'dig', 'curl', 'comeback', 'hitch', 'fade'],
   Z: ['go', 'slant', 'post', 'corner', 'out', 'dig', 'curl', 'comeback', 'hitch', 'fade'],
@@ -91,20 +111,36 @@ export function setupPlay(G){
   const x = mk('X', 'off', L - .9, Math.max(3, b - 19), SPEED.X * oMul);
   const z = mk('Z', 'off', L - .9, Math.min(FW - 3, b + 19), SPEED.Z * oMul);
   const sl = mk('SL', 'off', L - 1.2, Math.min(b + 10.5, z.y - 5), SPEED.SL * oMul);
-  off.push(qb, rb, te, x, z, sl);
+  // Practice: only the receivers you asked for line up (the back always does, to block or take a handoff).
+  const PR = G.practice, out = p => PR && p.role !== 'RB' && !PR.roles.includes(p.role);
+  off.push(qb, rb, ...[te, x, z, sl].filter(p => !out(p)));
 
-  // Routes: X and Z never run the same one; the back sometimes stays in to block.
-  const rec = [x, te, rb, sl, z];
+  // Routes: X and Z never run the same one; the back sometimes stays in to block. In practice, the routes you
+  // picked (or a concept's), with the back blocking unless he's one of your receivers.
+  const rec = [x, te, rb, sl, z].filter(p => !out(p) && !(PR && p.role === 'RB' && !PR.roles.includes('RB')));
+  if (PR && !PR.roles.includes('RB')){ rb.routeName = 'block'; rb.route = []; rb.wp = 0; }
   const used = new Set();
+  // Called plays (in a game) and picked routes (in practice) set the routes; anything unset is random.
+  const plan = PR ? (PR.mode !== 'random' ? PR.routes : null) : G.call === 'run' ? RUN_CALL.routes : CONCEPTS[G.call]?.routes || null;
   for (const p of rec){
-    let r; do { r = pick(POOL[p.role]); } while (used.has(r) && p.role !== 'RB' && Math.random() < .8);
+    let r = plan?.[p.role];
+    if (Array.isArray(r)) r = 'block';   // the back on a called run: he gets the ball at the snap
+    if (!r || !ROUTES[r]){ do { r = pick(POOL[p.role]); } while (used.has(r) && p.role !== 'RB' && Math.random() < .8); }
     used.add(r);
-    const inside = p.role === 'RB' ? (Math.random() < .5 ? 1 : -1) : p.y < b ? 1 : -1;
+    // With a called play (or in practice) the back releases to his own side, matching the diagrams.
+    const inside = p.role === 'RB' ? (plan ? (rb.y < b ? 1 : -1) : Math.random() < .5 ? 1 : -1) : p.y < b ? 1 : -1;
     p.routeName = r;
     p.route = ROUTES[r].map(([dx, dy, stop]) => ({ x: Math.min(109, p.x + dx), y: clamp(p.y + dy * inside, 1.2, FW - 1.2), stop: !!stop }));
     p.wp = 0;
   }
   rec.forEach((p, i) => { p.num = i + 1; });
+
+  if (PR){   // no defense in practice
+    G.play = { off, def, qb, rb, rec, all: [...off], t: 0, live: false, ball: { state: 'held', holder: qb, x: qb.x, y: qb.y, z: 1.6 },
+      carrier: null, result: null, blitz: false, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [] };
+    for (const p of G.play.all) p.face = 1;
+    return;
+  }
 
   // Defense: four down linemen, three backers, two corners, two safeties.
   const deep = L > 88 ? Math.min(L + 9, 108) : L + 13, press = L > 88 ? L + 3 : L + 6;
@@ -279,7 +315,7 @@ export function step(G, dt, inp){
 }
 
 function becomeCarrier(P, p){
-  P.carrier = p; p.mode = 'carry'; P.ball.state = 'held'; P.ball.holder = p;
+  P.carrier = p; P.carryT = P.t; p.mode = 'carry'; P.ball.state = 'held'; P.ball.holder = p;
   for (const d of P.def){ d.mode = null; if (d.role === 'DL' && !d.eng) d.free = d.free || false; }
   // On a handoff, receivers turn into blockers on the nearest defender in front of them; after a catch they just
   // ease up (downfield blocking on a pass play is the exception, not the rule).
@@ -296,6 +332,8 @@ function becomeCarrier(P, p){
 
 function runCarrier(G, dt, inp){
   const P = G.play, c = P.carrier, D = G.diff;
+  // Practice has no one to tackle him: the whistle blows a moment after the catch or handoff.
+  if (G.practice && P.t - P.carryT > (P.handed ? 1.8 : 1.1)) return end(G, { type: 'whistle', x: c.x, y: c.y });
   if (c.dive > 0){
     c.dive -= dt; c.vx = c.spd * 1.15; c.vy *= .9; integrate(c, dt);
     if (c.dive <= 0) return end(G, { type: 'dive', x: c.x, y: c.y });
