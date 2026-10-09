@@ -6,7 +6,15 @@ pregame excitement scores, themes (gear button; dark Mono by default), and pins 
 
 ## Run locally
     python3 scripts/serve.py
-then open http://localhost:8000. It's Python's built-in server with browser caching turned off (so edits never mix
+then open http://localhost:8000.
+
+## Smoke test
+    node scripts/smoke.mjs
+Loads the board in headless Chrome (Node 22+, Chrome and Python needed) and checks that games render, every tab
+renders, game cards open with their details, the news drawer opens, the game plays a Quick game to the final, a
+practice session completes and My Playbook opens, with no errors on the page. About 30 seconds. The pre-commit hook
+(`.git/hooks/pre-commit`, local only) runs it on any commit touching `js/`, `css/` or the HTML pages; `SKIP_SMOKE=1`
+skips it once. With no connection to ESPN, the checks that need its data are skipped rather than failed. It's Python's built-in server with browser caching turned off (so edits never mix
 old and new modules) and room for the page's parallel downloads. The app uses ES modules, so it must be served over HTTP;
 opening index.html straight from disk won't work.
 

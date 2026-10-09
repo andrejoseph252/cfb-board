@@ -454,6 +454,13 @@ function routeRows(roles, routes, act){
     ${Object.entries(S.ROUTE_NAMES).map(([r, l]) => `<button type="button" data-pb="${act}" data-role="${role}" data-v="${r}" aria-pressed="${routes[role] === r}">${routeSVG(r)}<small>${l}</small></button>`).join('')}</div></div>`).join('');
 }
 
+/* Picking a route updates that row's highlight and the diagram in place, without re-rendering the screen, so every
+   row of route chips stays scrolled where you left it and you can tap along a row comparing routes. */
+function pickInPlace(btn, roles, routes){
+  for (const c of btn.closest('.pb-rchips').querySelectorAll('button')) c.setAttribute('aria-pressed', String(c === btn));
+  const svg = $('.pb-form svg'); if (svg) svg.outerHTML = drillPreview(roles, routes, G?.me?.color);
+}
+
 /* ---------- My Playbook: your own named plays ---------- */
 let editing = null;   // { id?, name, routes, back: 'playbook' | 'practice' }
 function playbookScreen(){
@@ -856,7 +863,7 @@ function onClick(e){
     case 'pbnew': return editPlay(null, 'playbook');
     case 'pbedit': return editPlay(findPlay(b.dataset.id), 'playbook');
     case 'pbsave': { const P = saved.practice; return editPlay({ routes: Object.fromEntries(practiceRoles().map(r => [r, P.routes[r]]).filter(([, v]) => v)) }, 'practice'); }
-    case 'eroute': { editing.routes[b.dataset.role] = b.dataset.v || undefined; return editPlay(editing, editing.back, true); }
+    case 'eroute': { editing.routes[b.dataset.role] = b.dataset.v || undefined; return pickInPlace(b, S.PRACTICE_ROLES, editing.routes); }
     case 'ecancel': return editing?.back === 'practice' ? practiceSetup() : playbookScreen();
     case 'esave': return savePlay();
     case 'pbdel': {
@@ -865,7 +872,7 @@ function onClick(e){
     }
     case 'callclose': return closeModal();
     case 'pset': { const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save(); return practiceSetup(true); }
-    case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return practiceSetup(true); }
+    case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return pickInPlace(b, practiceRoles(), practiceRoutes()); }
     case 'pstart': return startPractice();
     case 'psetup': return practiceSetup();
     case 'pagain': return startPractice();
