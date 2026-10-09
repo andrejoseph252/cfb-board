@@ -38,6 +38,7 @@ export function viewGame(id){
   return h;
 }
 
+const PAD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 8h10a4 4 0 0 1 4 4v1.5a3.5 3.5 0 0 1-6.3 2.1L13.5 14h-3l-1.2 1.6A3.5 3.5 0 0 1 3 13.5V12a4 4 0 0 1 4-4zM7.5 10.5v3M6 12h3M15.5 11.5h.01M17.5 13.5h.01"/></svg>';
 const REDDIT = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#FF4500"/><path fill="#fff" d="M16.7 10a1.5 1.5 0 0 0-2.5-1 7.2 7.2 0 0 0-3.8-1.2l.7-3 2.1.5a1 1 0 1 0 .1-.6l-2.4-.5a.3.3 0 0 0-.4.2l-.8 3.4a7.2 7.2 0 0 0-3.9 1.2 1.5 1.5 0 1 0-1.6 2.4 2.8 2.8 0 0 0 0 .5c0 2.2 2.6 4 5.8 4s5.8-1.8 5.8-4v-.5a1.5 1.5 0 0 0 .9-1.4zM6.7 11a1 1 0 1 1 1 1 1 1 0 0 1-1-1zm5.6 2.7a3.7 3.7 0 0 1-2.3.7 3.7 3.7 0 0 1-2.3-.7.3.3 0 0 1 .4-.4 3.1 3.1 0 0 0 1.9.5 3.1 3.1 0 0 0 1.9-.5.3.3 0 1 1 .4.4zm-.1-1.7a1 1 0 1 1 1-1 1 1 0 0 1-1 1z"/></svg>';
 
 /* r/CFB threads: game thread from about an hour before kickoff, postgame thread once it's final. */
@@ -50,9 +51,11 @@ function threadLinks(g){
   // Matched threads link straight in; anything we couldn't match falls back to an r/CFB search for that matchup.
   const links = [
     game ? btn(game, 'Game thread') : (g.state !== 'pre' || soon) ? find('Game Thread', 'Find game thread') : '',
-    post ? btn(post, 'Postgame thread') : g.state === 'post' ? find('Postgame Thread', 'Find postgame thread') : ''
+    post ? btn(post, 'Postgame thread') : g.state === 'post' ? find('Postgame Thread', 'Find postgame thread') : '',
+    // Pixel Bowl, the arcade game: play this matchup yourself.
+    `<button class="rbtn ghost" type="button" data-play="${esc(g.away.id)},${esc(g.home.id)}">${PAD}<span>Play this matchup</span></button>`
   ].filter(Boolean);
-  return links.length ? `<div class="rlinks">${links.join('')}</div>` : '';
+  return `<div class="rlinks">${links.join('')}</div>`;
 }
 
 const statTable = (g, rows) => `<table class="tbl compact vs"><thead><tr><th class="num">${esc(g.away.abbr)}</th><th></th><th class="num">${esc(g.home.abbr)}</th></tr></thead>

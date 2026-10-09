@@ -66,7 +66,9 @@ function mainHTML(){
     if (state.loading && !state.games.length) return `<div class="grid">${'<div class="skeleton"></div>'.repeat(6)}</div>`;
     if (!state.games.length) return '<div class="empty">No FBS games this week. Pick another week from the menu.</div>';
   }
-  return fn();
+  // Same for tabs: a bug in one shows an error there rather than taking down the page.
+  try{ return fn(); }
+  catch(e){ console.error(e); return `<div class="err"><b>Something went wrong showing this tab.</b> ${esc(e.message)}</div>`; }
 }
 function renderMain(){
   const html = mainHTML();
@@ -108,6 +110,8 @@ document.addEventListener('click', e => {
   if ('pickcancel' in d){ picking.on = false; return invalidate('main'); }
   if (d.pickconf){ Object.assign(picking, { conf: picking.conf === d.pickconf && !picking.q ? null : d.pickconf, q: '' }); return invalidate('main'); }
   if (t.id === 'newsBtn'){ location.hash = '#news'; return; }
+  if (t.id === 'playBtn'){ return openGame(); }
+  if (d.play){ return openGame(d.play.split(',')); }
   if (d.newsf) return setNewsFilter(d.newsf);
   if (d.newsopen){ setNewsFilter(d.newsopen); location.hash = '#news'; return; }
   if (t.id === 'retry') return loadBoard({ fresh: true });
@@ -142,6 +146,20 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'tq'){ e.preventDefault(); $('#pickList .pick-team')?.click(); }
 });
 window.addEventListener('hashchange', onHashChange);
+
+/* ---------- Pixel Bowl, the arcade game (loaded on demand, shown at #play) ---------- */
+let pb = null, pbPrefill = null, pbPushed = false;
+function openGame(prefill = null){ pbPrefill = prefill; pbPushed = true; location.hash = '#play'; }
+function exitGame(){
+  if (pbPushed){ pbPushed = false; history.back(); }
+  else { history.replaceState(null, '', location.pathname + location.search); syncGame(); }
+}
+function syncGame(){
+  const want = location.hash === '#play';
+  if (want && !pb?.isOpen()) import('./game/pixelbowl.js').then(m => { pb = m; m.open({ prefill: pbPrefill, exit: exitGame }); pbPrefill = null; }).catch(e => console.error(e));
+  else if (!want && pb?.isOpen()) pb.close();
+}
+window.addEventListener('hashchange', syncGame);
 /* Week picker (see weekpicker.js). Picking the current week goes back to following ESPN's current week. */
 function goWeek(v){
   if (!v || v === `${state.st}-${state.week}`) return;
@@ -155,6 +173,7 @@ function goWeek(v){
 new ResizeObserver(([e]) => document.documentElement.style.setProperty('--tabs-h', e.target.offsetHeight + 'px')).observe($('.tabs'));
 initSettings();
 initWeekPicker(goWeek);
+syncGame();
 initHistory();
 invalidate();
 loadBoard();

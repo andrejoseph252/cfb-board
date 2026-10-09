@@ -57,7 +57,7 @@ export function initWeekPicker(goWeek){
   document.addEventListener('click', e => { if (!panel.hidden && !e.target.closest('.wkstep')) close(); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !panel.hidden){ close(); btn.focus(); return; }
-    if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || route()) return;
+    if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || route() || document.body.classList.contains('pb-open')) return;
     if (e.target.closest?.('input, select, textarea, [role="tablist"], [contenteditable]')) return;
     step(e.key === 'ArrowLeft' ? -1 : 1);
   });
