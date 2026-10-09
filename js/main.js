@@ -24,7 +24,7 @@ if (state.tab === 'power') state.tab = 'rankings';
 if (!TABS.some(([k]) => k === state.tab)) state.tab = 'week';
 
 /* ---------- rendering ---------- */
-let lastTabs = '', lastMain = '';
+let lastTabs = '', lastMain = '', firstPaint = false;
 function renderHeader(){
   $('#wkTitle').textContent = state.week ? weekLabel(state.st, state.week) : 'This week';
   const gs = state.games, live = gs.filter(g => g.state === 'in').length, rr = gs.filter(g => g.home.rank && g.away.rank).length;
@@ -75,6 +75,7 @@ function renderMain(){
   if (html === lastMain) return;
   const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq';
   v.innerHTML = html; lastMain = html;
+  if (!firstPaint && state.games.length){ firstPaint = true; settle(); }
   const box = keep ? $('#' + fid) : null;
   if (box){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
   // Team picker: put the cursor in its search box (desktop only; on phones that would pop the keyboard).
@@ -169,6 +170,21 @@ function goWeek(v){
 }
 
 /* ---------- boot ---------- */
+/* Opened from the iPhone home screen, iOS sometimes paints the first frames before it has settled the scroll
+   position under the translucent status bar, so the page sits shifted down until the first touch. Until you touch
+   or scroll, nudge it into place whenever things settle (and don't let iOS restore an old scroll position). */
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+let touched = false;
+const settle = () => {
+  if (touched || location.hash || window.scrollY > 0) return;
+  requestAnimationFrame(() => { window.scrollTo(0, 1); window.scrollTo(0, 0); });
+};
+for (const ev of ['touchstart', 'wheel', 'keydown']) window.addEventListener(ev, () => { touched = true; }, { once: true, passive: true });
+window.addEventListener('load', settle);
+window.addEventListener('pageshow', settle);
+document.addEventListener('visibilitychange', () => { if (!document.hidden){ touched = false; settle(); } });
+for (const ms of [0, 250, 800, 2000]) setTimeout(settle, ms);
+
 // Sticky group headers sit just below the sticky tab bar, whose height depends on font and screen size.
 new ResizeObserver(([e]) => document.documentElement.style.setProperty('--tabs-h', e.target.offsetHeight + 'px')).observe($('.tabs'));
 initSettings();
