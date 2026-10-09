@@ -1,6 +1,25 @@
 {
- "updated": "2026-10-09T13:54:15+00:00",
+ "updated": "2026-10-09T19:06:01+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Non-D1 Games \u2014 Friday, October 9",
+   "url": "https://www.reddit.com/r/CFB/comments/1x1rlmx/game_thread_nond1_games_friday_october_9/",
+   "published": "2026-10-09T17:33:49+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Florida A&M @ Alabama State (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x1nmfu/game_thread_florida_am_alabama_state_1200_pm_et/",
+   "published": "2026-10-09T15:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Florida A&M",
+    "Alabama State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] South Alabama Defeats Arkansas State 56-49",
