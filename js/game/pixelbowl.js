@@ -978,7 +978,10 @@ body.pb-open{overflow:hidden}
 .pb-banner span{font-size:10px;text-shadow:2px 2px 0 #000;background:#000;padding:4px 8px}
 @keyframes pbBan{to{opacity:1;transform:none}}
 @keyframes pbBlink{50%{filter:brightness(1.35)}}
-.pb-modal{position:absolute;inset:0;display:none;place-items:center;padding:16px;background:rgba(5,7,10,.72);overflow:auto}
+/* Menus stay clear of the phone's status bar / notch and home bar (plus a little room), never under them. */
+.pb{--pb-top:calc(env(safe-area-inset-top,0px) + 14px);--pb-bot:calc(env(safe-area-inset-bottom,0px) + 14px)}
+.pb-modal{position:absolute;inset:0;display:none;place-items:center;background:rgba(5,7,10,.72);overflow:auto;
+  padding:var(--pb-top) calc(env(safe-area-inset-right,0px) + 14px) var(--pb-bot) calc(env(safe-area-inset-left,0px) + 14px)}
 .pb-modal.on{display:grid}
 .pb-modal.light{background:transparent;pointer-events:none;align-items:end;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 70px)}
 .pb-modal.light .pb-card{pointer-events:auto}
@@ -991,7 +994,7 @@ body.pb-open{overflow:hidden}
 .pb-go:active{transform:translateY(3px);box-shadow:0 1px 0 #000}
 .pb-go.alt{background:#2c3138;color:#f4f4ee !important}
 .pb-go[hidden],.pb-dres[hidden],.pb-dsub[hidden],.pb-toss[hidden]{display:none}
-.pb-setup{max-width:560px;text-align:left;position:relative;max-height:calc(100dvh - 32px);overflow:auto}
+.pb-setup{max-width:560px;text-align:left;position:relative;max-height:calc(100dvh - var(--pb-top) - var(--pb-bot));overflow:auto}
 .pb-x{position:absolute;right:10px;top:10px;width:32px;height:32px;display:grid;place-items:center;background:#2c3138;border:2px solid #000}
 .pb-x svg{width:14px;height:14px}
 .pb-logo{margin:4px 0 2px;padding:0 36px;text-align:center;font-size:clamp(14px,4.4vw,30px);font-weight:400;line-height:1.05;display:grid;color:#ffd84a;text-shadow:3px 3px 0 #b5470f,6px 6px 0 #000}
