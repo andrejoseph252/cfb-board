@@ -1,6 +1,50 @@
 {
- "updated": "2026-10-08T20:16:47+00:00",
+ "updated": "2026-10-09T00:43:27+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] South Alabama @ Arkansas State (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x14t11/game_thread_south_alabama_arkansas_state_730_pm_et/",
+   "published": "2026-10-08T22:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "South Alabama",
+    "Arkansas State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] USF @ UTSA (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x14t07/game_thread_usf_utsa_730_pm_et/",
+   "published": "2026-10-08T22:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "USF",
+    "UTSA"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Missouri State @ WKU (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x144mu/game_thread_missouri_state_wku_700_pm_et/",
+   "published": "2026-10-08T22:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "Missouri State",
+    "WKU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Sam Houston @ Liberty (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x144m0/game_thread_sam_houston_liberty_700_pm_et/",
+   "published": "2026-10-08T22:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Sam Houston",
+    "Liberty"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] FIU Defeats New Mexico State 22-3",
