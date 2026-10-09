@@ -141,6 +141,13 @@ export function setupPlay(G){
     G.play = { off, def, qb, rb, rec, all: [...off], t: 0, live: false, ball: { state: 'held', holder: qb, x: qb.x, y: qb.y, z: 1.6 },
       carrier: null, result: null, blitz: false, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [] };
     for (const p of G.play.all) p.face = 1;
+    // Target drill: one receiver is the man to hit this rep (never the same one three times running).
+    if (PR.target){
+      const open = rec.filter(r => r.routeName !== 'block'), recent = G.recentTargets || [];
+      const fresh = open.filter(r => !(recent.length >= 2 && recent[0] === r.role && recent[1] === r.role));
+      const t = pick(fresh.length ? fresh : open);
+      if (t){ G.play.target = t; G.recentTargets = [t.role, ...recent].slice(0, 2); }
+    }
     return;
   }
 
@@ -409,7 +416,7 @@ export function throwTo(G, tx, ty){
   if (r && dist(at(r), land) < 7 && dist(r, land) < r.spd * T + 1.5) r.mode = 'ball';
   P.reactAt = P.t + D.react;
   for (const df of P.def) if (df.role !== 'DL' && dist(df, land) < 22) df.pendingBall = true;
-  if (G.practice) P.grade = gradeThrow(P, land, T, P.aimedAt);
+  if (G.practice) P.grade = gradeThrow(P, land, T, P.target || P.aimedAt, !!P.target);
   P.aimedAt = null;
 }
 
@@ -429,8 +436,14 @@ export function ghostAt(p, T){
 /* Grades a throw against the receiver it was meant for (the one whose path the ball lands nearest):
    timing = in stride along his path (a slight lead is ideal; behind him or too far ahead costs), accuracy = how far
    to the side of his path, release = how quickly it came out. 0-100 each; the score weights timing most. */
-export function gradeThrow(P, land, T, aimedAt){
-  // A throw at a named receiver (keys 1-5) is judged against him; otherwise against whoever it lands nearest.
+export function gradeThrow(P, land, T, aimedAt, strict){
+  // Target drill: a ball that clearly goes to someone else (lands nearer a decoy's path, and close to it) scores 0.
+  if (strict){
+    const near = P.rec.filter(r => r.routeName !== 'block').map(r => ({ r, d: dist(ghostAt(r, T), land) })).sort((a, b) => a.d - b.d)[0];
+    if (near && near.r !== aimedAt && near.d < 3.5)
+      return { score: 0, timing: 0, accuracy: 0, release: Math.round(clamp(100 - Math.max(0, P.t - 2.2) * 28, 0, 100)), word: 'WRONG RECEIVER', who: aimedAt.role, wrong: true };
+  }
+  // A throw at a named receiver (keys 1-5, or the target) is judged against him; otherwise against whoever it lands nearest.
   const cands = P.rec.filter(r => r.routeName !== 'block' && (!aimedAt || r === aimedAt)).map(r => ({ r, g: ghostAt(r, T) }));
   const best = cands.sort((a, b) => dist(a.g, land) - dist(b.g, land))[0];
   const release = P.t, rel = clamp(100 - Math.max(0, release - 2.2) * 28, 0, 100);

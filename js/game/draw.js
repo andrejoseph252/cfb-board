@@ -234,8 +234,10 @@ export function createRenderer(canvas){
         pts.push([w.x, w.y]); left -= d;
       }
       const sp = pts.map(([x, y]) => toScreen(x, y));
-      dotted(sp, 'rgba(255,240,170,.8)', 3);
-      const [ex, ey] = sp[sp.length - 1]; ctx.fillStyle = 'rgba(255,240,170,.95)'; ctx.fillRect(ex - 1, ey - 1, 3, 3);
+      // In a target drill the target's route is bright gold and the decoys' fade back.
+      const T = G.play.target, col = !T ? 'rgba(255,240,170,.8)' : r === T ? 'rgba(255,216,74,1)' : 'rgba(255,255,255,.22)';
+      dotted(sp, col, r === T ? 2 : 3);
+      const [ex, ey] = sp[sp.length - 1]; ctx.fillStyle = col; ctx.fillRect(ex - 1, ey - 1, 3, 3);
     }
   }
   function labels(G){
@@ -262,18 +264,18 @@ export function createRenderer(canvas){
   }
   /* The running back glows before and just after the snap: tap him to hand off (ring at his feet, under the
      sprites; arrow above his head, over them). */
-  function handoffRing(G){
-    const rb = G.play.rb, [sx, sy] = toScreen(rb.x, rb.y), pulse = (Math.sin(t * 7) + 1) / 2;
+  function handoffRing(G, rb = G.play.rb, rgb = '125,249,255'){
+    const [sx, sy] = toScreen(rb.x, rb.y), pulse = (Math.sin(t * 7) + 1) / 2;
     const rx = 7 + Math.round(pulse * 2), ry = 3 + Math.round(pulse);
-    ctx.fillStyle = `rgba(125,249,255,${.55 + pulse * .45})`;
+    ctx.fillStyle = `rgba(${rgb},${.55 + pulse * .45})`;
     for (let a = 0; a < 28; a++){ const th = a / 28 * Math.PI * 2; ctx.fillRect(Math.round(sx + Math.cos(th) * rx), Math.round(sy + Math.sin(th) * ry), 1, 1); }
   }
   /* The running back glows before and just after the snap: tap him to hand off. */
-  function handoffMark(G){
-    const rb = G.play.rb, [sx, sy] = toScreen(rb.x, rb.y), pulse = (Math.sin(t * 7) + 1) / 2;
+  function handoffMark(G, rb = G.play.rb, col = '#7df9ff'){
+    const [sx, sy] = toScreen(rb.x, rb.y);
     const b = Math.floor(t * 6) % 2;
     ctx.fillStyle = '#101010'; ctx.fillRect(sx - 3, sy - 19 - b, 7, 4);
-    ctx.fillStyle = '#7df9ff'; ctx.fillRect(sx - 2, sy - 18 - b, 5, 1); ctx.fillRect(sx - 1, sy - 17 - b, 3, 1); ctx.fillRect(sx, sy - 16 - b, 1, 1);
+    ctx.fillStyle = col; ctx.fillRect(sx - 2, sy - 18 - b, 5, 1); ctx.fillRect(sx - 1, sy - 17 - b, 3, 1); ctx.fillRect(sx, sy - 16 - b, 1, 1);
   }
   function carrierMark(G){
     const c = G.play.carrier; if (!c || c.down) return;
@@ -372,11 +374,13 @@ export function createRenderer(canvas){
       if (!P.live && !P.result && view.routes) routes(G);
       if (P.live && canThrow(G) && !view.aim) labels(G);
       if (view.handoff && !P.carrier) handoffRing(G);
+      if (P.target && !P.thrown && !P.carrier) handoffRing(G, P.target, '255,216,74');   // the target drill's man to hit
       const order = [...P.all].sort((a, b) => toScreen(a.x, a.y)[1] - toScreen(b.x, b.y)[1]);
       for (const p of order) player(G, p);
       ball(G);
       carrierMark(G);
       if (view.handoff && !P.carrier) handoffMark(G);
+      if (P.target && !P.thrown && !P.carrier) handoffMark(G, P.target, '#ffd84a');
       if (view.aim) { labels(G); aimArc(G, view.aim); }
       effects(P, dt);
     }

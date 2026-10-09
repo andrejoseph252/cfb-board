@@ -18,7 +18,7 @@ const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...stor
 delete saved.record; saved.results ||= {};
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
-const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, session: 'quick' };
+const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, session: 'quick', target: 'on' };
 /* A practice session is a set number of throws (handoffs don't count); finished sessions are saved to history. */
 const SESSIONS = { quick: { name: 'Quick', n: 5 }, normal: { name: 'Normal', n: 10 }, long: { name: 'Long', n: 20 } };
 saved.sessions = Array.isArray(saved.sessions) ? saved.sessions : [];
@@ -149,7 +149,7 @@ function loop(ts){
   const dt = Math.min(.05, last ? (ts - last) / 1000 : 0); last = ts;
   if (!paused && G){ acc += dt; while (acc >= STEP){ update(STEP); acc -= STEP; } }
   if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes,
-    handoff: !aim?.active && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
+    handoff: !aim?.active && !G.play?.target && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
   if (G) drain();
   hud();
 }
@@ -624,6 +624,7 @@ function practiceSetup(keepScroll){
     <div class="pb-opt"><span>Routes</span>${seg('mode', [['random', 'Random'], ['concept', 'Concepts'], ['pick', 'Pick routes']])}</div>
     ${routesUI}
     <div class="pb-opt"><span>Start at</span>${seg('spot', SPOTS)}</div>
+    <div class="pb-opt"><span>Throw to</span>${seg('target', [['on', 'Called target'], ['off', 'Anyone']])}</div>
     <div class="pb-opt"><span>Session</span>${seg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.name} · ${x.n}`]))}</div>
     <button class="pb-go" type="button" data-pb="pstart">START ${SESSIONS[P.session].name.toUpperCase()} SESSION</button>
     ${historyHTML()}
@@ -636,9 +637,9 @@ function startPractice(){
   const me = G.me, opp = G.opp;
   closeModal();
   G = S.newGame(me, opp, saved.diff, saved.len);
-  G.practice = { roles: practiceRoles(), mode: saved.practice.mode, routes: practiceRoutes() };
+  G.practice = { roles: practiceRoles(), mode: saved.practice.mode, routes: practiceRoutes(), target: saved.practice.target === 'on' };
   G.ps = { att: 0, comp: 0, yds: 0, td: 0, long: 0, runs: 0, runYds: 0, last: '', gradeSum: 0, graded: 0, streak: 0, bestStreak: 0, best: 0,
-    timing: 0, accuracy: 0, release: 0, inStride: 0, n: SESSIONS[saved.practice.session]?.n || 5, session: saved.practice.session, drill: drillName() };
+    timing: 0, accuracy: 0, release: 0, inStride: 0, targeted: 0, hits: 0, n: SESSIONS[saved.practice.session]?.n || 5, session: saved.practice.session, drill: drillName() };
   snaps = 0; showHud(true);
   practiceRep(true);
 }
@@ -663,6 +664,7 @@ function practiceAfter(){
       const g = P.grade; ps.gradeSum += g.score; ps.graded++; ps.best = Math.max(ps.best, g.score);
       ps.streak = g.inStride ? ps.streak + 1 : 0; ps.bestStreak = Math.max(ps.bestStreak, ps.streak);
       ps.timing += g.timing; ps.accuracy += g.accuracy; ps.release += g.release; if (g.inStride) ps.inStride++;
+      if (P.target){ ps.targeted++; if (!g.wrong) ps.hits++; }
     }
     if (r.type !== 'inc'){ ps.comp++; ps.yds += gain; ps.long = Math.max(ps.long, gain); if (r.type === 'td') ps.td++; ps.last = `${who}: ${gain} yds${r.type === 'td' ? ', TD' : ''}`; }
     else ps.last = r.why || 'Incomplete';
@@ -673,7 +675,7 @@ function practiceAfter(){
 function drillName(){
   const P = saved.practice, n = practiceRoles().length;
   const routes = P.mode === 'concept' ? (P.concept?.startsWith('u:') ? findPlay(P.concept.slice(2))?.name : S.CONCEPTS[P.concept]?.name) : P.mode === 'pick' ? 'Your routes' : 'Random';
-  return `${n} WR · ${routes} · ${SPOTS.find(([v]) => v === P.spot)?.[1] || ''}`;
+  return `${n} WR · ${routes} · ${SPOTS.find(([v]) => v === P.spot)?.[1] || ''}${P.target === 'on' ? ' · target' : ''}`;
 }
 /* The end of a session: save it to history and show the summary. */
 function finishSession(){
@@ -694,6 +696,7 @@ function finishSession(){
     ${best ? '<p class="pb-pb">NEW PERSONAL BEST</p>' : ''}
     <div class="pb-ss"><div><b>${ps.comp}/${ps.att}</b><span>Completions</span></div><div><b>${ps.yds}</b><span>Yards</span></div>
       <div><b>${rec.inStride}%</b><span>In stride</span></div><div><b>${ps.bestStreak}</b><span>Best streak</span></div></div>
+    ${ps.targeted ? `<p class="pb-sub">Target hits: <b style="color:${gradeColor(Math.round(ps.hits / ps.targeted * 100))}">${ps.hits}/${ps.targeted}</b></p>` : ''}
     <div class="pb-gbars wide">${bar('TIMING', rec.timing)}${bar('ACCURACY', rec.accuracy)}${bar('RELEASE', rec.release)}</div>
     <p class="pb-sub">${esc(ps.drill)} · saved to your history</p>
     <div class="pb-btns"><button class="pb-go" type="button" data-pb="pagain">GO AGAIN</button><button class="pb-go alt" type="button" data-pb="psetup">CHANGE DRILL</button></div>
@@ -721,7 +724,7 @@ function showGrade(g){
   const el = $('.pb-grade'); if (!el) return;
   const bar = (k, v) => `<div class="pb-gb"><span>${k}</span><i><b style="width:${v}%;background:${gradeColor(v)}"></b></i></div>`;
   el.innerHTML = `<b class="pb-gl" style="color:${gradeColor(g.score)}">${letter(g.score)}</b>
-    <div class="pb-gw"><em>${esc(g.word)}</em><span>${g.score}${g.who ? ` · ${esc(S.ROLE_NAMES[g.who] || '')}` : ''}</span></div>
+    <div class="pb-gw"><em>${esc(g.word)}</em><span>${g.score}${g.who ? ` · ${G.play?.target ? 'target: ' : ''}${esc(S.ROLE_NAMES[g.who] || '')}` : ''}</span></div>
     <div class="pb-gbars">${bar('TIMING', g.timing)}${bar('ACCURACY', g.accuracy)}${bar('RELEASE', g.release)}</div>`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   clearTimeout(gradeTimer); gradeTimer = setTimeout(() => el.classList.remove('on'), 2600);
@@ -815,6 +818,7 @@ function hintText(){
     return '';
   }
   if (snaps > 8 && saved.diff !== 'rookie') return '';
+  if (G.practice && G.play?.target && (phase === 'presnap' || phase === 'live' && S.canThrow(G))) return `Hit the gold target: the ${(S.ROLE_NAMES[G.play.target.role] || '').toLowerCase()} · press and pull back`;
   if (phase === 'presnap') return G.call === 'run' ? (touch ? 'Tap to snap and run' : 'Click or press Space to snap and run') : touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
   if (phase === 'live'){
     if (G.play.carrier) return touch ? 'Drag to steer · flick sideways to juke · flick ahead to dive' : `${R.portrait ? '← →' : '↑ ↓'} steer · Space juke · X dive · or drag`;
