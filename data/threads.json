@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-09T19:06:01+00:00",
+ "updated": "2026-10-09T23:37:19+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Columbia @ Marist (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x1ya79/game_thread_columbia_marist_700_pm_et/",
+   "published": "2026-10-09T22:00:11+00:00",
+   "gameId": null,
+   "teams": [
+    "Columbia",
+    "Marist"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Florida State @ Louisville (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x1ya6o/game_thread_florida_state_louisville_700_pm_et/",
+   "published": "2026-10-09T22:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Florida State",
+    "Louisville"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Florida A&M Defeats Alabama State 28-27",
+   "url": "https://www.reddit.com/r/CFB/comments/1x1ufje/postgame_thread_florida_am_defeats_alabama_state/",
+   "published": "2026-10-09T19:22:54+00:00",
+   "gameId": "401868329",
+   "teams": [
+    "Florida A&M",
+    "Alabama State"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Non-D1 Games \u2014 Friday, October 9",
