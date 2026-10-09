@@ -16,7 +16,11 @@ const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
 const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...store.get('pixelbowl', {}) };
 delete saved.record; saved.results ||= {};
-saved.practice = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, ...saved.practice };
+/* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
+   the route preview are the only choices kept). */
+const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25 };
+const freshSettings = () => { saved.diff = 'rookie'; saved.len = 'quick'; saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; };
+freshSettings();
 const save = () => store.set('pixelbowl', saved);
 const coarse = () => matchMedia('(pointer: coarse)').matches;
 const ord = n => ['1ST', '2ND', '3RD', '4TH'][n - 1] || `${n}TH`;
@@ -81,6 +85,7 @@ const $ = s => root?.querySelector(s);
 /* ---------- open / close ---------- */
 export function open({ prefill = null, exit = () => {} } = {}){
   onExit = exit; openPrefill = prefill; waitingData = !(state.standings && colors);
+  if (!root) freshSettings();
   if (root){ if (prefill && phase === 'setup'){ pick = defaults(prefill); setup(); } return; }
   if (!document.getElementById('pb-font')){
     const l = Object.assign(document.createElement('link'), { id: 'pb-font', rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap' });
@@ -236,6 +241,7 @@ function startMyDrive(x){
 }
 function presnap(){
   if (!G.ot && G.clock <= 0) return clockOut();
+  G.call = null;   // a called play is for one snap; every play starts back on Random
   S.setupPlay(G); phase = 'presnap'; aim = null; resetInput();
   if (G.down === 4 && !G.twoPt) fourthDown();
 }
@@ -413,7 +419,7 @@ function otCheck(){
 }
 
 /* ---------- play calling (in a game) ---------- */
-/* A compact sheet of play cards before the snap. The call sticks until you change it; Random is the default. */
+/* A compact sheet of play cards before the snap. A call lasts one play; Random is the default. */
 function playSheet(){
   if (phase !== 'presnap' || G.practice || $('.pb-modal').classList.contains('on')) return;
   const all = S.PRACTICE_ROLES, card = (v, name, tip, routes) => `<button type="button" data-pb="callpick" data-v="${v}" aria-pressed="${(G.call || '') === v}">
@@ -422,7 +428,7 @@ function playSheet(){
     <div class="pb-callrow">${card('', 'Random', 'Mix it up, like always', {})}
       ${Object.entries(S.CONCEPTS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('')}
       ${card('run', S.RUN_CALL.name, S.RUN_CALL.tip, S.RUN_CALL.routes)}</div>
-    <p class="pb-sub">Your call sticks until you change it.</p></div>`, true, 'call');
+    <p class="pb-sub">Your call is for this play only.</p></div>`, true, 'call');
   const row = $('.pb-callrow'), on = row.querySelector('[aria-pressed="true"]');
   if (on) row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
 }
@@ -701,7 +707,7 @@ function onClick(e){
   switch (a){
     case 'exit': return onExit();
     case 'start': return startGame();
-    case 'practice': return practiceSetup();
+    case 'practice': saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; return practiceSetup();
     case 'call': return playSheet();
     case 'callpick': { G.call = b.dataset.v || null; closeModal(); if (phase === 'presnap') S.setupPlay(G); return; }
     case 'callclose': return closeModal();

@@ -79,7 +79,7 @@ export const CONCEPTS = {
   dagger:  { name: 'Dagger', tip: 'Seam clears out the dig', routes: { X: 'dig', Z: 'post', SL: 'seam', TE: 'stick', RB: 'flat' } },
   outs:    { name: 'Outs', tip: 'Timing throws to the sideline', routes: { X: 'out', Z: 'out', SL: 'out', TE: 'out', RB: 'flat' } }
 };
-/* In a game, a called play: null (random routes, the default), a concept above, or 'run' (snap goes straight to
+/* In a game, the play called for this snap: null (random routes, the default), a concept above, or 'run' (snap goes straight to
    the back; the receivers run short routes and turn into blockers). */
 export const RUN_CALL = { name: 'Inside Run', tip: 'Snap goes straight to the back', routes: { X: 'hitch', Z: 'hitch', SL: 'hitch', TE: 'hitch', RB: [[1, .5], [4, .8], [11, 1]] } };
 
