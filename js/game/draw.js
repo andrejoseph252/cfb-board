@@ -346,7 +346,8 @@ export function createRenderer(canvas){
     // on a phone; for kicks, the uprights (which stand ~10 yards tall) too. The camera may look past the end line
     // into the stands to do it.
     const far = K ? 120 : 110;
-    if (fx + long / 2 > 96) tx = Math.max(tx, far + long * .2 - long / 2);
+    // ...but never so far that the ball itself drifts to the edge of the screen.
+    if (fx + long / 2 > 96) tx = Math.max(tx, Math.min(far + long * .2 - long / 2, fx + long * .25));
     if (K) tx = Math.min(tx, K.spotX - 3 + long / 2);   // ...without losing the kicker off the near edge
     tx = long >= 128 ? 50 : clamp(tx, -13 + long / 2, 140 - long / 2);
     ty = lat >= FW + 14 ? MID : clamp(ty, lat / 2 - 7, FW + 7 - lat / 2);

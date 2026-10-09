@@ -407,6 +407,46 @@ export function throwTo(G, tx, ty){
   if (r && dist(at(r), land) < 7 && dist(r, land) < r.spd * T + 1.5) r.mode = 'ball';
   P.reactAt = P.t + D.react;
   for (const df of P.def) if (df.role !== 'DL' && dist(df, land) < 22) df.pendingBall = true;
+  if (G.practice) P.grade = gradeThrow(P, land, T, P.aimedAt);
+  P.aimedAt = null;
+}
+
+/* ---------- throw grading (practice) ---------- */
+/* Where a receiver would be after T seconds if he just kept running his route: the same movement code the game
+   uses, run on a copy of him. */
+export function ghostAt(p, T){
+  const g = { x: p.x, y: p.y, vx: p.vx, vy: p.vy, wp: p.wp, route: p.route, spd: p.spd, step: 0, face: 1 };
+  for (let t = 0; t < T; t += 1 / 60){
+    const w = g.route[g.wp];
+    if (!w) moveToward(g, g.x, g.y, 0, 1 / 60);
+    else { moveToward(g, w.x, w.y, g.spd, 1 / 60, 9); if (dist(g, w) < .7 && (!w.stop || g.wp < g.route.length - 1)) g.wp++; }
+    integrate(g, 1 / 60);
+  }
+  return g;
+}
+/* Grades a throw against the receiver it was meant for (the one whose path the ball lands nearest):
+   timing = in stride along his path (a slight lead is ideal; behind him or too far ahead costs), accuracy = how far
+   to the side of his path, release = how quickly it came out. 0-100 each; the score weights timing most. */
+export function gradeThrow(P, land, T, aimedAt){
+  // A throw at a named receiver (keys 1-5) is judged against him; otherwise against whoever it lands nearest.
+  const cands = P.rec.filter(r => r.routeName !== 'block' && (!aimedAt || r === aimedAt)).map(r => ({ r, g: ghostAt(r, T) }));
+  const best = cands.sort((a, b) => dist(a.g, land) - dist(b.g, land))[0];
+  const release = P.t, rel = clamp(100 - Math.max(0, release - 2.2) * 28, 0, 100);
+  if (!best || !aimedAt && dist(best.g, land) > 7) return { score: Math.round(rel * .15), timing: 0, accuracy: 0, release: Math.round(rel), word: 'NO ONE THERE', who: null };
+  const { r, g } = best, ex = land.x - g.x, ey = land.y - g.y, sp = Math.hypot(g.vx, g.vy);
+  let along = 0, cross = Math.hypot(ex, ey), moving = sp > 2;
+  if (moving){ const ux = g.vx / sp, uy = g.vy / sp; along = ex * ux + ey * uy; cross = Math.abs(ex * uy - ey * ux); }
+  const timing = clamp(along < -.6 ? 100 - (-.6 - along) * 35 : along > 1 ? 100 - (along - 1) * 30 : 100, 0, 100);
+  const accuracy = clamp(100 - Math.max(0, cross - .5) * 32, 0, 100);
+  const score = Math.round(timing * .5 + accuracy * .35 + rel * .15);
+  // The verdict names the biggest problem, or the praise.
+  let word;
+  if (score >= 93 && timing >= 92 && accuracy >= 90) word = moving ? 'PERFECT' : 'RIGHT ON HIM';
+  else if (timing < 85 && (100 - timing) >= (100 - accuracy)) word = along < 0 ? (along < -2 ? 'BEHIND HIM' : 'A HAIR BEHIND') : (along > 2.5 ? 'LED TOO FAR' : 'A BIT FAR');
+  else if (accuracy < 80) word = 'OFF TARGET';
+  else if (rel < 70) word = 'LATE RELEASE';
+  else word = moving ? 'IN STRIDE' : 'ON THE SPOT';
+  return { score, timing: Math.round(timing), accuracy: Math.round(accuracy), release: Math.round(rel), word, who: r.role, inStride: timing >= 85 && accuracy >= 70 };
 }
 /* Throwing to a numbered receiver (keyboard): leads him by his current velocity, with some error by difficulty. */
 export function throwToReceiver(G, num){
@@ -415,6 +455,7 @@ export function throwToReceiver(G, num){
   for (let i = 0; i < 4; i++){ const tx = r.x + r.vx * T, ty = r.y + r.vy * T; T = .3 + Math.hypot(tx - qb.x, ty - qb.y) / 24; }
   const g = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
   const e = G.diff.keyErr * (.6 + Math.hypot(r.x - qb.x, r.y - qb.y) / 30);
+  P.aimedAt = r;
   throwTo(G, r.x + r.vx * T + g() * e, r.y + r.vy * T + g() * e);
   return true;
 }

@@ -97,7 +97,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
   root.innerHTML = `<canvas class="pb-cv"></canvas>
     <div class="pb-hud" hidden><div class="pb-bug"></div><div class="pb-dd"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
-    <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-modal"></div>`;
+    <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
   canvas = $('.pb-cv'); R = createRenderer(canvas); R.resize();
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
@@ -544,7 +544,8 @@ function practiceSetup(keepScroll){
       ${Object.entries(S.ROUTE_NAMES).map(([r, l]) => `<button type="button" data-pb="proute" data-role="${role}" data-v="${r}" aria-pressed="${P.routes[role] === r}">${routeSVG(r)}<small>${l}</small></button>`).join('')}</div></div>`).join('');
   modal(`<div class="pb-setup pb-practice">
     <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
-    <p class="pb-sub">No defense, no clock: every rep starts from the same spot. Throwing for ${esc(G.me.name)}.</p>
+    <p class="pb-sub">No defense, no clock: every rep starts from the same spot. Throwing for ${esc(G.me.name)}. Every throw is graded on timing (in stride), accuracy and release.</p>
+    ${saved.lastPractice ? `<p class="pb-sub pb-lastp">Last session: ${saved.lastPractice.throws} throw${saved.lastPractice.throws === 1 ? '' : 's'} · avg <b style="color:${gradeColor(saved.lastPractice.avg)}">${letter(saved.lastPractice.avg)}</b> (${saved.lastPractice.avg}) · best in-stride streak ${saved.lastPractice.bestStreak}</p>` : ''}
     <div class="pb-form">${drillPreview(roles, routes, G.me.color)}
       <p>${roles.length} receiver${roles.length === 1 ? '' : 's'} out · ${P.mode === 'concept' ? esc(S.CONCEPTS[P.concept]?.name || '') : P.mode === 'pick' ? 'Your routes' : 'Random routes'}</p></div>
     <div class="pb-opt"><span>Receivers out</span>${seg('count', [1, 2, 3, 4, 5].map(n => [n, n]))}</div>
@@ -562,7 +563,7 @@ function startPractice(){
   closeModal();
   G = S.newGame(me, opp, saved.diff, saved.len);
   G.practice = { roles: practiceRoles(), mode: saved.practice.mode, routes: practiceRoutes() };
-  G.ps = { att: 0, comp: 0, yds: 0, td: 0, long: 0, runs: 0, runYds: 0, last: '' };
+  G.ps = { att: 0, comp: 0, yds: 0, td: 0, long: 0, runs: 0, runYds: 0, last: '', gradeSum: 0, graded: 0, streak: 0, bestStreak: 0, best: 0 };
   snaps = 0; showHud(true);
   practiceRep(true);
 }
@@ -573,6 +574,7 @@ function practiceRep(snapCam){
 }
 function practicePlayOver(r){
   const P = G.play, gain = Math.round(Math.min(r.x ?? P.los, 100) - P.los);
+  if (P.grade) showGrade(P.grade);
   if (r.type === 'td'){ banner('TOUCHDOWN!', '', G.me.color, 1300); sfx('td'); G.cheer = 2; deadWait = 1.6; }
   else if (r.type === 'inc'){ sfx('drop'); P.pops.push({ x: P.ball.tx, y: P.ball.ty, text: (r.why || 'Incomplete').toUpperCase(), color: '#fff', t: 0 }); }
   else { sfx('whistle'); P.pops.push({ x: r.x, y: r.y, text: `${gain >= 0 ? '+' : ''}${gain} YDS`, color: gain >= 10 ? '#4cff7a' : '#fff', t: 0 }); }
@@ -582,21 +584,43 @@ function practiceAfter(){
   const who = P.carrier ? S.ROLE_NAMES[P.carrier.role] || 'QB' : '';
   if (P.thrown){
     ps.att++;
+    if (P.grade){
+      const g = P.grade; ps.gradeSum += g.score; ps.graded++; ps.best = Math.max(ps.best, g.score);
+      ps.streak = g.inStride ? ps.streak + 1 : 0; ps.bestStreak = Math.max(ps.bestStreak, ps.streak);
+      saved.lastPractice = { throws: ps.graded, avg: Math.round(ps.gradeSum / ps.graded), bestStreak: ps.bestStreak }; save();
+    }
     if (r.type !== 'inc'){ ps.comp++; ps.yds += gain; ps.long = Math.max(ps.long, gain); if (r.type === 'td') ps.td++; ps.last = `${who}: ${gain} yds${r.type === 'td' ? ', TD' : ''}`; }
     else ps.last = r.why || 'Incomplete';
   } else if (P.carrier){ ps.runs++; ps.runYds += gain; if (r.type === 'td') ps.td++; ps.last = `Run: ${gain} yds${r.type === 'td' ? ', TD' : ''}`; }
   practiceRep(false);
 }
+/* Throw report card: grade, verdict and three bars, under the scoreboard for a couple of seconds. */
+const letter = n => n >= 97 ? 'A+' : n >= 93 ? 'A' : n >= 90 ? 'A-' : n >= 87 ? 'B+' : n >= 83 ? 'B' : n >= 80 ? 'B-' : n >= 77 ? 'C+' : n >= 73 ? 'C' : n >= 70 ? 'C-' : n >= 60 ? 'D' : 'F';
+const gradeColor = n => n >= 90 ? '#4cff7a' : n >= 80 ? '#b8f05a' : n >= 70 ? '#ffd84a' : n >= 60 ? '#ff9f43' : '#ff5a4e';
+let gradeTimer = 0;
+function showGrade(g){
+  const el = $('.pb-grade'); if (!el) return;
+  const bar = (k, v) => `<div class="pb-gb"><span>${k}</span><i><b style="width:${v}%;background:${gradeColor(v)}"></b></i></div>`;
+  el.innerHTML = `<b class="pb-gl" style="color:${gradeColor(g.score)}">${letter(g.score)}</b>
+    <div class="pb-gw"><em>${esc(g.word)}</em><span>${g.score}${g.who ? ` · ${esc(S.ROLE_NAMES[g.who] || '')}` : ''}</span></div>
+    <div class="pb-gbars">${bar('TIMING', g.timing)}${bar('ACCURACY', g.accuracy)}${bar('RELEASE', g.release)}</div>`;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(gradeTimer); gradeTimer = setTimeout(() => el.classList.remove('on'), 2600);
+  if (g.score >= 93) sfx('first');
+}
+
 function practiceHud(){
   const ps = G.ps, spot = SPOTS.find(([v]) => v === saved.practice.spot)?.[1] || yardLine(G.los);
   const btns = phase === 'presnap' && !paused ? '<button type="button" data-pb="psetup">CHANGE DRILL</button>' : '';
   const hint = hintText();
-  const key = ['P', ps.att, ps.comp, ps.yds, ps.td, ps.long, ps.runs, ps.last, btns, hint, spot].join('|');
+  const key = ['P', ps.att, ps.comp, ps.yds, ps.td, ps.long, ps.runs, ps.last, ps.graded, ps.streak, btns, hint, spot].join('|');
   if (key === lastHud) return; lastHud = key;
   const pct = ps.att ? Math.round(ps.comp / ps.att * 100) : 0;
+  const avg = ps.graded ? Math.round(ps.gradeSum / ps.graded) : null;
   $('.pb-bug').innerHTML = `<div class="pb-tm" style="--c:${esc(G.me.color)};--k:${inkOn(G.me.color)}">${G.me.logo ? `<img src="${esc(logoUrl(G.me.logo, 72))}" alt="">` : ''}<b>PRACTICE</b></div>
-    <div class="pb-mid"><span>CMP</span><b>${ps.comp}/${ps.att}</b></div><div class="pb-mid"><span>YDS</span><b>${ps.yds}</b></div><div class="pb-mid"><span>TD</span><b>${ps.td}</b></div>`;
-  $('.pb-dd').innerHTML = `<span>${esc(spot)}</span>${ps.att ? `<span>${pct}% · LONG ${ps.long}</span>` : ''}${ps.last ? `<span>${esc(ps.last.toUpperCase())}</span>` : ''}`;
+    <div class="pb-mid"><span>CMP</span><b>${ps.comp}/${ps.att}</b></div><div class="pb-mid"><span>YDS</span><b>${ps.yds}</b></div>
+    <div class="pb-mid"><span>GRADE</span><b style="color:${avg == null ? '#fff' : gradeColor(avg)}">${avg == null ? '--' : letter(avg)}</b></div>`;
+  $('.pb-dd').innerHTML = `<span>${esc(spot)}</span>${ps.graded ? `<span>IN-STRIDE STREAK ${ps.streak}${ps.bestStreak > ps.streak ? ` · BEST ${ps.bestStreak}` : ''}</span>` : ''}${ps.att ? `<span>${pct}% · LONG ${ps.long}</span>` : ''}`;
   $('.pb-bar').innerHTML = btns;
   $('.pb-hint').textContent = hint;
 }
@@ -982,6 +1006,18 @@ body.pb-open{overflow:hidden}
 .pb-callrow .los{stroke:rgba(255,255,255,.45);stroke-width:1;stroke-dasharray:3 3}
 .pb-callrow .dot{fill:#fff} .pb-callrow .ol{fill:#c9d1d9} .pb-callrow .qb{fill:#9aa4ae}
 .pb-callrow .q{fill:#fff;font:7px 'Press Start 2P',monospace;text-anchor:middle}
+.pb-grade{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 86px);transform:translate(-50%,-6px);display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;
+  min-width:220px;padding:8px 12px;background:rgba(16,18,21,.94);border:2px solid #000;box-shadow:0 0 0 2px #2c3138,0 4px 0 #000;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s}
+.pb-grade.on{opacity:1;transform:translate(-50%,0)}
+.pb-gl{grid-row:1/3;font:400 26px/1 'Press Start 2P',monospace;text-shadow:2px 2px 0 #000}
+.pb-gw{display:grid;gap:3px}
+.pb-gw em{font-style:normal;font-size:9px;color:#fff}
+.pb-gw span{font-size:7px;color:#9aa4ae}
+.pb-gbars{grid-column:1/-1;display:grid;gap:3px;margin-top:2px}
+.pb-gb{display:grid;grid-template-columns:62px 1fr;align-items:center;gap:6px;font-size:6px;color:#9aa4ae}
+.pb-gb i{display:block;height:5px;background:#2c3138}
+.pb-gb i b{display:block;height:100%}
+.pb-lastp{color:#c9d1d9}
 .pb-practice{gap:12px}
 .pb-sub{margin:0;font-size:8px;color:#9aa4ae;line-height:1.8}
 .pb-form{border:2px solid #000;color:#ffd84a;background:#101215}
