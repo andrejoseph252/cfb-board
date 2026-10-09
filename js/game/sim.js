@@ -79,7 +79,8 @@ export const CONCEPTS = {
   dagger:  { name: 'Dagger', tip: 'Seam clears out the dig', routes: { X: 'dig', Z: 'post', SL: 'seam', TE: 'stick', RB: 'flat' } },
   outs:    { name: 'Outs', tip: 'Timing throws to the sideline', routes: { X: 'out', Z: 'out', SL: 'out', TE: 'out', RB: 'flat' } }
 };
-/* In a game, the play called for this snap: null (random routes, the default), a concept above, or 'run' (snap goes straight to
+/* In a game, the play called for this snap: null (random routes, the default), a concept above, 'custom' (one of
+   your own plays, its routes in G.callRoutes), or 'run' (snap goes straight to
    the back; the receivers run short routes and turn into blockers). */
 export const RUN_CALL = { name: 'Inside Run', tip: 'Snap goes straight to the back', routes: { X: 'hitch', Z: 'hitch', SL: 'hitch', TE: 'hitch', RB: [[1, .5], [4, .8], [11, 1]] } };
 
@@ -121,7 +122,8 @@ export function setupPlay(G){
   if (PR && !PR.roles.includes('RB')){ rb.routeName = 'block'; rb.route = []; rb.wp = 0; }
   const used = new Set();
   // Called plays (in a game) and picked routes (in practice) set the routes; anything unset is random.
-  const plan = PR ? (PR.mode !== 'random' ? PR.routes : null) : G.call === 'run' ? RUN_CALL.routes : CONCEPTS[G.call]?.routes || null;
+  const plan = PR ? (PR.mode !== 'random' ? PR.routes : null)
+    : G.call === 'run' ? RUN_CALL.routes : G.call === 'custom' ? G.callRoutes || null : CONCEPTS[G.call]?.routes || null;
   for (const p of rec){
     let r = plan?.[p.role];
     if (Array.isArray(r)) r = 'block';   // the back on a called run: he gets the ball at the snap

@@ -23,6 +23,9 @@ const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: 
 const SESSIONS = { quick: { name: 'Quick', n: 5 }, normal: { name: 'Normal', n: 10 }, long: { name: 'Long', n: 20 } };
 saved.sessions = Array.isArray(saved.sessions) ? saved.sessions : [];
 delete saved.lastPractice;
+/* Your own plays (My Playbook): kept for good, unlike the per-visit settings. */
+saved.plays = Array.isArray(saved.plays) ? saved.plays : [];
+const findPlay = id => saved.plays.find(p => p.id === id);
 const freshSettings = () => { saved.diff = 'rookie'; saved.len = 'quick'; saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; };
 freshSettings();
 const save = () => store.set('pixelbowl', saved);
@@ -201,7 +204,7 @@ function setup(){
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label></div>
     <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
-    <button class="pb-go alt" type="button" data-pb="practice">PRACTICE</button>
+    <div class="pb-btns pb-menu2"><button class="pb-go alt" type="button" data-pb="practice">PRACTICE</button><button class="pb-go alt" type="button" data-pb="playbook">MY PLAYBOOK</button></div>
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
   </div>`);
@@ -245,7 +248,7 @@ function startMyDrive(x){
 }
 function presnap(){
   if (!G.ot && G.clock <= 0) return clockOut();
-  G.call = null;   // a called play is for one snap; every play starts back on Random
+  G.call = null; G.callRoutes = null;   // a called play is for one snap; every play starts back on Random
   S.setupPlay(G); phase = 'presnap'; aim = null; resetInput();
   if (G.down === 4 && !G.twoPt) fourthDown();
 }
@@ -424,17 +427,71 @@ function otCheck(){
 
 /* ---------- play calling (in a game) ---------- */
 /* A compact sheet of play cards before the snap. A call lasts one play; Random is the default. */
+let sheetTab = 'std';
 function playSheet(){
   if (phase !== 'presnap' || G.practice || $('.pb-modal').classList.contains('on')) return;
-  const all = S.PRACTICE_ROLES, card = (v, name, tip, routes) => `<button type="button" data-pb="callpick" data-v="${v}" aria-pressed="${(G.call || '') === v}">
+  const all = S.PRACTICE_ROLES, current = G.call === 'custom' ? 'u:' + G.callId : G.call || '';
+  const card = (v, name, tip, routes) => `<button type="button" data-pb="callpick" data-v="${esc(v)}" aria-pressed="${current === v}">
       ${formationSVG(all, routes, true)}<b>${esc(name)}</b><small>${esc(tip)}</small></button>`;
+  const custom = sheetTab === 'custom';
+  const cards = custom
+    ? (saved.plays.length ? saved.plays.map(p => card('u:' + p.id, p.name, 'Your play', p.routes)).join('')
+      : '<p class="pb-sub pb-empty">No plays yet. Make some in My Playbook on the main menu (or save routes from practice).</p>')
+    : card('', 'Random', 'Mix it up, like always', {}) + Object.entries(S.CONCEPTS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('') + card('run', S.RUN_CALL.name, S.RUN_CALL.tip, S.RUN_CALL.routes);
   modal(`<div class="pb-card pb-calls"><div class="pb-ph"><b>CALL A PLAY</b><button class="pb-x" type="button" data-pb="callclose" aria-label="Close">${ICON.x}</button></div>
-    <div class="pb-callrow">${card('', 'Random', 'Mix it up, like always', {})}
-      ${Object.entries(S.CONCEPTS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('')}
-      ${card('run', S.RUN_CALL.name, S.RUN_CALL.tip, S.RUN_CALL.routes)}</div>
+    <div class="pb-seg pb-tabs"><button type="button" data-pb="calltab" data-v="std" aria-pressed="${!custom}">PLAYBOOK</button><button type="button" data-pb="calltab" data-v="custom" aria-pressed="${custom}">CUSTOM (${saved.plays.length})</button></div>
+    <div class="pb-callrow">${cards}</div>
     <p class="pb-sub">Your call is for this play only.</p></div>`, true, 'call');
   const row = $('.pb-callrow'), on = row.querySelector('[aria-pressed="true"]');
   if (on) row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
+}
+
+/* Route chips, one row per receiver (practice's Pick routes and the play designer). The back can also stay in to block. */
+function routeRows(roles, routes, act){
+  return roles.map(role => `<div class="pb-rrow"><span>${S.ROLE_NAMES[role]}</span><div class="pb-rchips">
+    <button type="button" data-pb="${act}" data-role="${role}" data-v="" aria-pressed="${!routes[role]}"><b class="pb-rq">?</b><small>Random</small></button>
+    ${role === 'RB' ? `<button type="button" data-pb="${act}" data-role="RB" data-v="block" aria-pressed="${routes.RB === 'block'}">${routeSVG('block')}<small>Block</small></button>` : ''}
+    ${Object.entries(S.ROUTE_NAMES).map(([r, l]) => `<button type="button" data-pb="${act}" data-role="${role}" data-v="${r}" aria-pressed="${routes[role] === r}">${routeSVG(r)}<small>${l}</small></button>`).join('')}</div></div>`).join('');
+}
+
+/* ---------- My Playbook: your own named plays ---------- */
+let editing = null;   // { id?, name, routes, back: 'playbook' | 'practice' }
+function playbookScreen(){
+  phase = 'setup'; paused = false; behind = null; editing = null; showHud(false);
+  const all = S.PRACTICE_ROLES;
+  modal(`<div class="pb-setup pb-practice">
+    <div class="pb-ph"><b>MY PLAYBOOK</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
+    <p class="pb-sub">Design your own plays: pick a route for each receiver and name it. Call them in games from the play sheet's Custom tab, or rep them in practice.</p>
+    <button class="pb-go" type="button" data-pb="pbnew">+ NEW PLAY</button>
+    ${saved.plays.length ? `<div class="pb-pbl">${saved.plays.map(p => `<div class="pb-pbc">${formationSVG(all, p.routes, true)}<b>${esc(p.name)}</b>
+      <div><button type="button" data-pb="pbedit" data-id="${esc(p.id)}">EDIT</button><button type="button" class="del" data-pb="pbdel" data-id="${esc(p.id)}">DELETE</button></div></div>`).join('')}</div>`
+      : '<p class="pb-sub pb-nohist">No plays yet. Tap + New play to draw your first one.</p>'}
+  </div>`);
+}
+function editPlay(play, back, keepScroll){
+  const prevScroll = keepScroll ? $('.pb-setup')?.scrollTop : 0;
+  phase = 'setup'; paused = false; behind = null; showHud(false);
+  editing = play === editing && play ? editing : { id: play?.id || null, name: play?.name ?? `My play ${saved.plays.length + 1}`, routes: { ...(play?.routes || {}) }, back };
+  const all = S.PRACTICE_ROLES;
+  modal(`<div class="pb-setup pb-practice">
+    <div class="pb-ph"><b>${editing.id ? 'EDIT PLAY' : 'NEW PLAY'}</b><button class="pb-x" type="button" data-pb="ecancel" aria-label="Cancel">${ICON.x}</button></div>
+    <input class="pb-q pb-name" type="text" maxlength="20" value="${esc(editing.name)}" placeholder="Play name" aria-label="Play name" data-pb-name autocomplete="off">
+    <div class="pb-form">${drillPreview(all, editing.routes, G?.me?.color)}<p>Unpicked receivers run a random route each time.</p></div>
+    ${routeRows(all, editing.routes, 'eroute')}
+    <div class="pb-btns"><button class="pb-go" type="button" data-pb="esave">SAVE PLAY</button><button class="pb-go alt" type="button" data-pb="ecancel">CANCEL</button></div>
+  </div>`);
+  if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
+}
+function savePlay(){
+  const name = (editing?.name || '').trim().slice(0, 20);
+  if (!name){ if (!$('.pb-ename-err')) $('.pb-name').insertAdjacentHTML('afterend', '<p class="pb-sub pb-ename-err">Give your play a name.</p>'); $('.pb-name').focus(); return; }
+  const routes = Object.fromEntries(Object.entries(editing.routes).filter(([, v]) => v));
+  if (editing.id){ const p = findPlay(editing.id); if (p) Object.assign(p, { name, routes }); }
+  else { if (saved.plays.length >= 30) saved.plays.pop(); saved.plays.unshift({ id: Date.now().toString(36), name, routes }); }
+  save();
+  const back = editing.back; editing = null;
+  if (back === 'practice'){ banner('PLAY SAVED', name, '#4cff7a', 1100); return practiceSetup(); }
+  playbookScreen();
 }
 
 /* ---------- practice: no defense, no clock, same spot every rep ---------- */
@@ -442,7 +499,7 @@ const SPOTS = [[25, 'Own 25'], [50, 'Midfield'], [80, 'Red zone'], [95, 'Goal li
 const practiceRoles = () => S.PRACTICE_ROLES.slice(0, saved.practice.count);
 function practiceRoutes(){
   const P = saved.practice;
-  if (P.mode === 'concept') return S.CONCEPTS[P.concept]?.routes || {};
+  if (P.mode === 'concept') return P.concept?.startsWith('u:') ? findPlay(P.concept.slice(2))?.routes || {} : S.CONCEPTS[P.concept]?.routes || {};
   if (P.mode === 'pick') return P.routes;
   return {};
 }
@@ -469,6 +526,10 @@ function clipPath(pts, box){
   return { pts: out, cut: false };
 }
 function routePath(name, sx, sy, inside, toPx, box){
+  if (name === 'block'){   // stays in to block: a short stem and a bar
+    const [x, y] = toPx(sx, sy), perYd = Math.abs(toPx(sx, sy + 1)[1] - y), [, y2] = toPx(sx, sy + Math.max(1.6, 9 / perYd));
+    return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y2.toFixed(1)}" stroke="currentColor" stroke-width="1.6"/><line x1="${x - 3.5}" y1="${y2.toFixed(1)}" x2="${x + 3.5}" y2="${y2.toFixed(1)}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`;
+  }
   const wps = Array.isArray(name) ? name : S.ROUTES[name] || [], last = wps[wps.length - 1];
   const field = [[sx, sy], ...wps.map(([dx, dy]) => [sx + dy * inside, sy + dx])];
   const { pts, cut } = clipPath(field, box);
@@ -541,17 +602,17 @@ function practiceSetup(keepScroll){
   const P = saved.practice, roles = practiceRoles(), routes = practiceRoutes();
   const seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k]) === String(v)}">${l}</button>`).join('')}</div>`;
   let routesUI = '';
-  if (P.mode === 'concept') routesUI = `<div class="pb-concepts">${Object.entries(S.CONCEPTS).map(([k, c]) =>
-    `<button type="button" data-pb="pset" data-k="concept" data-v="${k}" aria-pressed="${P.concept === k}">${formationSVG(roles, c.routes, true)}<span>${c.name}</span></button>`).join('')}</div>`;
-  else if (P.mode === 'pick') routesUI = roles.map((role, i) => `<div class="pb-rrow"><span>${S.ROLE_NAMES[role]}</span><div class="pb-rchips">
-      <button type="button" data-pb="proute" data-role="${role}" data-v="" aria-pressed="${!P.routes[role]}"><b class="pb-rq">?</b><small>Random</small></button>
-      ${Object.entries(S.ROUTE_NAMES).map(([r, l]) => `<button type="button" data-pb="proute" data-role="${role}" data-v="${r}" aria-pressed="${P.routes[role] === r}">${routeSVG(r)}<small>${l}</small></button>`).join('')}</div></div>`).join('');
+  const cc = (v, name, routes) => `<button type="button" data-pb="pset" data-k="concept" data-v="${esc(v)}" aria-pressed="${P.concept === v}">${formationSVG(roles, routes, true)}<span>${esc(name)}</span></button>`;
+  if (P.mode === 'concept') routesUI = `<div class="pb-concepts">${Object.entries(S.CONCEPTS).map(([k, c]) => cc(k, c.name, c.routes)).join('')}</div>` +
+    (saved.plays.length ? `<span class="pb-hh">Your plays</span><div class="pb-concepts">${saved.plays.map(p => cc('u:' + p.id, p.name, p.routes)).join('')}</div>` : '');
+  else if (P.mode === 'pick') routesUI = routeRows(roles, P.routes, 'proute') +
+    `<button class="pb-go alt sm" type="button" data-pb="pbsave">SAVE THESE ROUTES AS A PLAY</button>`;
   modal(`<div class="pb-setup pb-practice">
     <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
     <p class="pb-sub">No defense, no clock: every rep starts from the same spot. Throwing for ${esc(G.me.name)}. Every throw is graded on timing (in stride), accuracy and release.</p>
 
     <div class="pb-form">${drillPreview(roles, routes, G.me.color)}
-      <p>${roles.length} receiver${roles.length === 1 ? '' : 's'} out · ${P.mode === 'concept' ? esc(S.CONCEPTS[P.concept]?.name || '') : P.mode === 'pick' ? 'Your routes' : 'Random routes'}</p></div>
+      <p>${roles.length} receiver${roles.length === 1 ? '' : 's'} out · ${P.mode === 'concept' ? esc((P.concept?.startsWith('u:') ? findPlay(P.concept.slice(2))?.name : S.CONCEPTS[P.concept]?.name) || '') : P.mode === 'pick' ? 'Your routes' : 'Random routes'}</p></div>
     <div class="pb-opt"><span>Receivers out</span>${seg('count', [1, 2, 3, 4, 5].map(n => [n, n]))}</div>
     <div class="pb-opt"><span>Routes</span>${seg('mode', [['random', 'Random'], ['concept', 'Concepts'], ['pick', 'Pick routes']])}</div>
     ${routesUI}
@@ -604,7 +665,7 @@ function practiceAfter(){
 }
 function drillName(){
   const P = saved.practice, n = practiceRoles().length;
-  const routes = P.mode === 'concept' ? S.CONCEPTS[P.concept]?.name : P.mode === 'pick' ? 'Your routes' : 'Random';
+  const routes = P.mode === 'concept' ? (P.concept?.startsWith('u:') ? findPlay(P.concept.slice(2))?.name : S.CONCEPTS[P.concept]?.name) : P.mode === 'pick' ? 'Your routes' : 'Random';
   return `${n} WR · ${routes} · ${SPOTS.find(([v]) => v === P.spot)?.[1] || ''}`;
 }
 /* The end of a session: save it to history and show the summary. */
@@ -719,7 +780,7 @@ function hud(){
   const q = G.ot ? (G.ot === 1 ? 'OT' : `${G.ot}OT`) : `Q${G.quarter}`;
   const dd = G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
   const late = S.lateInHalf(G), live = phase === 'presnap';
-  const callName = G.call === 'run' ? S.RUN_CALL.name : S.CONCEPTS[G.call]?.name || 'Random';
+  const callName = G.call === 'run' ? S.RUN_CALL.name : G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || 'Random';
   const sheetUp = $('.pb-modal').classList.contains('on');
   const btns = !live || paused ? '' : [
     sheetUp ? '' : `<button type="button" data-pb="call" class="pb-call">PLAY: ${esc(callName.toUpperCase())} ▾</button>`,
@@ -784,7 +845,24 @@ function onClick(e){
     case 'start': return startGame();
     case 'practice': saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; return practiceSetup();
     case 'call': return playSheet();
-    case 'callpick': { G.call = b.dataset.v || null; closeModal(); if (phase === 'presnap') S.setupPlay(G); return; }
+    case 'callpick': {
+      const v = b.dataset.v || null, mine = v?.startsWith('u:') && findPlay(v.slice(2));
+      if (mine) Object.assign(G, { call: 'custom', callId: mine.id, callName: mine.name, callRoutes: { ...mine.routes } });
+      else G.call = v;
+      closeModal(); if (phase === 'presnap') S.setupPlay(G); return;
+    }
+    case 'calltab': sheetTab = b.dataset.v; closeModal(); return playSheet();
+    case 'playbook': return playbookScreen();
+    case 'pbnew': return editPlay(null, 'playbook');
+    case 'pbedit': return editPlay(findPlay(b.dataset.id), 'playbook');
+    case 'pbsave': { const P = saved.practice; return editPlay({ routes: Object.fromEntries(practiceRoles().map(r => [r, P.routes[r]]).filter(([, v]) => v)) }, 'practice'); }
+    case 'eroute': { editing.routes[b.dataset.role] = b.dataset.v || undefined; return editPlay(editing, editing.back, true); }
+    case 'ecancel': return editing?.back === 'practice' ? practiceSetup() : playbookScreen();
+    case 'esave': return savePlay();
+    case 'pbdel': {
+      if (b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = 'DELETE?'; return; }
+      saved.plays = saved.plays.filter(p => p.id !== b.dataset.id); save(); return playbookScreen();
+    }
     case 'callclose': return closeModal();
     case 'pset': { const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save(); return practiceSetup(true); }
     case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return practiceSetup(true); }
@@ -833,6 +911,7 @@ function onInput(e){
     const k = e.target.dataset.pbOpt; saved[k] = e.target.checked; save();
     if (k === 'sound') setSound(saved.sound);
   }
+  if (e.target.matches('[data-pb-name]') && editing){ editing.name = e.target.value; $('.pb-ename-err')?.remove(); }
   if (e.target.matches('[data-pb-q]')){
     const q = e.target.value.trim().toLowerCase();
     for (const b of root.querySelectorAll('.pb-list [data-n]')) b.hidden = q && !b.dataset.n.includes(q);
@@ -1104,6 +1183,22 @@ body.pb-open{overflow:hidden}
 .pb-hr button{background:#2c3138;border:2px solid #000;color:#ff8a80;font-size:8px;padding:6px 7px;min-width:28px}
 .pb-nohist{text-align:center}
 .pb-best{font-style:normal;color:#111;background:#ffd84a;padding:1px 3px;margin-right:5px;font-size:6px}
+.pb-menu2{flex-wrap:nowrap}
+.pb-menu2 .pb-go{flex:1 1 0}
+.pb-tabs button{font-size:7.5px;padding:8px 6px}
+.pb-empty{padding:18px 8px;white-space:normal;text-align:center;flex:1}
+.pb-name{font:inherit;font-size:16px;font-family:'Press Start 2P',monospace}
+.pb-ename-err{color:#ff8a80 !important;margin-top:-6px}
+.pb-pbl{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.pb-pbc{display:grid;gap:5px;padding:4px 4px 6px;background:#2f6e34;border:2px solid #000;color:#ffd84a}
+.pb-pbc b{font-weight:400;font-size:8px;color:#fff;padding:0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-pbc div{display:flex;gap:4px}
+.pb-pbc div button{flex:1;background:#1b1f24;border:2px solid #000;font-size:7px;padding:6px 2px;color:#fff}
+.pb-pbc div button.del{color:#ff8a80}
+.pb-pbc svg,.pb-pbc .los{display:block;width:100%;height:auto}
+.pb-pbc .los{stroke:rgba(255,255,255,.45);stroke-width:1;stroke-dasharray:3 3}
+.pb-pbc .dot{fill:#fff} .pb-pbc .ol{fill:#c9d1d9} .pb-pbc .qb{fill:#9aa4ae}
+.pb-pbc .q{fill:#fff;font:7px 'Press Start 2P',monospace;text-anchor:middle}
 .pb-practice{gap:12px}
 .pb-sub{margin:0;font-size:8px;color:#9aa4ae;line-height:1.8}
 .pb-form{border:2px solid #000;color:#ffd84a;background:#101215}
