@@ -18,7 +18,11 @@ const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...stor
 delete saved.record; saved.results ||= {};
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
-const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25 };
+const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, session: 'quick' };
+/* A practice session is a set number of throws (handoffs don't count); finished sessions are saved to history. */
+const SESSIONS = { quick: { name: 'Quick', n: 5 }, normal: { name: 'Normal', n: 10 }, long: { name: 'Long', n: 20 } };
+saved.sessions = Array.isArray(saved.sessions) ? saved.sessions : [];
+delete saved.lastPractice;
 const freshSettings = () => { saved.diff = 'rookie'; saved.len = 'quick'; saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; };
 freshSettings();
 const save = () => store.set('pixelbowl', saved);
@@ -545,14 +549,16 @@ function practiceSetup(keepScroll){
   modal(`<div class="pb-setup pb-practice">
     <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
     <p class="pb-sub">No defense, no clock: every rep starts from the same spot. Throwing for ${esc(G.me.name)}. Every throw is graded on timing (in stride), accuracy and release.</p>
-    ${saved.lastPractice ? `<p class="pb-sub pb-lastp">Last session: ${saved.lastPractice.throws} throw${saved.lastPractice.throws === 1 ? '' : 's'} · avg <b style="color:${gradeColor(saved.lastPractice.avg)}">${letter(saved.lastPractice.avg)}</b> (${saved.lastPractice.avg}) · best in-stride streak ${saved.lastPractice.bestStreak}</p>` : ''}
+
     <div class="pb-form">${drillPreview(roles, routes, G.me.color)}
       <p>${roles.length} receiver${roles.length === 1 ? '' : 's'} out · ${P.mode === 'concept' ? esc(S.CONCEPTS[P.concept]?.name || '') : P.mode === 'pick' ? 'Your routes' : 'Random routes'}</p></div>
     <div class="pb-opt"><span>Receivers out</span>${seg('count', [1, 2, 3, 4, 5].map(n => [n, n]))}</div>
     <div class="pb-opt"><span>Routes</span>${seg('mode', [['random', 'Random'], ['concept', 'Concepts'], ['pick', 'Pick routes']])}</div>
     ${routesUI}
     <div class="pb-opt"><span>Start at</span>${seg('spot', SPOTS)}</div>
-    <button class="pb-go" type="button" data-pb="pstart">START PRACTICE</button>
+    <div class="pb-opt"><span>Session</span>${seg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.name} · ${x.n}`]))}</div>
+    <button class="pb-go" type="button" data-pb="pstart">START ${SESSIONS[P.session].name.toUpperCase()} SESSION</button>
+    ${historyHTML()}
   </div>`);
   if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
 }
@@ -563,7 +569,8 @@ function startPractice(){
   closeModal();
   G = S.newGame(me, opp, saved.diff, saved.len);
   G.practice = { roles: practiceRoles(), mode: saved.practice.mode, routes: practiceRoutes() };
-  G.ps = { att: 0, comp: 0, yds: 0, td: 0, long: 0, runs: 0, runYds: 0, last: '', gradeSum: 0, graded: 0, streak: 0, bestStreak: 0, best: 0 };
+  G.ps = { att: 0, comp: 0, yds: 0, td: 0, long: 0, runs: 0, runYds: 0, last: '', gradeSum: 0, graded: 0, streak: 0, bestStreak: 0, best: 0,
+    timing: 0, accuracy: 0, release: 0, inStride: 0, n: SESSIONS[saved.practice.session]?.n || 5, session: saved.practice.session, drill: drillName() };
   snaps = 0; showHud(true);
   practiceRep(true);
 }
@@ -587,13 +594,57 @@ function practiceAfter(){
     if (P.grade){
       const g = P.grade; ps.gradeSum += g.score; ps.graded++; ps.best = Math.max(ps.best, g.score);
       ps.streak = g.inStride ? ps.streak + 1 : 0; ps.bestStreak = Math.max(ps.bestStreak, ps.streak);
-      saved.lastPractice = { throws: ps.graded, avg: Math.round(ps.gradeSum / ps.graded), bestStreak: ps.bestStreak }; save();
+      ps.timing += g.timing; ps.accuracy += g.accuracy; ps.release += g.release; if (g.inStride) ps.inStride++;
     }
     if (r.type !== 'inc'){ ps.comp++; ps.yds += gain; ps.long = Math.max(ps.long, gain); if (r.type === 'td') ps.td++; ps.last = `${who}: ${gain} yds${r.type === 'td' ? ', TD' : ''}`; }
     else ps.last = r.why || 'Incomplete';
   } else if (P.carrier){ ps.runs++; ps.runYds += gain; if (r.type === 'td') ps.td++; ps.last = `Run: ${gain} yds${r.type === 'td' ? ', TD' : ''}`; }
+  if (ps.graded >= ps.n) return finishSession();
   practiceRep(false);
 }
+function drillName(){
+  const P = saved.practice, n = practiceRoles().length;
+  const routes = P.mode === 'concept' ? S.CONCEPTS[P.concept]?.name : P.mode === 'pick' ? 'Your routes' : 'Random';
+  return `${n} WR · ${routes} · ${SPOTS.find(([v]) => v === P.spot)?.[1] || ''}`;
+}
+/* The end of a session: save it to history and show the summary. */
+function finishSession(){
+  phase = 'modal'; aim = null;
+  clearTimeout(gradeTimer); $('.pb-grade')?.classList.remove('on');
+  const ps = G.ps, n = ps.graded, avg = Math.round(ps.gradeSum / n);
+  const rec = { id: String(Date.now()), at: Date.now(), session: ps.session, throws: n, avg, comp: ps.comp, att: ps.att, yds: ps.yds, td: ps.td,
+    inStride: Math.round(ps.inStride / n * 100), bestStreak: ps.bestStreak, timing: Math.round(ps.timing / n), accuracy: Math.round(ps.accuracy / n),
+    release: Math.round(ps.release / n), drill: ps.drill };
+  const prevBest = Math.max(0, ...saved.sessions.map(x => x.avg));
+  saved.sessions = [rec, ...saved.sessions].slice(0, 50); save();
+  const best = avg > prevBest && saved.sessions.length > 1;
+  sfx(avg >= 80 ? 'good' : 'whistle');
+  const bar = (k, v) => `<div class="pb-gb"><span>${k}</span><i><b style="width:${v}%;background:${gradeColor(v)}"></b></i><em>${v}</em></div>`;
+  modal(`<div class="pb-card pb-sess">
+    <span class="pb-sk">${esc(SESSIONS[ps.session]?.name || '')} session complete</span>
+    <div class="pb-sg"><b style="color:${gradeColor(avg)}">${letter(avg)}</b><span>${avg}<small>/100</small></span></div>
+    ${best ? '<p class="pb-pb">NEW PERSONAL BEST</p>' : ''}
+    <div class="pb-ss"><div><b>${ps.comp}/${ps.att}</b><span>Completions</span></div><div><b>${ps.yds}</b><span>Yards</span></div>
+      <div><b>${rec.inStride}%</b><span>In stride</span></div><div><b>${ps.bestStreak}</b><span>Best streak</span></div></div>
+    <div class="pb-gbars wide">${bar('TIMING', rec.timing)}${bar('ACCURACY', rec.accuracy)}${bar('RELEASE', rec.release)}</div>
+    <p class="pb-sub">${esc(ps.drill)} · saved to your history</p>
+    <div class="pb-btns"><button class="pb-go" type="button" data-pb="pagain">GO AGAIN</button><button class="pb-go alt" type="button" data-pb="psetup">CHANGE DRILL</button></div>
+    <div class="pb-btns"><button class="pb-go alt sm" type="button" data-pb="menu">MAIN MENU</button><button class="pb-go alt sm danger" type="button" data-pb="pdel" data-id="${rec.id}" data-long="1">DELETE THIS SESSION</button></div>
+  </div>`);
+}
+/* Your saved sessions on the practice screen: newest first, best one starred, each deletable. */
+function historyHTML(){
+  const list = saved.sessions;
+  if (!list.length) return '<p class="pb-sub pb-nohist">Finish a session and it shows up here.</p>';
+  const best = list.reduce((a, b) => b.avg > a.avg ? b : a, list[0]);
+  const day = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `<div class="pb-hist"><span class="pb-hh">Your sessions <small>${list.length} saved · best ${letter(best.avg)} (${best.avg})</small></span>
+    ${list.slice(0, 12).map(x => `<div class="pb-hr${x === best ? ' best' : ''}"><b style="color:${gradeColor(x.avg)}">${letter(x.avg)}</b>
+      <div><span>${x === best ? '<i class="pb-best">BEST</i>' : ''}${esc(SESSIONS[x.session]?.name || '')} · ${x.throws} throws · ${x.avg}</span><small>${esc(day(x.at))} · ${esc(x.drill || '')} · ${x.inStride}% in stride</small></div>
+      <button type="button" data-pb="pdel" data-id="${esc(x.id)}" aria-label="Delete this session">✕</button></div>`).join('')}
+    ${list.length > 12 ? `<p class="pb-sub">Showing your 12 most recent.</p>` : ''}</div>`;
+}
+
 /* Throw report card: grade, verdict and three bars, under the scoreboard for a couple of seconds. */
 const letter = n => n >= 97 ? 'A+' : n >= 93 ? 'A' : n >= 90 ? 'A-' : n >= 87 ? 'B+' : n >= 83 ? 'B' : n >= 80 ? 'B-' : n >= 77 ? 'C+' : n >= 73 ? 'C' : n >= 70 ? 'C-' : n >= 60 ? 'D' : 'F';
 const gradeColor = n => n >= 90 ? '#4cff7a' : n >= 80 ? '#b8f05a' : n >= 70 ? '#ffd84a' : n >= 60 ? '#ff9f43' : '#ff5a4e';
@@ -620,7 +671,7 @@ function practiceHud(){
   $('.pb-bug').innerHTML = `<div class="pb-tm" style="--c:${esc(G.me.color)};--k:${inkOn(G.me.color)}">${G.me.logo ? `<img src="${esc(logoUrl(G.me.logo, 72))}" alt="">` : ''}<b>PRACTICE</b></div>
     <div class="pb-mid"><span>CMP</span><b>${ps.comp}/${ps.att}</b></div><div class="pb-mid"><span>YDS</span><b>${ps.yds}</b></div>
     <div class="pb-mid"><span>GRADE</span><b style="color:${avg == null ? '#fff' : gradeColor(avg)}">${avg == null ? '--' : letter(avg)}</b></div>`;
-  $('.pb-dd').innerHTML = `<span>${esc(spot)}</span>${ps.graded ? `<span>IN-STRIDE STREAK ${ps.streak}${ps.bestStreak > ps.streak ? ` · BEST ${ps.bestStreak}` : ''}</span>` : ''}${ps.att ? `<span>${pct}% · LONG ${ps.long}</span>` : ''}`;
+  $('.pb-dd').innerHTML = `<span>THROW ${Math.min(ps.graded + 1, ps.n)}/${ps.n}</span>${ps.graded ? `<span>STREAK ${ps.streak}</span>` : ''}${ps.att ? `<span>${pct}%</span>` : ''}`;
   $('.pb-bar').innerHTML = btns;
   $('.pb-hint').textContent = hint;
 }
@@ -739,6 +790,13 @@ function onClick(e){
     case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return practiceSetup(true); }
     case 'pstart': return startPractice();
     case 'psetup': return practiceSetup();
+    case 'pagain': return startPractice();
+    case 'pdel': {
+      // Two taps: the first arms the button, the second deletes.
+      if (b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = b.dataset.long ? 'TAP AGAIN TO DELETE' : 'DELETE?'; return; }
+      saved.sessions = saved.sessions.filter(x => x.id !== b.dataset.id); save();
+      return b.dataset.long ? practiceSetup() : practiceSetup(true);
+    }
     case 'swap': [pick.me, pick.opp] = [pick.opp, pick.me]; return setup();
     case 'pickme': return teamPicker('me');
     case 'pickopp': return teamPicker('opp');
@@ -1018,6 +1076,31 @@ body.pb-open{overflow:hidden}
 .pb-gb i{display:block;height:5px;background:#2c3138}
 .pb-gb i b{display:block;height:100%}
 .pb-lastp{color:#c9d1d9}
+.pb-sess{max-width:400px;gap:10px}
+.pb-sk{font-size:8px;color:#9aa4ae;text-transform:uppercase}
+.pb-sg{display:flex;align-items:baseline;justify-content:center;gap:12px}
+.pb-sg b{font:400 46px/1 'Press Start 2P',monospace;text-shadow:3px 3px 0 #000}
+.pb-sg span{font-size:18px;color:#fff} .pb-sg small{font-size:8px;color:#9aa4ae}
+.pb-pb{margin:0;color:#ffd84a !important;font-size:9px;animation:pbBlink .5s steps(2) infinite}
+.pb-ss{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.pb-ss div{display:grid;gap:4px;background:#1b1f24;border:2px solid #000;padding:6px 2px}
+.pb-ss b{font-weight:400;font-size:11px;color:#fff} .pb-ss span{font-size:6px;color:#9aa4ae}
+.pb-gbars.wide .pb-gb{grid-template-columns:62px 1fr 22px;font-size:7px}
+.pb-gb em{font-style:normal;color:#fff;text-align:right}
+.pb-go.sm{font-size:8px;padding:9px 10px}
+.pb-go.danger{color:#ff8a80 !important}
+.pb-hist{display:grid;gap:4px;margin-top:4px}
+.pb-hh{font-size:8px;color:#9aa4ae;text-transform:uppercase;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pb-hh small{text-transform:none;color:#c9d1d9;font-size:7px}
+.pb-hr{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:8px;background:#1b1f24;border:2px solid #000;padding:6px 6px 6px 8px}
+.pb-hr.best{box-shadow:inset 0 0 0 1px #ffd84a}
+.pb-hr > b{font:400 13px/1 'Press Start 2P',monospace}
+.pb-hr div{display:grid;gap:4px;min-width:0}
+.pb-hr span{font-size:7.5px;color:#fff}
+.pb-hr small{font-size:6px;color:#9aa4ae;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-hr button{background:#2c3138;border:2px solid #000;color:#ff8a80;font-size:8px;padding:6px 7px;min-width:28px}
+.pb-nohist{text-align:center}
+.pb-best{font-style:normal;color:#111;background:#ffd84a;padding:1px 3px;margin-right:5px;font-size:6px}
 .pb-practice{gap:12px}
 .pb-sub{margin:0;font-size:8px;color:#9aa4ae;line-height:1.8}
 .pb-form{border:2px solid #000;color:#ffd84a;background:#101215}
