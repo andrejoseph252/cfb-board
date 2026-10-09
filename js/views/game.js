@@ -52,7 +52,7 @@ function threadLinks(g){
   const links = [
     game ? btn(game, 'Game thread') : (g.state !== 'pre' || soon) ? find('Game Thread', 'Find game thread') : '',
     post ? btn(post, 'Postgame thread') : g.state === 'post' ? find('Postgame Thread', 'Find postgame thread') : '',
-    // Pixel Bowl, the arcade game: play this matchup yourself.
+    // Coach Andre's Bowl, the arcade game: play this matchup yourself.
     `<button class="rbtn ghost" type="button" data-play="${esc(g.away.id)},${esc(g.home.id)}">${PAD}<span>Play this matchup</span></button>`
   ].filter(Boolean);
   return `<div class="rlinks">${links.join('')}</div>`;

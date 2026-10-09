@@ -1,4 +1,4 @@
-/* Pixel Bowl game logic, separate from drawing and the page. Like the arcade football games it's modeled on, you
+/* Coach Andre's Bowl game logic, separate from drawing and the page. Like the arcade football games it's modeled on, you
    only play offense: the other team's drives are simulated between yours.
 
    Coordinates are in yards. x runs along the field from your goal line (0) to theirs (100), with end zones at
@@ -84,7 +84,9 @@ export function setupPlay(G){
   const off = [], def = [];
   [-3.2, -1.6, 0, 1.6, 3.2].forEach((dy, i) => off.push(mk('OL', 'off', L - .7, b + dy, SPEED.OL, { n: i })));
   const qb = mk('QB', 'off', L - 4.5, b, SPEED.QB * oMul);
-  const rb = mk('RB', 'off', L - 6.3, b, SPEED.RB * oMul);
+  // Offset shotgun: the back lines up beside the quarterback, toward the wide side of the field, so he's easy to
+  // see (and tap) apart from the QB.
+  const rb = mk('RB', 'off', L - 5, b + (b < MID ? 2.6 : -2.6), SPEED.RB * oMul);
   const te = mk('TE', 'off', L - .9, b - 5, SPEED.TE * oMul);
   const x = mk('X', 'off', L - .9, Math.max(3, b - 19), SPEED.X * oMul);
   const z = mk('Z', 'off', L - .9, Math.min(FW - 3, b + 19), SPEED.Z * oMul);

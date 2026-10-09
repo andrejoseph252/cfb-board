@@ -27,3 +27,16 @@ export async function pool(items, n, fn){
     for (let x = it.next(); !x.done; x = it.next()) await fn(x.value).catch(() => {});
   }));
 }
+
+/* College football's slate is set in Eastern time (noon kickoffs, prime time, Friday night), so game days and
+   kickoff windows are grouped by ET wherever you're watching; each card still shows the kickoff in your own time. */
+const ET_ZONE = 'America/New_York';
+const etClock = new Intl.DateTimeFormat('en-US', { timeZone: ET_ZONE, hour: 'numeric', minute: 'numeric', hourCycle: 'h23' });
+export const etDay = d => new Date(d).toLocaleDateString(undefined, { timeZone: ET_ZONE, weekday: 'long', month: 'short', day: 'numeric' });
+export function etMinutes(d){
+  const p = Object.fromEntries(etClock.formatToParts(new Date(d)).map(x => [x.type, x.value]));
+  return (Number(p.hour) % 24) * 60 + Number(p.minute);
+}
+/* True when this browser keeps Eastern time anyway (then there's no need to say "ET"). */
+export const inET = () => Intl.DateTimeFormat().resolvedOptions().timeZone === ET_ZONE ||
+  new Date().toLocaleString('en-US', { timeZone: ET_ZONE }) === new Date().toLocaleString('en-US');

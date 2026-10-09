@@ -1,4 +1,4 @@
-/* Pixel Bowl: an arcade football game in the spirit of the retro mobile classics. Pick your team and an opponent
+/* Coach Andre's Bowl: an arcade football game in the spirit of the retro mobile classics. Pick your team and an opponent
    (any FBS teams, in their colors, with strength from ESPN's FPI), then play offense: drag back and release to
    throw, hand off, juke and dive, kick field goals. The other team's drives are simulated between yours.
    Opened full screen at #play; loaded on demand so it costs nothing until then. */
@@ -13,7 +13,9 @@ import { createRenderer } from './draw.js';
 import { initAudio, setSound, soundOn, sfx, resume } from './sfx.js';
 
 const STEP = 1 / 60;
-const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, record: {}, ...store.get('pixelbowl', {}) };
+// Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
+const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...store.get('pixelbowl', {}) };
+delete saved.record; saved.results ||= {};
 const save = () => store.set('pixelbowl', saved);
 const coarse = () => matchMedia('(pointer: coarse)').matches;
 const ord = n => ['1ST', '2ND', '3RD', '4TH'][n - 1] || `${n}TH`;
@@ -68,7 +70,7 @@ function defaults(prefill){
 }
 
 /* ---------- state ---------- */
-let root = null, canvas, R, G = null, phase = 'setup', raf = 0, last = 0, acc = 0, paused = false;
+let root = null, canvas, R, sizeWatch = null, G = null, phase = 'setup', raf = 0, last = 0, acc = 0, paused = false;
 let pick = { me: null, opp: null }, onExit = () => {}, snaps = 0, picking = null, openPrefill = null;
 let input = { targetY: null, steer: 0, juke: 0, dive: false, qbMove: null, qbKeys: null };
 let aim = null, ptr = null, deadT = 0, deadWait = 1.3, kickT = 0;
@@ -85,17 +87,19 @@ export function open({ prefill = null, exit = () => {} } = {}){
   }
   if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS }));
   root = document.createElement('div');
-  root.className = 'pb'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Pixel Bowl');
+  root.className = 'pb'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
   root.innerHTML = `<canvas class="pb-cv"></canvas>
     <div class="pb-hud" hidden><div class="pb-bug"></div><div class="pb-dd"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
   canvas = $('.pb-cv'); R = createRenderer(canvas); R.resize();
+  // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
+  if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
   canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', cancel);
   root.addEventListener('click', onClick); root.addEventListener('input', onInput);
-  window.addEventListener('resize', onResize); window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
+  window.addEventListener('resize', onResize); window.addEventListener('orientationchange', onResize); window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
   document.addEventListener('visibilitychange', onHide);
   pick = defaults(prefill);
   setup();
@@ -105,8 +109,9 @@ export function open({ prefill = null, exit = () => {} } = {}){
 export function close(){
   if (!root) return;
   cancelAnimationFrame(raf);
-  window.removeEventListener('resize', onResize); window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup);
+  window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', onResize); window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup);
   document.removeEventListener('visibilitychange', onHide);
+  sizeWatch?.disconnect(); sizeWatch = null;
   root.remove(); root = null; document.body.classList.remove('pb-open');
   G = null; phase = 'setup'; paused = false; keys.clear();
 }
@@ -114,7 +119,7 @@ export const isOpen = () => !!root;
 
 /* Local testing only: lets a script advance the game without animation frames (which background tabs don't get). */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__pb = {
-  get G(){ return G; }, get phase(){ return phase; }, get paused(){ return paused; }, input,
+  get G(){ return G; }, get R(){ return R; }, get phase(){ return phase; }, get paused(){ return paused; }, input,
   tick(sec){ for (let i = 0; i < sec * 60; i++){ if (!paused && G){ update(STEP); drain(); } } hud(); }
 };
 
@@ -125,11 +130,13 @@ function onHide(){ if (document.hidden && G && !paused && ['presnap', 'live', 'd
 let waitingData = true;
 function loop(ts){
   raf = requestAnimationFrame(loop);
+  R.resize();   // cheap when nothing changed; catches any size change the observer missed
   // Opened straight to #play before the board's team data arrived: fill in the real teams once it does.
   if (waitingData && state.standings && colors){ waitingData = false; if (phase === 'setup' && (G?.me.name === 'Team' || G?.me.color === '#5a6470')){ pick = defaults(openPrefill); setup(); } }
   const dt = Math.min(.05, last ? (ts - last) / 1000 : 0); last = ts;
   if (!paused && G){ acc += dt; while (acc >= STEP){ update(STEP); acc -= STEP; } }
-  if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes });
+  if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes,
+    handoff: !aim?.active && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
   if (G) drain();
   hud();
 }
@@ -171,13 +178,13 @@ function setup(){
   // The menu sits over a live picture of the matchup.
   G = S.newGame(me, opp, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G);
   showHud(false);
-  const rec = saved.record[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">
+  const rec = saved.results[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">
       ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.name)}</b><small>${who}</small>
       <span class="pb-rt">${Number.isFinite(t.off) ? `OFF ${Math.round(t.off)} · DEF ${Math.round(t.def)}` : 'Tap to change'}</span></button>`;
   const seg = (key, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="set" data-k="${key}" data-v="${v}" aria-pressed="${saved[key] === v}">${l}</button>`).join('')}</div>`;
   modal(`<div class="pb-setup">
     <button class="pb-x" type="button" data-pb="exit" aria-label="Close">${ICON.x}</button>
-    <h1 class="pb-logo"><span>PIXEL</span><span>BOWL</span></h1>
+    <h1 class="pb-logo"><span>COACH ANDRE'S</span><span>BOWL</span></h1>
     <div class="pb-match">${card(me, 'YOU', 'pickme')}<button class="pb-vs" type="button" data-pb="swap" aria-label="Swap teams">VS<i>⇄</i></button>${card(opp, 'CPU', 'pickopp')}</div>
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
@@ -404,8 +411,10 @@ function otCheck(){
 function final(){
   phase = 'final'; showHud(true);
   const won = G.score[0] > G.score[1], st = G.stats;
-  const rec = saved.record[G.diffKey] || { w: 0, l: 0 };
-  won ? rec.w++ : rec.l++; saved.record[G.diffKey] = rec; save();
+  // Only a game played to the end counts, and only once.
+  const rec = saved.results[G.diffKey] || { w: 0, l: 0 };
+  const complete = (G.ot > 0 || G.quarter >= 4 && G.clock <= 0) && G.score[0] !== G.score[1];
+  if (complete && !G.recorded){ G.recorded = true; won ? rec.w++ : rec.l++; saved.results[G.diffKey] = rec; save(); }
   sfx(won ? 'td' : 'boo');
   if (won) G.cheer = 6;
   modal(`<div class="pb-card pb-final"><h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'VICTORY!' : 'FINAL'}</h2>${scoreLine(true)}
@@ -465,10 +474,10 @@ function hintText(){
     return '';
   }
   if (snaps > 8 && saved.diff !== 'rookie') return '';
-  if (phase === 'presnap') return touch ? 'Tap to snap' : 'Click or press Space to snap';
+  if (phase === 'presnap') return touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
   if (phase === 'live'){
     if (G.play.carrier) return touch ? 'Drag to steer · flick sideways to juke · flick ahead to dive' : `${R.portrait ? '← →' : '↑ ↓'} steer · Space juke · X dive · or drag`;
-    if (S.canThrow(G)) return touch ? 'Drag back and release to throw · tap the RB to hand off' : 'Drag back and release to throw · 1–5 throw to a receiver · H hand off';
+    if (S.canThrow(G)) return touch ? 'Pull back and release to throw · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · H hand off';
   }
   return '';
 }
@@ -553,8 +562,14 @@ function down(e){
   try{ canvas.setPointerCapture(e.pointerId); }catch{}
   const p = local(e), w = R.toWorld(p.x, p.y), now = performance.now();
   ptr = { id: e.pointerId, x0: p.x, y0: p.y, mode: 'none', samples: [{ ...p, t: now }] };
-  if (phase === 'presnap'){ if (!$('.pb-modal').classList.contains('on')) doSnap(); return; }
   if (phase === 'kick'){ S.kickTap(G); return; }
+  // Before the snap, pressing the field snaps the ball and the same press goes on to aim a throw (or, on the
+  // highlighted running back, hands off): one motion, no separate tap to snap.
+  let fresh = false;
+  if (phase === 'presnap'){
+    if ($('.pb-modal').classList.contains('on')) return;   // 4th-down choice still open
+    doSnap(); fresh = true;
+  }
   if (phase !== 'live') return;
   const P = G.play;
   if (P.carrier){ ptr.mode = 'steer'; input.targetY = w.y; return; }
@@ -562,7 +577,7 @@ function down(e){
   const dRb = hypot(w, P.rb), dQb = hypot(w, P.qb);
   if (S.canHandoff(G) && dRb < 3.2 && dRb < dQb){ S.handoff(G); return; }
   if (S.canThrow(G)){
-    if (dQb < 2.2){ ptr.mode = 'qb'; input.qbMove = w; }
+    if (dQb < 2.2 && !fresh){ ptr.mode = 'qb'; input.qbMove = w; }
     else { ptr.mode = 'aim'; aim = { active: false, target: null }; }
   }
 }
@@ -614,6 +629,7 @@ function keydown(e){
     }
     return;
   }
+  if (k === 'h' && phase === 'presnap' && !$('.pb-modal').classList.contains('on')){ e.preventDefault(); doSnap(); S.handoff(G); return; }
   if (phase !== 'live') return;
   if (/^[1-5]$/.test(k)){ e.preventDefault(); S.throwToReceiver(G, Number(k)); return; }
   if (k === 'h'){ e.preventDefault(); S.handoff(G); return; }
@@ -630,9 +646,8 @@ function readKeys(){
 
 /* ---------- copy and styles ---------- */
 const HOW = `<ul>
-  <li><b>Snap:</b> tap the field (Space on a keyboard).</li>
-  <li><b>Pass:</b> press anywhere, drag <i>back</i> like a slingshot and release. The arc shows where it lands; lead your receiver. Colored tags show who's open (green), tight (yellow) or covered (red). Keys 1–5 throw to that receiver.</li>
-  <li><b>Run:</b> tap the running back right after the snap (H) to hand off. Press on the QB and drag to scramble.</li>
+  <li><b>Pass:</b> press anywhere and drag <i>back</i> like a slingshot: the press snaps the ball, release throws. The arc shows where it lands; lead your receiver. Colored tags show who's open (green), tight (yellow) or covered (red). Keys 1–5 throw to that receiver.</li>
+  <li><b>Run:</b> tap the glowing running back (H on a keyboard) to snap and hand off in one go. A plain tap just snaps; press on the QB and drag to scramble.</li>
   <li><b>With the ball:</b> drag to steer, flick sideways to juke, flick ahead to dive. Keys: arrows or WASD, Space to juke, X to dive.</li>
   <li><b>Kicks:</b> tap to lock the aim, tap again for power. Mind the wind.</li>
   <li>Between plays the clock runs; snap fast to save time, or call a timeout. The other team's drives are simulated.</li></ul>`;
@@ -689,8 +704,8 @@ body.pb-open{overflow:hidden}
 .pb-setup{max-width:560px;text-align:left;position:relative;max-height:calc(100dvh - 32px);overflow:auto}
 .pb-x{position:absolute;right:10px;top:10px;width:32px;height:32px;display:grid;place-items:center;background:#2c3138;border:2px solid #000}
 .pb-x svg{width:14px;height:14px}
-.pb-logo{margin:4px 0 2px;text-align:center;font-size:clamp(26px,8vw,40px);font-weight:400;line-height:1.05;display:grid;color:#ffd84a;text-shadow:3px 3px 0 #b5470f,6px 6px 0 #000}
-.pb-logo span + span{color:#fff;text-shadow:3px 3px 0 #2f6e34,6px 6px 0 #000}
+.pb-logo{margin:4px 0 2px;padding:0 36px;text-align:center;font-size:clamp(14px,4.4vw,30px);font-weight:400;line-height:1.05;display:grid;color:#ffd84a;text-shadow:3px 3px 0 #b5470f,6px 6px 0 #000}
+.pb-logo span + span{color:#fff;font-size:1.7em;margin-top:6px;text-shadow:3px 3px 0 #2f6e34,6px 6px 0 #000}
 .pb-match{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
 .pb-team{display:grid;justify-items:center;gap:6px;padding:12px 8px;background:var(--c);color:var(--k) !important;border:2px solid #000;box-shadow:0 4px 0 #000,inset 0 0 0 2px rgba(255,255,255,.15);text-align:center}
 .pb-team img{width:44px;height:44px;background:#fff;border-radius:50%;padding:3px;image-rendering:auto}

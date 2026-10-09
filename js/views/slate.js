@@ -1,4 +1,4 @@
-import { esc, norm } from '../util.js';
+import { esc, norm, etDay, etMinutes, inET } from '../util.js';
 import { state } from '../state.js';
 import { pins } from '../picks.js';
 import { excitement, isHot } from '../excitement.js';
@@ -40,9 +40,10 @@ const isP4 = t => P4.has(t.conf) || t.id === '87';
 const TIERS = [['p4', 'Power 4', g => isP4(g.home) || isP4(g.away) || ranked(g)], ['ranked', 'Ranked', ranked], ['all', 'All', () => true]];
 
 const WINDOWS = [['Early', 'before 2 PM'], ['Afternoon', '2–6 PM'], ['Prime time', '6–9:30 PM'], ['Late night', 'after 9:30 PM']];
+/* Windows are Eastern time (see etMinutes in util.js). */
 function kickoffWindow(g){
   if (g.tbd) return 'Time TBD';
-  const d = new Date(g.date), m = d.getHours() * 60 + d.getMinutes();
+  const m = etMinutes(g.date);
   return WINDOWS[m < 14 * 60 ? 0 : m < 18 * 60 ? 1 : m < 21 * 60 + 30 ? 2 : 3][0];
 }
 
@@ -62,14 +63,16 @@ export function weekList(){
     return moved.length ? grid(moved) : empty('No line has moved 3 points or more yet. Markets usually settle in by midweek.');
   }
   const days = {};
-  for (const g of gs){ const k = new Date(g.date).toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'}); (days[k] ??= []).push(g); }
+  for (const g of gs){ const k = etDay(g.date); (days[k] ??= []).push(g); }
   // Big days split into kickoff windows; each group header carries the day so it's clear while stuck on screen.
+  // Days and windows are Eastern time; outside ET the header says so, while the cards show local kickoff times.
+  const et = inET() ? '' : ' ET';
   return Object.entries(days).map(([d, list]) => {
     if (list.length <= 8) return group(d, list.length, grid(list));
     const win = {};
     for (const g of list) (win[kickoffWindow(g)] ??= []).push(g);
     const day = d.split(',')[0];
-    return Object.entries(win).map(([w, l]) => group(w, l.length, grid(l), `${day} · ${WINDOWS.find(x => x[0] === w)?.[1] ?? ''}`)).join('');
+    return Object.entries(win).map(([w, l]) => { const span = WINDOWS.find(x => x[0] === w)?.[1]; return group(w, l.length, grid(l), `${day}${span ? ` · ${span}${et}` : ''}`); }).join('');
   }).join('');
 }
 

@@ -1,4 +1,4 @@
-/* Pixel Bowl renderer. The canvas runs at a low "logical" resolution (about 290 pixels on the short side, enough for
+/* Coach Andre's Bowl renderer. The canvas runs at a low "logical" resolution (about 290 pixels on the short side, enough for
    the full width of the field) and the
    browser scales it up with crisp pixels. Landscape screens show the field sideways (you drive right); portrait
    phones show it upright (you drive up). Sprites are always drawn upright; only positions are rotated. */
@@ -71,13 +71,22 @@ export function createRenderer(canvas){
   const cam = { x: 30, y: MID, shake: 0 };
   let crowd = null, crowdKey = '', logoImg = null, teamsKey = '', t = 0;
 
+  let sized = '';
+  /* Matches the canvas to its on-screen size. Safe to call often: it only rebuilds when the size really changed,
+     and ignores the moment before the page has laid the game out (a phone measuring then would get a squeezed,
+     sideways field). */
   function resize(){
     const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (r.width < 60 || r.height < 60) return false;
+    const key = `${Math.round(r.width)}x${Math.round(r.height)}@${dpr}`;
+    if (key === sized) return false;
+    sized = key;
     portrait = r.height > r.width;
     const short = Math.min(r.width, r.height) * dpr, P = Math.max(1, Math.round(short / 290));
     W = Math.ceil(r.width * dpr / P); H = Math.ceil(r.height * dpr / P);
     canvas.width = W; canvas.height = H;
     ctx.imageSmoothingEnabled = false;
+    return true;
   }
 
   const toScreen = (x, y, z = 0) => portrait
@@ -251,6 +260,21 @@ export function createRenderer(canvas){
     for (let a = 0; a < 16; a++){ const r = 5 + Math.sin(t * 8) * .6; ctx.fillRect(Math.round(tx + Math.cos(a / 16 * Math.PI * 2) * r), Math.round(ty + Math.sin(a / 16 * Math.PI * 2) * r * .55), 1, 1); }
     ctx.fillRect(tx, ty, 1, 1);
   }
+  /* The running back glows before and just after the snap: tap him to hand off (ring at his feet, under the
+     sprites; arrow above his head, over them). */
+  function handoffRing(G){
+    const rb = G.play.rb, [sx, sy] = toScreen(rb.x, rb.y), pulse = (Math.sin(t * 7) + 1) / 2;
+    const rx = 7 + Math.round(pulse * 2), ry = 3 + Math.round(pulse);
+    ctx.fillStyle = `rgba(125,249,255,${.55 + pulse * .45})`;
+    for (let a = 0; a < 28; a++){ const th = a / 28 * Math.PI * 2; ctx.fillRect(Math.round(sx + Math.cos(th) * rx), Math.round(sy + Math.sin(th) * ry), 1, 1); }
+  }
+  /* The running back glows before and just after the snap: tap him to hand off. */
+  function handoffMark(G){
+    const rb = G.play.rb, [sx, sy] = toScreen(rb.x, rb.y), pulse = (Math.sin(t * 7) + 1) / 2;
+    const b = Math.floor(t * 6) % 2;
+    ctx.fillStyle = '#101010'; ctx.fillRect(sx - 3, sy - 19 - b, 7, 4);
+    ctx.fillStyle = '#7df9ff'; ctx.fillRect(sx - 2, sy - 18 - b, 5, 1); ctx.fillRect(sx - 1, sy - 17 - b, 3, 1); ctx.fillRect(sx, sy - 16 - b, 1, 1);
+  }
   function carrierMark(G){
     const c = G.play.carrier; if (!c || c.down) return;
     const [sx, sy] = toScreen(c.x, c.y), b = Math.floor(t * 6) % 2;
@@ -318,8 +342,13 @@ export function createRenderer(canvas){
       if (aim) { fx = (P.qb.x + aim.x) / 2; fy = (P.qb.y + aim.y) / 2; ahead = long * .05; }
     }
     let tx = fx + ahead, ty = fy;
-    // Kicks get extra room past the end line so the uprights stay in the picture.
-    tx = long >= 128 ? 50 : clamp(tx, -13 + long / 2, (K ? 124 : 113) - long / 2);
+    // Near the goal line, frame the whole end zone with room to spare at the far edge, where the scoreboard sits
+    // on a phone; for kicks, the uprights (which stand ~10 yards tall) too. The camera may look past the end line
+    // into the stands to do it.
+    const far = K ? 120 : 110;
+    if (fx + long / 2 > 96) tx = Math.max(tx, far + long * .2 - long / 2);
+    if (K) tx = Math.min(tx, K.spotX - 3 + long / 2);   // ...without losing the kicker off the near edge
+    tx = long >= 128 ? 50 : clamp(tx, -13 + long / 2, 140 - long / 2);
     ty = lat >= FW + 14 ? MID : clamp(ty, lat / 2 - 7, FW + 7 - lat / 2);
     const k = Math.min(1, dt * (P?.live ? 5 : 3.2));
     cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
@@ -341,10 +370,12 @@ export function createRenderer(canvas){
       lines(G);
       if (!P.live && !P.result && view.routes) routes(G);
       if (P.live && canThrow(G) && !view.aim) labels(G);
+      if (view.handoff && !P.carrier) handoffRing(G);
       const order = [...P.all].sort((a, b) => toScreen(a.x, a.y)[1] - toScreen(b.x, b.y)[1]);
       for (const p of order) player(G, p);
       ball(G);
       carrierMark(G);
+      if (view.handoff && !P.carrier) handoffMark(G);
       if (view.aim) { labels(G); aimArc(G, view.aim); }
       effects(P, dt);
     }
@@ -353,7 +384,7 @@ export function createRenderer(canvas){
   }
 
   return {
-    resize, draw, toWorld, dragToWorld, snapCamera,
+    resize, draw, toWorld, toScreen, dragToWorld, snapCamera,
     shake(a){ cam.shake = Math.max(cam.shake, a); },
     get portrait(){ return portrait; }, get W(){ return W; }, get H(){ return H; }, S
   };
