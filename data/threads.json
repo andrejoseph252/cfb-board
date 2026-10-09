@@ -1,6 +1,50 @@
 {
- "updated": "2026-10-09T00:43:27+00:00",
+ "updated": "2026-10-09T06:51:25+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] South Alabama Defeats Arkansas State 56-49",
+   "url": "https://www.reddit.com/r/CFB/comments/1x1ak9l/postgame_thread_south_alabama_defeats_arkansas/",
+   "published": "2026-10-09T03:10:50+00:00",
+   "gameId": "401869933",
+   "teams": [
+    "South Alabama",
+    "Arkansas State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UTSA Defeats USF 31-24",
+   "url": "https://www.reddit.com/r/CFB/comments/1x1afry/postgame_thread_utsa_defeats_usf_3124/",
+   "published": "2026-10-09T03:04:10+00:00",
+   "gameId": "401862794",
+   "teams": [
+    "UTSA",
+    "USF"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] WKU Defeats Missouri State 34-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1x19fl5/postgame_thread_wku_defeats_missouri_state_3413/",
+   "published": "2026-10-09T02:12:43+00:00",
+   "gameId": "401871052",
+   "teams": [
+    "WKU",
+    "Missouri State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Liberty Defeats Sam Houston 35-3",
+   "url": "https://www.reddit.com/r/CFB/comments/1x19fl2/postgame_thread_liberty_defeats_sam_houston_353/",
+   "published": "2026-10-09T02:12:43+00:00",
+   "gameId": "401870766",
+   "teams": [
+    "Liberty",
+    "Sam Houston"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] South Alabama @ Arkansas State (7:30 PM ET)",
