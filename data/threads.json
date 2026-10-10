@@ -1,6 +1,132 @@
 {
- "updated": "2026-10-10T09:08:25+00:00",
+ "updated": "2026-10-10T15:36:11+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Ball State @ Northwestern (12:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2i3tr/game_thread_ball_state_northwestern_1230_pm_et/",
+   "published": "2026-10-10T15:30:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Ball State",
+    "Northwestern"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Wake Forest @ NC State (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2he5w/game_thread_wake_forest_nc_state_1200_pm_et/",
+   "published": "2026-10-10T15:00:19+00:00",
+   "gameId": null,
+   "teams": [
+    "Wake Forest",
+    "NC State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] North Carolina @ Pittsburgh (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2he58/game_thread_north_carolina_pittsburgh_1200_pm_et/",
+   "published": "2026-10-10T15:00:18+00:00",
+   "gameId": null,
+   "teams": [
+    "North Carolina",
+    "Pittsburgh"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] UCF @ Oklahoma State (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2he4f/game_thread_ucf_oklahoma_state_1200_pm_et/",
+   "published": "2026-10-10T15:00:17+00:00",
+   "gameId": null,
+   "teams": [
+    "UCF",
+    "Oklahoma State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Arizona @ West Virginia (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2he3d/game_thread_arizona_west_virginia_1200_pm_et/",
+   "published": "2026-10-10T15:00:16+00:00",
+   "gameId": null,
+   "teams": [
+    "Arizona",
+    "West Virginia"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Texas A&M @ Missouri (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2he2a/game_thread_texas_am_missouri_1200_pm_et/",
+   "published": "2026-10-10T15:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Texas A&M",
+    "Missouri"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Indiana @ Nebraska (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2he1a/game_thread_indiana_nebraska_1200_pm_et/",
+   "published": "2026-10-10T15:00:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Indiana",
+    "Nebraska"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] FCS Games \u2014 Saturday, October 10",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2he0k/game_thread_fcs_games_saturday_october_10/",
+   "published": "2026-10-10T15:00:12+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Dartmouth @ Yale (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2hdzw/game_thread_dartmouth_yale_1200_pm_et/",
+   "published": "2026-10-10T15:00:11+00:00",
+   "gameId": null,
+   "teams": [
+    "Dartmouth",
+    "Yale"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Sacramento State @ Bowling Green (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2hdz8/game_thread_sacramento_state_bowling_green_1200/",
+   "published": "2026-10-10T15:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Sacramento State",
+    "Bowling Green"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Tulane @ Army (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2hdy4/game_thread_tulane_army_1200_pm_et/",
+   "published": "2026-10-10T15:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Tulane",
+    "Army"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Non-D1 Games \u2014 Saturday, October 10",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2g4yd/game_thread_nond1_games_saturday_october_10/",
+   "published": "2026-10-10T14:05:04+00:00",
+   "gameId": null,
+   "teams": null
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] BYU Defeats Iowa State 24-10",
