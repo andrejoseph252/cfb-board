@@ -1,6 +1,105 @@
 {
- "updated": "2026-10-10T19:34:53+00:00",
+ "updated": "2026-10-10T21:48:24+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Miami (OH) Defeats UMass 20-19",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2qht6/postgame_thread_miami_oh_defeats_umass_2019/",
+   "published": "2026-10-10T21:23:49+00:00",
+   "gameId": "401866440",
+   "teams": [
+    "Miami (OH)",
+    "UMass"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] San Diego State @ Oregon State (6:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2py15/game_thread_san_diego_state_oregon_state_600_pm_et/",
+   "published": "2026-10-10T21:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "San Diego State",
+    "Oregon State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] South Carolina Defeats Florida 38-19",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2pgad/postgame_thread_south_carolina_defeats_florida/",
+   "published": "2026-10-10T20:38:41+00:00",
+   "gameId": "401856714",
+   "teams": [
+    "South Carolina",
+    "Florida"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] ECU Defeats Rice 28-12",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2ozsd/postgame_thread_ecu_defeats_rice_2812/",
+   "published": "2026-10-10T20:19:06+00:00",
+   "gameId": "401862797",
+   "teams": [
+    "ECU",
+    "Rice"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Old Dominion Defeats Appalachian State 10-3",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2osrr/postgame_thread_old_dominion_defeats_appalachian/",
+   "published": "2026-10-10T20:10:38+00:00",
+   "gameId": "401869843",
+   "teams": [
+    "Old Dominion",
+    "Appalachian State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Northwestern Defeats Ball State 45-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2oe7v/postgame_thread_northwestern_defeats_ball_state/",
+   "published": "2026-10-10T19:53:50+00:00",
+   "gameId": "401858482",
+   "teams": [
+    "Northwestern",
+    "Ball State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Indiana Defeats Nebraska 20-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2o3b6/postgame_thread_indiana_defeats_nebraska_2017/",
+   "published": "2026-10-10T19:40:52+00:00",
+   "gameId": "401858481",
+   "teams": [
+    "Indiana",
+    "Nebraska"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Arizona Defeats West Virginia 52-31",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2nzy9/postgame_thread_arizona_defeats_west_virginia_5231/",
+   "published": "2026-10-10T19:36:51+00:00",
+   "gameId": "401856823",
+   "teams": [
+    "Arizona",
+    "West Virginia"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Missouri Defeats Texas A&M 27-6",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2nzy3/postgame_thread_missouri_defeats_texas_am_276/",
+   "published": "2026-10-10T19:36:51+00:00",
+   "gameId": "401856716",
+   "teams": [
+    "Missouri",
+    "Texas A&M"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Yale Defeats Dartmouth 28-7",
