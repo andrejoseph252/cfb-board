@@ -1,6 +1,226 @@
 {
- "updated": "2026-10-10T21:48:24+00:00",
+ "updated": "2026-10-10T22:59:41+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Houston Defeats Kansas State 35-16",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2siff/postgame_thread_houston_defeats_kansas_state_3516/",
+   "published": "2026-10-10T22:57:42+00:00",
+   "gameId": "401856825",
+   "teams": [
+    "Houston",
+    "Kansas State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Eastern Michigan Defeats Akron 25-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2sflk/postgame_thread_eastern_michigan_defeats_akron/",
+   "published": "2026-10-10T22:53:44+00:00",
+   "gameId": "401866435",
+   "teams": [
+    "Eastern Michigan",
+    "Akron"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Buffalo Defeats Toledo 23-8",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2sflb/postgame_thread_buffalo_defeats_toledo_238/",
+   "published": "2026-10-10T22:53:44+00:00",
+   "gameId": "401866437",
+   "teams": [
+    "Buffalo",
+    "Toledo"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Notre Dame Defeats Stanford 58-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2sc99/postgame_thread_notre_dame_defeats_stanford_587/",
+   "published": "2026-10-10T22:49:18+00:00",
+   "gameId": "401858257",
+   "teams": [
+    "Notre Dame",
+    "Stanford"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Western Michigan Defeats Kent State 38-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2s8qa/postgame_thread_western_michigan_defeats_kent/",
+   "published": "2026-10-10T22:44:37+00:00",
+   "gameId": "401866439",
+   "teams": [
+    "Western Michigan",
+    "Kent State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Navy Defeats Tulsa 34-26",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2s7d2/postgame_thread_navy_defeats_tulsa_3426/",
+   "published": "2026-10-10T22:42:48+00:00",
+   "gameId": "401862799",
+   "teams": [
+    "Navy",
+    "Tulsa"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Ohio Defeats Central Michigan 31-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2s5ub/postgame_thread_ohio_defeats_central_michigan_3114/",
+   "published": "2026-10-10T22:40:50+00:00",
+   "gameId": "401866438",
+   "teams": [
+    "Ohio",
+    "Central Michigan"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] North Texas Defeats Charlotte 50-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2s42z/postgame_thread_north_texas_defeats_charlotte_5010/",
+   "published": "2026-10-10T22:38:33+00:00",
+   "gameId": "401862796",
+   "teams": [
+    "North Texas",
+    "Charlotte"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Syracuse @ Virginia (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rxub/game_thread_syracuse_virginia_730_pm_et/",
+   "published": "2026-10-10T22:30:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Syracuse",
+    "Virginia"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] USC @ Penn State (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rxto/game_thread_usc_penn_state_730_pm_et/",
+   "published": "2026-10-10T22:30:12+00:00",
+   "gameId": null,
+   "teams": [
+    "USC",
+    "Penn State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Georgia @ Alabama (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rxsv/game_thread_georgia_alabama_730_pm_et/",
+   "published": "2026-10-10T22:30:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Georgia",
+    "Alabama"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Air Force @ Northern Illinois (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rxs6/game_thread_air_force_northern_illinois_730_pm_et/",
+   "published": "2026-10-10T22:30:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Air Force",
+    "Northern Illinois"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Louisiana @ Louisiana Tech (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rxrh/game_thread_louisiana_louisiana_tech_730_pm_et/",
+   "published": "2026-10-10T22:30:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Louisiana",
+    "Louisiana Tech"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] James Madison @ Georgia Southern (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rxqt/game_thread_james_madison_georgia_southern_730_pm/",
+   "published": "2026-10-10T22:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "James Madison",
+    "Georgia Southern"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] UAB @ Memphis (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2radq/game_thread_uab_memphis_700_pm_et/",
+   "published": "2026-10-10T22:00:17+00:00",
+   "gameId": null,
+   "teams": [
+    "UAB",
+    "Memphis"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] LSU @ Kentucky (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rad0/game_thread_lsu_kentucky_700_pm_et/",
+   "published": "2026-10-10T22:00:16+00:00",
+   "gameId": null,
+   "teams": [
+    "LSU",
+    "Kentucky"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Tarleton State @ Austin Peay (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2raby/game_thread_tarleton_state_austin_peay_700_pm_et/",
+   "published": "2026-10-10T22:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Tarleton State",
+    "Austin Peay"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] North Dakota State @ UNLV (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2rab8/game_thread_north_dakota_state_unlv_700_pm_et/",
+   "published": "2026-10-10T22:00:13+00:00",
+   "gameId": null,
+   "teams": [
+    "North Dakota State",
+    "UNLV"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Coastal Carolina @ Marshall (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2raa7/game_thread_coastal_carolina_marshall_700_pm_et/",
+   "published": "2026-10-10T22:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "Coastal Carolina",
+    "Marshall"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Nevada @ UTEP (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2ra9d/game_thread_nevada_utep_700_pm_et/",
+   "published": "2026-10-10T22:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Nevada",
+    "UTEP"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Miami (OH) Defeats UMass 20-19",
