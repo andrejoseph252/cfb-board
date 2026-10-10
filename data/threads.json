@@ -1,6 +1,50 @@
 {
- "updated": "2026-10-10T02:53:58+00:00",
+ "updated": "2026-10-10T09:08:25+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] BYU Defeats Iowa State 24-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1x27e5i/postgame_thread_byu_defeats_iowa_state_2410/",
+   "published": "2026-10-10T05:46:37+00:00",
+   "gameId": "401856826",
+   "teams": [
+    "BYU",
+    "Iowa State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Utah State Defeats Washington State 17-16",
+   "url": "https://www.reddit.com/r/CFB/comments/1x26g39/postgame_thread_utah_state_defeats_washington/",
+   "published": "2026-10-10T04:51:41+00:00",
+   "gameId": "401860922",
+   "teams": [
+    "Utah State",
+    "Washington State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Iowa Defeats Washington 41-24",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2625p/postgame_thread_iowa_defeats_washington_4124/",
+   "published": "2026-10-10T04:29:37+00:00",
+   "gameId": "401858487",
+   "teams": [
+    "Iowa",
+    "Washington"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Wyoming Defeats San Jos\u00e9 State 16-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1x25zl5/postgame_thread_wyoming_defeats_san_jos\u00e9_state/",
+   "published": "2026-10-10T04:25:42+00:00",
+   "gameId": "401864519",
+   "teams": [
+    "Wyoming",
+    "San Jos\u00e9 State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Louisville Defeats Florida State 44-20",
