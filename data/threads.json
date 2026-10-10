@@ -1,6 +1,72 @@
 {
- "updated": "2026-10-09T23:37:19+00:00",
+ "updated": "2026-10-10T02:53:58+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisville Defeats Florida State 44-20",
+   "url": "https://www.reddit.com/r/CFB/comments/1x245c5/postgame_thread_louisville_defeats_florida_state/",
+   "published": "2026-10-10T02:44:40+00:00",
+   "gameId": "401858254",
+   "teams": [
+    "Louisville",
+    "Florida State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Columbia Defeats Marist 41-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1x242kx/postgame_thread_columbia_defeats_marist_4128/",
+   "published": "2026-10-10T02:40:42+00:00",
+   "gameId": "401868265",
+   "teams": [
+    "Columbia",
+    "Marist"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Iowa State @ BYU (10:15 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x22fj9/game_thread_iowa_state_byu_1015_pm_et/",
+   "published": "2026-10-10T01:15:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Iowa State",
+    "BYU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Wyoming @ San Jos\u00e9 State (9:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x20vt0/game_thread_wyoming_san_jos\u00e9_state_900_pm_et/",
+   "published": "2026-10-10T00:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Wyoming",
+    "San Jos\u00e9 State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Washington State @ Utah State (9:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x20vs1/game_thread_washington_state_utah_state_900_pm_et/",
+   "published": "2026-10-10T00:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Washington State",
+    "Utah State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Iowa @ Washington (9:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x20vqx/game_thread_iowa_washington_900_pm_et/",
+   "published": "2026-10-10T00:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Iowa",
+    "Washington"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Columbia @ Marist (7:00 PM ET)",
