@@ -1,6 +1,61 @@
 {
- "updated": "2026-10-10T15:36:11+00:00",
+ "updated": "2026-10-10T18:10:48+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Miami (OH) @ UMass (2:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2k940/game_thread_miami_oh_umass_200_pm_et/",
+   "published": "2026-10-10T17:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Miami (OH)",
+    "UMass"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Savannah State @ Morehouse (11:00 AM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2itch/game_thread_savannah_state_morehouse_1100_am_et/",
+   "published": "2026-10-10T16:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "Savannah State",
+    "Morehouse"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Rice @ ECU (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2itbh/game_thread_rice_ecu_100_pm_et/",
+   "published": "2026-10-10T16:00:11+00:00",
+   "gameId": null,
+   "teams": [
+    "Rice",
+    "ECU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Old Dominion @ Appalachian State (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2itaj/game_thread_old_dominion_appalachian_state_100_pm/",
+   "published": "2026-10-10T16:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Old Dominion",
+    "Appalachian State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] South Carolina @ Florida (12:45 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2igf6/game_thread_south_carolina_florida_1245_pm_et/",
+   "published": "2026-10-10T15:45:04+00:00",
+   "gameId": null,
+   "teams": [
+    "South Carolina",
+    "Florida"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Ball State @ Northwestern (12:30 PM ET)",
