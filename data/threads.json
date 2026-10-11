@@ -1,6 +1,28 @@
 {
- "updated": "2026-10-11T14:25:56+00:00",
+ "updated": "2026-10-11T19:14:04+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Morehouse Defeats Savannah State 34-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1x3fotz/postgame_thread_morehouse_defeats_savannah_state/",
+   "published": "2026-10-11T18:31:56+00:00",
+   "gameId": "401907295",
+   "teams": [
+    "Morehouse",
+    "Savannah State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Cumberland @ Andrew (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x3btqr/game_thread_cumberland_andrew_100_pm_et/",
+   "published": "2026-10-11T16:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Cumberland",
+    "Andrew"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Savannah State @ Morehouse (11:00 AM ET)",
