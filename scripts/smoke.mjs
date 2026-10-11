@@ -5,7 +5,8 @@
      SKIP_SMOKE=1 git commit ...       # skip it once (the pre-commit hook honors this)
 
    Checks: the board renders games; every tab renders without an error; game cards open with their details; the
-   news drawer opens; the game plays a Quick game to the final whistle; practice runs a session; My Playbook opens.
+   news drawer opens; the game plays a Quick game to the final whistle; practice runs a session; My Playbook opens;
+   both defense drills (cover, pass rush) run a session.
    Any uncaught error or console.error on the page fails the run. If ESPN can't be reached (offline), the checks
    that need its data are skipped with a warning instead of failing, since that isn't the code's fault. */
 import { spawn } from 'node:child_process';
@@ -138,8 +139,9 @@ const game = await run(async () => {
     if (['modal', 'wait'].includes(P.phase)) await w(25); else if (steps % 40 === 0) await w(0);
     P.tick(.1);
     let clicked = false;
-    for (const a of ['toss', 'drive', 'half', 'ot', 'otnext', 'pat', 'fg', 'goforit']){ const el = vis(`.pb-modal [data-pb="${a}"]`); if (el){ el.click(); clicked = true; break; } }
+    for (const a of ['toss', 'drive', 'half', 'ot', 'otnext', 'pat', 'fg', 'goforit', 'keyrush']){ const el = vis(`.pb-modal [data-pb="${a}"]`); if (el){ el.click(); clicked = true; break; } }
     if (clicked){ await w(20); continue; }
+    if (P.G.youDefend){ if (P.phase === 'live' && P.G.play.t > .1) key(' '); continue; }   // a key third down: rush
     if (P.phase === 'presnap' && !$('.pb-modal.on')) key(' ');
     else if (P.phase === 'kick'){ const K = P.G.kick; if (K.stage === 'aim' && Math.abs(K.aim - K.center) < .02 || K.stage === 'power' && K.power > .8) key(' '); }
     else if (P.phase === 'live' && !P.G.play.carrier && P.G.play.t > 1.4) key(String(1 + Math.floor(Math.random() * 5)));
@@ -155,6 +157,24 @@ const game = await run(async () => {
   $('[data-pb="menu"]').click(); await w(200); $('[data-pb="playbook"]').click(); await w(200);
   $('[data-pb="pbnew"]').click(); await w(200);
   out.designer = document.querySelectorAll('.pb-rrow').length;
+  // Defense practice: a Quick cover session and a Quick pass-rush session, each to its summary.
+  $('[data-pb="ecancel"]').click(); await w(200); $('[data-pb="back"]').click(); await w(200);
+  $('[data-pb="practice"]').click(); await w(200); $('[data-pb="pside"][data-v="defense"]').click(); await w(200);
+  const drill = async kind => {
+    $(`[data-pb="pset"][data-k="ddrill"][data-v="${kind}"]`).click(); await w(150); $('[data-pb="pstart"]').click(); await w(200);
+    for (let n = 0; n < 20 && P.phase !== 'modal'; n++){
+      for (let i = 0; i < 300 && P.phase === 'dpre'; i++) P.tick(1 / 60);
+      if (kind === 'rush'){ P.tick(.12); key(' '); }
+      for (let i = 0; i < 600 && P.phase === 'live'; i++) P.tick(1 / 60);
+      for (let i = 0; i < 100 && P.phase === 'dead'; i++) P.tick(.1);
+      await w(10);
+    }
+    const sum = $('.pb-sess .pb-sg')?.textContent.replace(/\s+/g, ' ').trim() || null;
+    $('[data-pb="psetup"]')?.click(); await w(200);
+    return sum;
+  };
+  out.cover = await drill('cover');
+  out.rush = await drill('rush');
   return out;
 }).catch(e => ({ err: e.message }));
 if (game.err) fail('game opens', game.err);
@@ -163,6 +183,8 @@ else {
   game.recorded === 1 ? pass('a finished game counts once', '1 result saved') : fail('a finished game counts once', `${game.recorded} results saved`);
   game.practice ? pass('practice session completes', `grade ${game.practice}`) : fail('practice session completes', 'no summary');
   game.designer === 5 ? pass('My Playbook designer opens', '5 receiver rows') : fail('My Playbook designer opens', `${game.designer} receiver rows`);
+  game.cover ? pass('defense: cover drill session completes', `grade ${game.cover}`) : fail('defense: cover drill session completes', 'no summary');
+  game.rush ? pass('defense: pass rush session completes', `grade ${game.rush}`) : fail('defense: pass rush session completes', 'no summary');
 }
 
 /* ---------- page errors anywhere along the way ---------- */

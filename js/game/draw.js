@@ -207,7 +207,8 @@ export function createRenderer(canvas){
     if (portrait) view = p.team === 'off' ? (p.vx < -.5 ? 'front' : 'back') : (p.vx > .5 ? 'back' : 'front');
     else { view = 'side'; flip = p.face < 0; }
     if (portrait && Math.abs(p.vy) > Math.abs(p.vx) + .5){ view = 'side'; flip = p.vy < 0; }
-    const img = sprite(away ? 'o' + p.skin : 'm' + p.skin, { ...cols, s: p.skin }, view, frame, flip, p.down);
+    // Cached per uniform (team colors) and skin, so a new matchup never reuses the last team's jerseys.
+    const img = sprite(`${away ? 'o' : 'm'}${p.skin}${cols.h}${cols.j}${cols.p}${cols.l}${cols.stripe}${cols.trim}`, { ...cols, s: p.skin }, view, frame, flip, p.down);
     const big = p.role === 'OL' || p.role === 'DL';
     ctx.drawImage(img, sx - (img.width >> 1), sy - img.height + 1, img.width + (big && !p.down ? 1 : 0), img.height);
     if (p.stun > 0 && !p.down){ ctx.fillStyle = '#ffd84a'; const a = t * 8; ctx.fillRect(sx + Math.round(Math.cos(a) * 4), sy - 14 + Math.round(Math.sin(a) * 1.5), 1, 1); ctx.fillRect(sx - Math.round(Math.cos(a) * 4), sy - 14 - Math.round(Math.sin(a) * 1.5), 1, 1); }
@@ -277,6 +278,14 @@ export function createRenderer(canvas){
     ctx.fillStyle = '#101010'; ctx.fillRect(sx - 3, sy - 19 - b, 7, 4);
     ctx.fillStyle = col; ctx.fillRect(sx - 2, sy - 18 - b, 5, 1); ctx.fillRect(sx - 1, sy - 17 - b, 3, 1); ctx.fillRect(sx, sy - 16 - b, 1, 1);
   }
+  /* Pass rush timing meter over your rusher: a marker sweeps the bar; tap while it's in the green. */
+  function rushMeter(p, m){
+    const [sx, sy] = toScreen(p.x, p.y), w = 30, x0 = sx - w / 2, y0 = sy - 30;
+    ctx.fillStyle = '#101010'; ctx.fillRect(x0 - 1, y0 - 1, w + 2, 6);
+    ctx.fillStyle = '#3a3f46'; ctx.fillRect(x0, y0, w, 4);
+    ctx.fillStyle = m.flash ? '#ff5a4e' : '#4cff7a'; ctx.fillRect(x0 + Math.round(m.lo * w), y0, Math.max(2, Math.round((m.hi - m.lo) * w)), 4);
+    const mx = x0 + Math.round(m.pos * w); ctx.fillStyle = '#fff'; ctx.fillRect(mx - 1, y0 - 2, 2, 8);
+  }
   function carrierMark(G){
     const c = G.play.carrier; if (!c || c.down) return;
     const [sx, sy] = toScreen(c.x, c.y), b = Math.floor(t * 6) % 2;
@@ -339,7 +348,7 @@ export function createRenderer(canvas){
     if (K){ fx = (K.ball ? Math.max(K.spotX, Math.min(K.ball.x, 108)) : K.spotX) + long * .3; fy = K.ball ? (K.ball.y + MID) / 2 : (K.spotY + MID) / 2; ahead = 0; }
     else if (!P || !P.live && !P.result){ fx = (P ? P.los : G.los); fy = P ? P.b : G.y; ahead = long * (portrait ? .2 : .16); }
     else {
-      const b = P.ball, foc = P.carrier || (b.state === 'air' ? { x: b.x, y: b.y } : P.qb);
+      const b = P.ball, you = G.youDefend && P.def.find(d => d.user), foc = P.carrier || (b.state === 'air' ? { x: b.x, y: b.y } : you || P.qb);
       fx = foc.x; fy = foc.y; ahead = P.carrier ? long * .14 : canThrow(G) ? long * .24 : long * .1;
       if (aim) { fx = (P.qb.x + aim.x) / 2; fy = (P.qb.y + aim.y) / 2; ahead = long * .05; }
     }
@@ -360,8 +369,9 @@ export function createRenderer(canvas){
 
   function draw(G, dt, view = {}){
     t += dt;
-    const key = G.me.id + G.opp.id;
-    if (key !== teamsKey || !G.cols){ teamsKey = key; G.cols = { me: teamColors(G.me, false), opp: teamColors(G.opp, true) }; buildCrowd(G); logoImg = G.me.img || null; }
+    const key = G.me.id + G.opp.id + (G.youDefend ? 'D' : '');
+    // On defense your team (G.opp in those scenes) wears its colors and their offense wears road white.
+    if (key !== teamsKey || !G.cols){ teamsKey = key; G.cols = G.youDefend ? { me: teamColors(G.me, true), opp: teamColors(G.opp, false) } : { me: teamColors(G.me, false), opp: teamColors(G.opp, true) }; buildCrowd(G); logoImg = (G.youDefend ? G.opp.img : G.me.img) || null; }
     updateCamera(G, dt, view.aim);
     const sh = cam.shake > 0 ? cam.shake : 0; cam.shake = Math.max(0, cam.shake - dt * 10);
     const ox = sh ? Math.round((Math.random() - .5) * sh * 2) : 0, oy = sh ? Math.round((Math.random() - .5) * sh * 2) : 0;
@@ -372,15 +382,18 @@ export function createRenderer(canvas){
     if (P){
       lines(G);
       if (!P.live && !P.result && view.routes) routes(G);
-      if (P.live && canThrow(G) && !view.aim) labels(G);
+      if (P.live && canThrow(G) && !view.aim && !G.youDefend) labels(G);
       if (view.handoff && !P.carrier) handoffRing(G);
       if (P.target && !P.thrown && !P.carrier) handoffRing(G, P.target, '255,216,74');   // the target drill's man to hit
+      const mine = P.def.find(d => d.user || d.rusher); if (mine && !P.result) handoffRing(G, mine, '255,216,74');   // you, on defense
       const order = [...P.all].sort((a, b) => toScreen(a.x, a.y)[1] - toScreen(b.x, b.y)[1]);
       for (const p of order) player(G, p);
       ball(G);
       carrierMark(G);
       if (view.handoff && !P.carrier) handoffMark(G);
       if (P.target && !P.thrown && !P.carrier) handoffMark(G, P.target, '#ffd84a');
+      if (mine && !P.result) handoffMark(G, mine, '#ffd84a');
+      if (view.rush && mine) rushMeter(mine, view.rush);
       if (view.aim) { labels(G); aimArc(G, view.aim); }
       effects(P, dt);
     }

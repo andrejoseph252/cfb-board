@@ -154,7 +154,7 @@ export function setupPlay(G){
   // Defense: four down linemen, three backers, two corners, two safeties.
   const deep = L > 88 ? Math.min(L + 9, 108) : L + 13, press = L > 88 ? L + 3 : L + 6;
   [-4.3, -1.3, 1.3, 4.3].forEach(dy => def.push(mk('DL', 'def', L + .9, b + dy, SPEED.DL * dMul)));
-  const blitz = Math.random() < D.blitz;
+  const blitz = !G.defDrill && Math.random() < D.blitz;   // drills keep the picture simple: no blitz
   const lb = [-4.5, 0, 4.5].map(dy => mk('LB', 'def', Math.min(L + 4.5, 109), b + dy, SPEED.LB * dMul));
   const cb1 = mk('CB', 'def', Math.min(press, 109), x.y + 1, SPEED.CB * dMul), cb2 = mk('CB', 'def', Math.min(press, 109), z.y - 1, SPEED.CB * dMul);
   const fs = mk('S', 'def', deep, clamp(b - 9, 6, FW - 6), SPEED.S * dMul), ss = mk('S', 'def', deep, clamp(b + 9, 6, FW - 6), SPEED.S * dMul);
@@ -169,6 +169,20 @@ export function setupPlay(G){
   // Each lineman gets an opponent; one rusher wins first, the rest a beat later.
   const dl = def.filter(p => p.role === 'DL'), first = Math.floor(rnd(4));
   dl.forEach((p, i) => { p.ol = off[Math.min(4, i + (i >= 2 ? 1 : 0))]; p.shed = D.rush + rnd(-.4, 1.2) + (i === first ? 0 : rnd(.8, 2.2)); });
+
+  // You on defense (drills and key stops): their offense against your defense, one defender yours.
+  if (G.defDrill?.kind === 'cover'){
+    // One on one: your corner on their left wideout; just the line, the quarterback and him on offense.
+    const keep = off.filter(p => p.role === 'OL' || p === qb || p === x);
+    off.length = 0; off.push(...keep); rec.length = 0; rec.push(x); x.num = 1;
+    def.length = 0; def.push(cb1);
+    Object.assign(cb1, { user: true, spd: 8.6, man: x });
+  } else if (G.defDrill?.kind === 'rush'){
+    // You're the edge rusher; the rest of the line stays blocked, so the rush is all on you.
+    const me = dl[3];
+    for (const p of dl) p.shed = 99;
+    Object.assign(me, { rusher: true, wait: true, spd: 7.6 });
+  }
 
   G.play = { off, def, qb, rb, rec, all: [...off, ...def], t: 0, live: false, ball: { state: 'held', holder: qb, x: qb.x, y: qb.y, z: 1.6 },
     carrier: null, result: null, blitz, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [] };
@@ -258,6 +272,8 @@ export function step(G, dt, inp){
   const cover = P.def.filter(d => d.role !== 'DL' && !d.blitz);
   for (const d of P.def){
     if (d.stun > 0){ moveToward(d, d.x, d.y, 0, dt, 4); continue; }
+    if (d.user){ userDefender(G, d, dt, inp); continue; }
+    if (d.rusher && d.wait){ moveToward(d, d.x, d.y, 0, dt, 8); continue; }   // the rusher hasn't fired off the ball yet
     if (d.eng){
       if (P.t > d.eng.until || dist(d, d.eng.by) > 2.2) d.eng = null;
       else { const t = running ? carrier : qb; moveToward(d, t.x, t.y, d.spd * .22, dt); continue; }
@@ -320,6 +336,8 @@ export function step(G, dt, inp){
     if (s >= 1) return resolvePass(G);
   }
 
+  // Their quarterback decides after the sack check, so a throw and a sack can't both happen on one tick.
+  if (G.youDefend && !P.result && ball.state === 'held' && ball.holder === qb && !P.carrier) cpuQB(G);
   if (P.carrier) runCarrier(G, dt, inp);
 }
 
@@ -343,6 +361,8 @@ function runCarrier(G, dt, inp){
   const P = G.play, c = P.carrier, D = G.diff;
   // Practice has no one to tackle him: the whistle blows a moment after the catch or handoff.
   if (G.practice && P.t - P.carryT > (P.handed ? 1.8 : 1.1)) return end(G, { type: 'whistle', x: c.x, y: c.y });
+  if (G.defDrill && P.t - P.carryT > 1) return end(G, { type: 'whistle', x: c.x, y: c.y });
+  if (G.youDefend) inp = cpuRun(G, c);   // their ball carrier runs himself
   if (c.dive > 0){
     c.dive -= dt; c.vx = c.spd * 1.15; c.vy *= .9; integrate(c, dt);
     if (c.dive <= 0) return end(G, { type: 'dive', x: c.x, y: c.y });
@@ -395,6 +415,69 @@ function runCarrier(G, dt, inp){
 function checkBounds(G, c){
   if (c.y < 0 || c.y > FW){ end(G, { type: 'oob', x: c.x, y: clamp(c.y, 0, FW) }); return true; }
   return false;
+}
+
+/* ---------- you on defense ---------- */
+/* The opposing quarterback: drops back, reads who's open (by separation, a little extra for depth), and throws to
+   where that receiver will be when the ball arrives. Quicker and more accurate on harder levels; under pressure
+   he gets rid of it early and wild. Drills can fix his release time (the pass rush). */
+const CPU_QB = { rookie: { hold: [2.0, 2.8], err: 1.3, react: .55 }, pro: { hold: [1.8, 2.5], err: 1, react: .45 }, allpro: { hold: [1.6, 2.3], err: .8, react: .38 }, legend: { hold: [1.5, 2.1], err: .6, react: .3 } };
+function cpuQB(G){
+  const P = G.play, qb = P.qb, Q = CPU_QB[G.diffKey] || CPU_QB.pro;
+  if (P.qbAt == null) P.qbAt = G.defDrill?.throwAt ?? rnd(...Q.hold);
+  const heat = Math.min(99, ...P.def.filter(d => (d.free || d.blitz) && !d.eng).map(d => dist(d, qb)));
+  // Pressure: once a rusher is close he needs a beat to feel it and get rid of the ball; a quick rush wins that race.
+  if (heat < 3.5 && P.pressureAt == null){ P.pressured = true; P.pressureAt = P.t; }
+  const bail = P.pressureAt != null && P.t - P.pressureAt >= Q.react;
+  if (P.t < .9 || P.t < P.qbAt && !bail) return;
+  let best = null, bs = -Infinity;
+  for (const r of P.rec){
+    if (r.routeName === 'block') continue;
+    const sep = Math.min(12, ...P.def.map(d => dist(d, r))), s = sep + (r.x - P.los) * .03;
+    if (s > bs){ bs = s; best = r; }
+  }
+  if (!best) return;
+  let T = .6, g;
+  for (let i = 0; i < 5; i++){ g = ghostAt(best, T); T = .3 + Math.hypot(g.x - qb.x, g.y - qb.y) / 24; }
+  const e = Q.err * (P.pressured ? 2.2 : 1), wob = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15 * e;
+  P.aimedAt = best;
+  throwTo(G, g.x + wob(), g.y + wob());
+}
+/* Their ball carrier: runs away from the nearest tackler in front of him and keeps off the sideline. */
+function cpuRun(G, c){
+  const ahead = G.play.def.filter(d => d.x > c.x - 1 && d.stun <= 0 && !d.down).sort((a, b) => dist(a, c) - dist(b, c))[0];
+  let steer = ahead && dist(ahead, c) < 5 ? (ahead.y > c.y ? -1 : 1) : 0;
+  if (c.y < 3) steer = 1; else if (c.y > FW - 3) steer = -1;
+  return { steer, targetY: null, juke: 0, dive: false };
+}
+/* Your defender: goes where you drag (or the arrow keys point) and jumps the route when you tap. */
+function userDefender(G, d, dt, inp){
+  d.jump = Math.max(0, (d.jump || 0) - dt); d.jumpCD = Math.max(0, (d.jumpCD || 0) - dt);
+  if (inp.jump && d.jumpCD <= 0){ d.jump = .45; d.jumpCD = .9; emit(G, 'sfx', { name: 'juke' }); }
+  let tx = d.x, ty = d.y;
+  if (inp.defMove){ tx = inp.defMove.x; ty = inp.defMove.y; }
+  else if (inp.defKeys){ tx = d.x + inp.defKeys.x * 3; ty = d.y + inp.defKeys.y * 3; }
+  moveToward(d, tx, ty, d.spd * (d.jump > 0 ? 1.1 : 1), dt, 10);
+}
+/* Ends the current play from outside (drills: the pass rush is over the moment the ball is out). */
+export function stopPlay(G, r){ end(G, r); }
+
+/* A key third down in an opponent's drive, played as a pass rush: a sack, or a pressure that forces an
+   incompletion, stalls the drive there (field goal try if in range, else a punt). Returns the adjusted drive. */
+export function applyStop(G, r, k, how){
+  if (how === 'blocked' || how === 'offside') return { ...r, stop: how };
+  if (how === 'pressure' && Math.random() < .4) return { ...r, stop: 'pressure-converted' };
+  const at = Math.min(99, Math.round(r.path[k] + (how === 'sack' ? rnd(5, 9) : 0)));
+  const path = [...r.path.slice(0, k + 1), at], plays = k + 1, out = { ...r, path, plays, yards: r.path[0] - at, stop: how, half: false };
+  if (at <= 33){
+    const good = Math.random() < clamp(.97 - at / 55, .35, .95);
+    Object.assign(out, good ? { kind: 'fg', points: 3, myX: 25 } : { kind: 'missfg', points: 0, myX: Math.max(at + 7, 20) });
+  } else {
+    const land = at - Math.round(rnd(36, 46));
+    Object.assign(out, { kind: 'punt', points: 0, myX: land <= 0 ? 20 : Math.max(1, land + Math.round(rnd(-2, 6))) });
+  }
+  out.time = Math.round(plays * rnd(17, 24));
+  return out;
 }
 
 /* ---------- passing ---------- */
@@ -491,6 +574,14 @@ function resolvePass(G){
   const defs = P.def.filter(d => d.role !== 'DL' && d.stun <= 0).sort((a, c) => dist(a, land) - dist(c, land));
   const r = recs[0], d = defs[0], rd = r ? dist(r, land) : 99, dd = d ? dist(d, land) : 99;
   const u = Math.random();
+  const you = P.def.find(x => x.user); if (you && P.aimedAt) P.userSep = dist(you, P.aimedAt);   // how tight your coverage was at the catch point
+  // Your defender jumping the route (tapped while the ball was in the air) gets first crack at it.
+  const jd = P.def.find(x => x.user && x.jump > 0 && dist(x, land) < 2.2);
+  if (jd){
+    const q = 1 - dist(jd, land) / 2.2;
+    if (u < .18 + .42 * q) return end(G, { type: 'int', x: jd.x, y: jd.y, by: jd });
+    if (u < .55 + .4 * q) return end(G, { type: 'inc', why: 'Swatted away' });
+  }
   if (rd <= 1.6){
     const contest = dd < 1.7 ? (1.7 - dd) / 1.7 : 0;
     const pCatch = clamp(.96 - rd * .07 - contest * .6 * (.6 + .4 * D.intMul) + rate(G.me.off) / 400, .1, .98);

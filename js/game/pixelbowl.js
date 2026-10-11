@@ -18,7 +18,7 @@ const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...stor
 delete saved.record; saved.results ||= {};
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
-const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, session: 'quick', target: 'on' };
+const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, session: 'quick', target: 'on', side: 'offense', ddrill: 'cover' };
 /* A practice session is a set number of throws (handoffs don't count); finished sessions are saved to history. */
 const SESSIONS = { quick: { name: 'Quick', n: 5 }, normal: { name: 'Normal', n: 10 }, long: { name: 'Long', n: 20 } };
 saved.sessions = Array.isArray(saved.sessions) ? saved.sessions : [];
@@ -148,8 +148,8 @@ function loop(ts){
   if (waitingData && state.standings && colors){ waitingData = false; if (phase === 'setup' && (G?.me.name === 'Team' || G?.me.color === '#5a6470')){ pick = defaults(openPrefill); setup(); } }
   const dt = Math.min(.05, last ? (ts - last) / 1000 : 0); last = ts;
   if (!paused && G){ acc += dt; while (acc >= STEP){ update(STEP); acc -= STEP; } }
-  if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes,
-    handoff: !aim?.active && !G.play?.target && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
+  if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
+    handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
   if (G) drain();
   hud();
 }
@@ -159,10 +159,14 @@ function update(dt){
   readKeys();
   if (phase === 'presnap'){
     if (!S.tickRunoff(G, dt)) clockOut();
+  } else if (phase === 'dpre'){
+    defPreSnap(dt);
   } else if (phase === 'live'){
-    if (!G.ot && !G.practice) S.useClock(G, dt);
+    if (!G.ot && !G.practice && !G.youDefend) S.useClock(G, dt);
+    if (G.youDefend) defLive(dt);
     S.step(G, dt, input);
-    input.juke = 0; input.dive = false;
+    input.juke = 0; input.dive = false; input.jump = false;
+    if (G.youDefend && G.defDrill.kind === 'rush' && G.play.thrown && !G.play.result) S.stopPlay(G, { type: 'released' });
     if (aim && !S.canThrow(G)) aim = null;
     if (G.play.result) playOver();
   } else if (phase === 'dead'){
@@ -264,6 +268,7 @@ function playOver(){
   const r = G.play.result;
   phase = 'dead'; deadT = 0; aim = null; deadWait = 1.25;
   if (G.practice) return practicePlayOver(r);
+  if (G.youDefend) return defPlayOver(r);
   if (r.type === 'td'){ banner(G.twoPt ? 'TWO POINTS!' : 'TOUCHDOWN!', G.twoPt ? '' : G.me.name.toUpperCase(), G.me.color, 2300); sfx('td'); G.cheer = 3; deadWait = 2.5; }
   else if (r.type === 'int'){ banner('INTERCEPTED', '', '#ff5a4e', 1800); sfx('turnover'); deadWait = 2; }
   else if (r.type === 'fumble'){ banner('FUMBLE!', '', '#ff5a4e', 1800); sfx('turnover'); deadWait = 2; }
@@ -275,6 +280,7 @@ function playOver(){
 function afterPlay(){
   phase = 'wait';
   if (G.practice) return practiceAfter();
+  if (G.youDefend) return defAfter();
   const out = S.applyResult(G), lp = G.lastPlay;
   if (G.twoPt){
     G.twoPt = false;
@@ -361,17 +367,25 @@ function secondHalf(){
 /* The other team's drive: a little animated summary while the ball moves down a strip of field. */
 function oppDrive(ytg, opts = {}, then){
   phase = 'modal'; aim = null;
-  const r = S.simDrive(G, ytg, opts);
+  const r = S.simDrive(G, ytg, opts), k = pickStop(r);
+  if (k >= 0) return keyStopPrompt(r, k, then);
+  finishOppDrive(r, then);
+}
+function finishOppDrive(r, then){
+  phase = 'modal';
+  const ytg = r.path[0];
   if (!G.ot) S.useClock(G, r.time);
   const RES = { td: ['TOUCHDOWN', '#ff5a4e'], fg: ['FIELD GOAL', '#ff9f43'], missfg: ['MISSED FIELD GOAL', '#4cff7a'], punt: ['PUNT', '#c9d1d9'],
     int: ['INTERCEPTED!', '#4cff7a'], fumble: ['FUMBLE RECOVERED!', '#4cff7a'], downs: ['STOPPED ON DOWNS!', '#4cff7a'], half: [G.quarter >= 4 ? 'END OF GAME' : 'END OF HALF', '#c9d1d9'] };
   const [word, col] = RES[r.kind];
+  const STOP = { sack: 'Your sack stalled the drive', pressure: 'Your pressure forced an incompletion', 'pressure-converted': 'You got pressure, but they converted', blocked: 'They picked up your rush', offside: 'Offside on you; they kept the drive going' };
   const next = G.ot ? 'CONTINUE' : r.half || G.clock <= 0 ? 'CONTINUE' : `YOUR BALL · ${yardLine(r.myX)}`;
   modal(`<div class="pb-card pb-drive" style="--c:${esc(G.opp.color)}">
     <div class="pb-dh">${G.opp.logo ? `<img src="${esc(logoUrl(G.opp.logo, 72))}" alt="">` : ''}<b>${esc(G.opp.name)}</b><span>ON OFFENSE</span></div>
     <div class="pb-strip" style="--me:${esc(G.me.color)};--op:${esc(G.opp.color)}"><i class="pb-mark" style="left:${ytg}%"></i></div>
     <div class="pb-dres" style="color:${col}" hidden>${word}</div>
     <div class="pb-dsub" hidden>${r.plays} play${r.plays === 1 ? '' : 's'} · ${r.yards} yds${G.ot ? '' : ` · ${mmss(r.time)}`}</div>
+    ${r.stop ? `<div class="pb-dsub pb-stopline" hidden>${esc(STOP[r.stop] || '')}</div>` : ''}
     <button class="pb-go" type="button" data-pb="drive" hidden>${next}</button></div>`);
   let i = 0;
   const tick = setInterval(() => {
@@ -380,7 +394,7 @@ function oppDrive(ytg, opts = {}, then){
     if (i < r.path.length){ $('.pb-mark').style.left = `${r.path[i]}%`; sfx('blip'); return; }
     clearInterval(tick);
     G.score[1] += r.points;
-    $('.pb-dres').hidden = false; $('.pb-dsub').hidden = false; $('[data-pb="drive"]').hidden = false;
+    for (const el of root.querySelectorAll('.pb-dres, .pb-dsub, [data-pb="drive"]')) el.hidden = false;
     sfx(r.points ? 'boo' : ['int', 'fumble', 'downs', 'missfg'].includes(r.kind) ? 'good' : 'whistle');
   }, Math.max(90, Math.min(260, 1800 / r.path.length)));
   driveDone = () => {
@@ -391,6 +405,207 @@ function oppDrive(ytg, opts = {}, then){
   };
 }
 let driveDone = () => {};
+
+/* ---------- you on defense: cover drill, pass rush drill, key third downs ---------- */
+/* The rush meter: its speed and green window by difficulty. The quarterback's release time too. */
+const RUSH = { rookie: { period: 1.3, win: .3, release: [2.6, 3.2] }, pro: { period: 1.1, win: .24, release: [2.3, 2.9] },
+  allpro: { period: .95, win: .19, release: [2.1, 2.6] }, legend: { period: .8, win: .15, release: [1.9, 2.4] } };
+const DDRILLS = { cover: { name: 'Cover drill', tip: 'You are the corner, one on one with their receiver. Drag to stay with him; tap while the ball is in the air to jump the route.' },
+  rush: { name: 'Pass rush', tip: 'You are the edge rusher. Tap the instant the ball is snapped (too early is offside), then tap in the green to beat the tackle, and race the quarterback.' } };
+let keyCtx = null;   // a key third down inside a real game: { main, r, k, then }
+
+function defSetupHTML(){
+  const P = saved.practice, seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k]) === String(v)}">${l}</button>`).join('')}</div>`;
+  return `<div class="pb-opt"><span>Drill</span><div class="pb-ddrills">${Object.entries(DDRILLS).map(([k, d]) => `<button type="button" data-pb="pset" data-k="ddrill" data-v="${k}" aria-pressed="${P.ddrill === k}"><b>${d.name.toUpperCase()}</b><small>${esc(d.tip)}</small></button>`).join('')}</div></div>
+    <div class="pb-opt"><span>Session</span>${seg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.name} · ${x.n}`]))}</div>
+    <button class="pb-go" type="button" data-pb="pstart">START ${SESSIONS[P.session].name.toUpperCase()} SESSION</button>
+    ${historyHTML('defense')}`;
+}
+
+function startDefDrill(){
+  initAudio(saved.sound);
+  const you = withImage(teamInfo(pick.me)), them = withImage(teamInfo(pick.opp)), kind = saved.practice.ddrill;
+  closeModal();
+  G = S.newGame(them, you, saved.diff, saved.len);   // their offense is "me" in the engine; you defend
+  Object.assign(G, { youDefend: true, defDrill: { kind } });
+  G.ds = { kind, reps: 0, n: SESSIONS[saved.practice.session]?.n || 5, session: saved.practice.session, scoreSum: 0, best: 0, streak: 0, bestStreak: 0,
+    ints: 0, pbus: 0, stops: 0, comp: 0, yds: 0, tds: 0, sacks: 0, pressures: 0, blocked: 0, offside: 0, getOff: 0, getOffs: 0, last: '' };
+  snaps = 0; showHud(true); defRep(true);
+}
+function defRep(snapCam, at = 30, toGo = 10){
+  S.startDrive(G, at); G.toGo = toGo; G.y = S.MID;
+  const kind = G.defDrill.kind, Rz = RUSH[G.diffKey] || RUSH.pro;
+  if (kind === 'rush'){
+    G.defDrill.throwAt = Rz.release[0] + Math.random() * (Rz.release[1] - Rz.release[0]);
+    const c = .3 + Math.random() * .4;   // the green window moves around the bar from rep to rep
+    G.rush = { snapAt: .9 + Math.random() * 1.4, tapAt: null, contactAt: null, mt: 0, lo: c - Rz.win / 2, hi: c + Rz.win / 2, won: false, recover: 0, flash: 0, misses: 0, period: Rz.period, said: 0 };
+  } else G.rush = { snapAt: 1.1 };
+  if (snapCam) R.snapCamera(G);
+  S.setupPlay(G); phase = 'dpre'; G.dpreT = 0; aim = null; resetInput();
+}
+function defPreSnap(dt){
+  const Rz = G.rush; G.dpreT += dt;
+  if (G.defDrill.kind === 'rush' && !Rz.said){ Rz.said = 1; banner('SET…', '', '#fff', 700); }
+  if (G.dpreT >= Rz.snapAt){ S.snap(G); phase = 'live'; if (G.defDrill.kind === 'rush') banner('HUT!', '', '#ffd84a', 500); }
+}
+function defLive(dt){
+  const Rz = G.rush, P = G.play; if (G.defDrill.kind !== 'rush') return;
+  const me = P.def.find(d => d.rusher); if (!me) return;
+  if (Rz.tapAt == null && P.t > .7){ Rz.tapAt = P.t; Rz.late = true; me.wait = false; Rz.contactAt = P.t + .25; }   // a late get-off on his own
+  if (Rz.contactAt != null && P.t >= Rz.contactAt && !Rz.won) Rz.mt += dt;
+  Rz.recover = Math.max(0, Rz.recover - dt); Rz.flash = Math.max(0, Rz.flash - dt);
+}
+const meterPos = Rz => (1 - Math.cos(Rz.mt * Math.PI * 2 / Rz.period)) / 2;
+function rushView(){
+  const Rz = G?.rush; if (!G?.youDefend || G.defDrill?.kind !== 'rush' || !Rz || Rz.won || Rz.contactAt == null || phase !== 'live' || G.play.t < Rz.contactAt) return null;
+  return { pos: meterPos(Rz), lo: Rz.lo, hi: Rz.hi, flash: Rz.flash > 0 };
+}
+function rushTap(){
+  const Rz = G.rush, P = G.play; if (!Rz) return;
+  if (phase === 'dpre'){ Rz.offside = true; S.stopPlay(G, { type: 'offside' }); return playOver(); }
+  if (phase !== 'live' || P.result) return;
+  const me = P.def.find(d => d.rusher);
+  if (Rz.tapAt == null){ Rz.tapAt = P.t; me.wait = false; Rz.contactAt = P.t + .25; return; }
+  if (Rz.won || P.t < Rz.contactAt || Rz.recover > 0) return;
+  const pos = meterPos(Rz);
+  if (pos >= Rz.lo && pos <= Rz.hi){ Rz.won = true; Rz.wonAt = P.t; me.free = true; P.pops.push({ x: me.x, y: me.y, text: 'BEAT HIM!', color: '#4cff7a', t: 0 }); sfx('juke'); }
+  else { Rz.misses++; Rz.recover = .35; Rz.flash = .25; P.pops.push({ x: me.x, y: me.y, text: 'STONED', color: '#ff5a4e', t: 0 }); sfx('tackle'); }
+}
+
+/* Grades a defensive rep: { score, word, bars: [[label, value]...], kind } */
+function defGrade(r){
+  const P = G.play, kind = G.defDrill.kind;
+  if (kind === 'rush'){
+    const Rz = G.rush, me = P.def.find(d => d.rusher), qb = P.qb;
+    const getOff = Rz.offside ? 0 : Rz.late ? 10 : Math.round(Math.max(20, Math.min(100, 100 - (Rz.tapAt - .12) * 160)));
+    const win = Rz.offside ? 0 : Rz.won ? Math.max(20, 100 - Rz.misses * 30) : 0;
+    let out = r.type === 'offside' ? 'offside' : r.type === 'sack' ? 'sack' : me?.free && Math.hypot(me.x - qb.x, me.y - qb.y) < 3.5 ? 'pressure' : 'blocked';
+    const res = { sack: 100, pressure: 70, blocked: 25, offside: 0 }[out];
+    const score = out === 'offside' ? 0 : Math.round(res * .6 + getOff * .2 + win * .2);
+    return { kind, out, score, word: { sack: 'SACK!', pressure: 'PRESSURE', blocked: 'BLOCKED', offside: 'OFFSIDE' }[out], bars: [['GET-OFF', getOff], ['BEAT TACKLE', win], ['RESULT', res]], getOff: Rz.offside || Rz.late ? null : Rz.tapAt };
+  }
+  const gain = Math.round(Math.min(r.x ?? P.los, 100) - P.los), sep = P.userSep;
+  const cover = sep == null ? 60 : Math.round(Math.max(0, Math.min(100, 100 - (sep - 1) * 30)));
+  let out, ball, tackle = 100;
+  if (r.type === 'int'){ out = 'int'; ball = 100; }
+  else if (r.type === 'inc'){ out = /Swatted|Broken/.test(r.why || '') ? 'pbu' : 'inc'; ball = out === 'pbu' ? 90 : 70; }
+  else if (r.type === 'td'){ out = 'td'; ball = 0; tackle = 0; }
+  else { out = 'catch'; ball = 30; tackle = Math.max(0, Math.min(100, 100 - Math.max(0, gain - (P.catchX ? P.catchX - P.los : gain)) * 12)); }
+  const score = Math.round(out === 'int' ? 100 : out === 'pbu' ? 90 : out === 'inc' ? 72 : out === 'td' ? 0 : Math.max(5, 58 - gain * 2));
+  return { kind, out, score, gain, word: { int: 'PICKED OFF!', pbu: 'BROKEN UP', inc: 'INCOMPLETE', td: 'TOUCHDOWN', catch: `CAUGHT · +${gain}` }[out], bars: [['COVERAGE', cover], ['BALL', ball], ['TACKLE', tackle]], sep };
+}
+function defPlayOver(r){
+  phase = 'dead'; deadT = 0; deadWait = 1.3;
+  const g = G.play.dgrade = defGrade(r);
+  if (keyCtx) return;   // a key third down shows its result on the drive card instead
+  showGrade({ score: g.score, word: g.word, bars: g.bars, who: null });
+  if (g.out === 'sack'){ sfx('tackle'); R.shake(3); }
+  else if (g.out === 'int'){ banner('INTERCEPTION!', '', '#4cff7a', 1100); sfx('good'); }
+  else if (g.out === 'td'){ sfx('boo'); }
+  else if (g.out === 'offside'){ banner('OFFSIDE', 'Wait for the snap', '#ff5a4e', 1100); sfx('whistle'); }
+}
+function defAfter(){
+  const g = G.play.dgrade;
+  if (keyCtx) return keyRushDone(g.out);
+  const ds = G.ds; ds.reps++; ds.scoreSum += g.score; ds.best = Math.max(ds.best, g.score);
+  const good = g.kind === 'rush' ? g.out === 'sack' : ['int', 'pbu', 'inc'].includes(g.out);
+  ds.streak = good ? ds.streak + 1 : 0; ds.bestStreak = Math.max(ds.bestStreak, ds.streak);
+  if (g.kind === 'rush'){ ds[{ sack: 'sacks', pressure: 'pressures', blocked: 'blocked', offside: 'offside' }[g.out]]++; if (g.getOff != null){ ds.getOff += g.getOff; ds.getOffs++; } }
+  else { if (g.out === 'int') ds.ints++; if (g.out === 'pbu') ds.pbus++; if (['int', 'pbu', 'inc'].includes(g.out)) ds.stops++; if (g.out === 'catch' || g.out === 'td'){ ds.comp++; ds.yds += g.gain || 0; } if (g.out === 'td') ds.tds++; }
+  ds.last = g.word;
+  if (ds.reps >= ds.n) return finishDefSession();
+  defRep(false);
+}
+function finishDefSession(){
+  phase = 'modal'; clearTimeout(gradeTimer); $('.pb-grade')?.classList.remove('on');
+  const ds = G.ds, avg = Math.round(ds.scoreSum / ds.reps), rush = ds.kind === 'rush';
+  const rec = { id: String(Date.now()), at: Date.now(), side: 'defense', kind: ds.kind, session: ds.session, throws: ds.reps, avg, bestStreak: ds.bestStreak,
+    drill: rush ? `Pass rush · ${ds.sacks} sack${ds.sacks === 1 ? '' : 's'}` : `Cover drill · ${ds.ints} INT · ${ds.comp} caught`,
+    stat: rush ? `${ds.sacks} sacks · ${ds.pressures} pressures` : `${ds.stops}/${ds.reps} stopped`, inStride: Math.round((rush ? ds.sacks : ds.stops) / ds.reps * 100) };
+  const prevBest = Math.max(0, ...saved.sessions.filter(x => x.side === 'defense' && x.kind === ds.kind).map(x => x.avg));
+  saved.sessions = [rec, ...saved.sessions].slice(0, 80); save();
+  const best = avg > prevBest && saved.sessions.filter(x => x.side === 'defense' && x.kind === ds.kind).length > 1;
+  sfx(avg >= 80 ? 'good' : 'whistle');
+  const cells = rush
+    ? [[ds.sacks, 'Sacks'], [ds.pressures, 'Pressures'], [ds.blocked, 'Blocked'], [ds.getOffs ? `${(ds.getOff / ds.getOffs).toFixed(2)}s` : '–', 'Avg get-off']]
+    : [[`${ds.stops}/${ds.reps}`, 'Stopped'], [ds.ints, 'Picks'], [ds.pbus, 'Break-ups'], [ds.yds, 'Yds allowed']];
+  modal(`<div class="pb-card pb-sess">
+    <span class="pb-sk">${esc(SESSIONS[ds.session]?.name || '')} ${rush ? 'pass rush' : 'cover'} session complete</span>
+    <div class="pb-sg"><b style="color:${gradeColor(avg)}">${letter(avg)}</b><span>${avg}<small>/100</small></span></div>
+    ${best ? '<p class="pb-pb">NEW PERSONAL BEST</p>' : ''}
+    <div class="pb-ss">${cells.map(([v, k]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+    <p class="pb-sub">Best streak ${ds.bestStreak} · saved to your history</p>
+    <div class="pb-btns"><button class="pb-go" type="button" data-pb="dagain">GO AGAIN</button><button class="pb-go alt" type="button" data-pb="psetup">CHANGE DRILL</button></div>
+    <div class="pb-btns"><button class="pb-go alt sm" type="button" data-pb="menu">MAIN MENU</button><button class="pb-go alt sm danger" type="button" data-pb="pdel" data-id="${rec.id}" data-long="1">DELETE THIS SESSION</button></div>
+  </div>`);
+}
+function defHud(){
+  const hint = hintText(), Rz = G.rush;
+  if (keyCtx){
+    const key = ['K', hint, phase].join('|'); if (key === lastHud) return; lastHud = key;
+    $('.pb-bug').innerHTML = `<div class="pb-tm" style="--c:${esc(G.opp.color)};--k:${inkOn(G.opp.color)}"><b>KEY 3RD DOWN</b></div><div class="pb-mid"><span>DOWN</span><b>3RD & ${G.toGo}</b></div>`;
+    $('.pb-dd').innerHTML = `<span>${esc(G.me.name.toUpperCase())} AT YOUR ${Math.round(100 - G.los)}</span>`; $('.pb-bar').innerHTML = ''; $('.pb-hint').textContent = hint; return;
+  }
+  const ds = G.ds, avg = ds.reps ? Math.round(ds.scoreSum / ds.reps) : null, rush = ds.kind === 'rush';
+  const btns = phase === 'dpre' && !paused ? '<button type="button" data-pb="psetup">CHANGE DRILL</button>' : '';
+  const key = ['D', ds.reps, ds.scoreSum, ds.streak, btns, hint].join('|'); if (key === lastHud) return; lastHud = key;
+  $('.pb-bug').innerHTML = `<div class="pb-tm" style="--c:${esc(G.opp.color)};--k:${inkOn(G.opp.color)}">${G.opp.logo ? `<img src="${esc(logoUrl(G.opp.logo, 72))}" alt="">` : ''}<b>DEFENSE</b></div>
+    ${rush ? `<div class="pb-mid"><span>SACKS</span><b>${ds.sacks}</b></div><div class="pb-mid"><span>PRESS</span><b>${ds.pressures}</b></div>`
+      : `<div class="pb-mid"><span>STOPS</span><b>${ds.stops}/${ds.reps}</b></div><div class="pb-mid"><span>PICKS</span><b>${ds.ints}</b></div>`}
+    <div class="pb-mid"><span>GRADE</span><b style="color:${avg == null ? '#fff' : gradeColor(avg)}">${avg == null ? '--' : letter(avg)}</b></div>`;
+  $('.pb-dd').innerHTML = `<span>REP ${Math.min(ds.reps + 1, ds.n)}/${ds.n}</span>${ds.reps ? `<span>STREAK ${ds.streak}</span>` : ''}`;
+  $('.pb-bar').innerHTML = btns; $('.pb-hint').textContent = hint;
+}
+function defHint(){
+  const touch = coarse(), Rz = G.rush, P = G.play;
+  if (G.defDrill?.kind === 'rush'){
+    if (phase === 'dpre') return `Wait for the snap, then ${touch ? 'tap' : 'press Space'} the instant the ball moves`;
+    if (phase !== 'live') return '';
+    if (Rz.tapAt == null) return touch ? 'TAP!' : 'SPACE!';
+    if (!Rz.won) return `${touch ? 'Tap' : 'Space'} when the marker is in the green to beat the tackle`;
+    return 'Get to the quarterback!';
+  }
+  if (phase === 'dpre') return touch ? 'Get set: drag to cover him, tap while the ball is in the air to jump the route' : 'Arrows (or drag) to cover him · Space while the ball is in the air to jump the route';
+  if (phase === 'live' && P.ball.state === 'air') return touch ? 'TAP to jump the route!' : 'SPACE to jump the route!';
+  return phase === 'live' ? (touch ? 'Drag to stay with him' : 'Arrows or drag to stay with him') : '';
+}
+
+/* Key third downs: about half of the opponent's drives, and nearly every close one late, pause on a third down
+   for you to rush the passer. Not on drives that end the half, or that end in a turnover anyway. */
+function pickStop(r){
+  if (G.practice || r.half || ['int', 'fumble'].includes(r.kind) || r.path.length < 5) return -1;
+  const late = G.quarter >= 4 && Math.abs(G.score[0] - G.score[1]) <= 8;
+  if (Math.random() > (late ? .9 : .45)) return -1;
+  return Math.max(2, Math.min(r.path.length - 2, Math.round(r.path.length * .55)));
+}
+function keyStopPrompt(r, k, then){
+  phase = 'modal';
+  const at = r.path[k], toGo = 4 + Math.floor(Math.random() * 8);
+  keyPending = { r, k, then, toGo };
+  modal(`<div class="pb-card pb-drive" style="--c:${esc(G.opp.color)}">
+    <div class="pb-dh">${G.opp.logo ? `<img src="${esc(logoUrl(G.opp.logo, 72))}" alt="">` : ''}<b>${esc(G.opp.name)}</b><span>ON OFFENSE</span></div>
+    <div class="pb-strip" style="--me:${esc(G.me.color)};--op:${esc(G.opp.color)}"><i class="pb-mark" style="left:${at}%"></i></div>
+    <div class="pb-dres" style="color:#ffd84a">3RD & ${toGo} AT YOUR ${at}</div>
+    <p class="pb-sub">Key third down. You're the edge rusher: get a sack or pressure and the drive stalls.</p>
+    <button class="pb-go" type="button" data-pb="keyrush">RUSH THE PASSER</button></div>`);
+}
+let keyPending = null;
+function startKeyRush(){
+  const kp = keyPending; keyPending = null; if (!kp) return;
+  closeModal();
+  const main = G;
+  keyCtx = { main, ...kp };
+  G = S.newGame(main.opp, main.me, main.diffKey, main.lenKey);
+  Object.assign(G, { youDefend: true, defDrill: { kind: 'rush' } });
+  showHud(true); defRep(true, 100 - kp.r.path[kp.k], kp.toGo);
+}
+function keyRushDone(out){
+  const { main, r, k, then } = keyCtx; keyCtx = null;
+  G = main; showHud(true); lastHud = '';
+  const words = { sack: ['SACK!', '#4cff7a'], pressure: ['PRESSURE!', '#4cff7a'], blocked: ['NO PRESSURE', '#c9d1d9'], offside: ['OFFSIDE', '#ff5a4e'] };
+  banner(...words[out], 1000);
+  finishOppDrive(S.applyStop(G, r, k, out), then);
+}
 
 /* ---------- overtime (college style) ---------- */
 function startOT(){
@@ -601,12 +816,23 @@ function drillPreview(roles, routes, color){
   return h + '</svg>';
 }
 
+const sideSwitch = () => `<div class="pb-seg pb-side"><button type="button" data-pb="pside" data-v="offense" aria-pressed="${saved.practice.side !== 'defense'}">OFFENSE</button><button type="button" data-pb="pside" data-v="defense" aria-pressed="${saved.practice.side === 'defense'}">DEFENSE</button></div>`;
 function practiceSetup(keepScroll){
   const prevScroll = keepScroll ? $('.pb-setup')?.scrollTop : 0;
   phase = 'setup'; paused = false; behind = null;
-  if (!G || G.practice){ G = S.newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); }
+  if (!G || G.practice || G.youDefend){ G = S.newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); }
   showHud(false);
   const P = saved.practice, roles = practiceRoles(), routes = practiceRoutes();
+  if (P.side === 'defense'){
+    modal(`<div class="pb-setup pb-practice">
+      <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
+      ${sideSwitch()}
+      <p class="pb-sub">Defense against ${esc(G.opp.name)}'s offense: you control one defender (gold), their quarterback reads and throws. Graded every rep.</p>
+      ${defSetupHTML()}
+    </div>`);
+    if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
+    return;
+  }
   const seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k]) === String(v)}">${l}</button>`).join('')}</div>`;
   let routesUI = '';
   const cc = (v, name, routes) => `<button type="button" data-pb="pset" data-k="concept" data-v="${esc(v)}" aria-pressed="${P.concept === v}">${formationSVG(roles, routes, true)}<span>${esc(name)}</span></button>`;
@@ -618,6 +844,7 @@ function practiceSetup(keepScroll){
     <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
     <p class="pb-sub">No defense, no clock: every rep starts from the same spot. Throwing for ${esc(G.me.name)}. Every throw is graded on timing (in stride), accuracy and release.</p>
 
+    ${sideSwitch()}
     <div class="pb-form">${drillPreview(roles, routes, G.me.color)}
       <p>${roles.length} receiver${roles.length === 1 ? '' : 's'} out · ${P.mode === 'concept' ? esc((P.concept?.startsWith('u:') ? findPlay(P.concept.slice(2))?.name : S.CONCEPTS[P.concept]?.name) || '') : P.mode === 'pick' ? 'Your routes' : 'Random routes'}</p></div>
     <div class="pb-opt"><span>Receivers out</span>${seg('count', [1, 2, 3, 4, 5].map(n => [n, n]))}</div>
@@ -704,14 +931,14 @@ function finishSession(){
   </div>`);
 }
 /* Your saved sessions on the practice screen: newest first, best one starred, each deletable. */
-function historyHTML(){
-  const list = saved.sessions;
+function historyHTML(side = 'offense'){
+  const list = saved.sessions.filter(x => (x.side || 'offense') === side);
   if (!list.length) return '<p class="pb-sub pb-nohist">Finish a session and it shows up here.</p>';
   const best = list.reduce((a, b) => b.avg > a.avg ? b : a, list[0]);
   const day = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   return `<div class="pb-hist"><span class="pb-hh">Your sessions <small>${list.length} saved · best ${letter(best.avg)} (${best.avg})</small></span>
     ${list.slice(0, 12).map(x => `<div class="pb-hr${x === best ? ' best' : ''}"><b style="color:${gradeColor(x.avg)}">${letter(x.avg)}</b>
-      <div><span>${x === best ? '<i class="pb-best">BEST</i>' : ''}${esc(SESSIONS[x.session]?.name || '')} · ${x.throws} throws · ${x.avg}</span><small>${esc(day(x.at))} · ${esc(x.drill || '')} · ${x.inStride}% in stride</small></div>
+      <div><span>${x === best ? '<i class="pb-best">BEST</i>' : ''}${esc(SESSIONS[x.session]?.name || '')} · ${x.throws} ${side === 'defense' ? 'reps' : 'throws'} · ${x.avg}</span><small>${esc(day(x.at))} · ${esc(x.drill || '')} · ${side === 'defense' ? esc(x.stat || '') : `${x.inStride}% in stride`}</small></div>
       <button type="button" data-pb="pdel" data-id="${esc(x.id)}" aria-label="Delete this session">✕</button></div>`).join('')}
     ${list.length > 12 ? `<p class="pb-sub">Showing your 12 most recent.</p>` : ''}</div>`;
 }
@@ -725,7 +952,7 @@ function showGrade(g){
   const bar = (k, v) => `<div class="pb-gb"><span>${k}</span><i><b style="width:${v}%;background:${gradeColor(v)}"></b></i></div>`;
   el.innerHTML = `<b class="pb-gl" style="color:${gradeColor(g.score)}">${letter(g.score)}</b>
     <div class="pb-gw"><em>${esc(g.word)}</em><span>${g.score}${g.who ? ` · ${G.play?.target ? 'target: ' : ''}${esc(S.ROLE_NAMES[g.who] || '')}` : ''}</span></div>
-    <div class="pb-gbars">${bar('TIMING', g.timing)}${bar('ACCURACY', g.accuracy)}${bar('RELEASE', g.release)}</div>`;
+    <div class="pb-gbars">${(g.bars || [['TIMING', g.timing], ['ACCURACY', g.accuracy], ['RELEASE', g.release]]).map(([k, v]) => bar(k, v)).join('')}</div>`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   clearTimeout(gradeTimer); gradeTimer = setTimeout(() => el.classList.remove('on'), 2600);
   if (g.score >= 93) sfx('first');
@@ -772,7 +999,7 @@ function scoreLine(big){
 
 /* ---------- pause ---------- */
 function pause(){
-  if (!G || !['presnap', 'live', 'dead', 'kick'].includes(phase)) return;
+  if (!G || !['presnap', 'live', 'dead', 'kick', 'dpre'].includes(phase) || keyCtx) return;
   paused = true;
   modal(`<div class="pb-card"><h2>PAUSED</h2>${scoreLine()}<div class="pb-btns col"><button class="pb-go" type="button" data-pb="resume">RESUME</button>
     <button class="pb-go alt" type="button" data-pb="restart">RESTART GAME</button><button class="pb-go alt" type="button" data-pb="menu">MAIN MENU</button>
@@ -787,6 +1014,7 @@ function showHud(on){ $('.pb-hud').hidden = !on; $('.pb-tools').hidden = !on; if
 function hud(){
   if (!root || !G || $('.pb-hud').hidden) return;
   if (G.practice) return practiceHud();
+  if (G.youDefend) return defHud();
   const q = G.ot ? (G.ot === 1 ? 'OT' : `${G.ot}OT`) : `Q${G.quarter}`;
   const dd = G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
   const late = S.lateInHalf(G), live = phase === 'presnap';
@@ -810,6 +1038,7 @@ function hud(){
 }
 function hintText(){
   if (paused) return '';
+  if (G?.youDefend) return defHint();
   const touch = coarse();
   if (phase === 'kick'){
     const st = G.kick?.stage;
@@ -877,9 +1106,12 @@ function onClick(e){
     case 'callclose': return closeModal();
     case 'pset': { const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save(); return practiceSetup(true); }
     case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return pickInPlace(b, practiceRoles(), practiceRoutes()); }
-    case 'pstart': return startPractice();
+    case 'pstart': return saved.practice.side === 'defense' ? startDefDrill() : startPractice();
+    case 'dagain': return startDefDrill();
+    case 'keyrush': return startKeyRush();
     case 'psetup': return practiceSetup();
     case 'pagain': return startPractice();
+    case 'pside': saved.practice.side = b.dataset.v; return practiceSetup();
     case 'pdel': {
       // Two taps: the first arms the button, the second deletes.
       if (b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = b.dataset.long ? 'TAP AGAIN TO DELETE' : 'DELETE?'; return; }
@@ -941,6 +1173,11 @@ function down(e){
   const p = local(e), w = R.toWorld(p.x, p.y), now = performance.now();
   ptr = { id: e.pointerId, x0: p.x, y0: p.y, mode: 'none', samples: [{ ...p, t: now }] };
   if (phase === 'kick'){ S.kickTap(G); return; }
+  if (G.youDefend){   // on defense: rush taps, or drag your defender (a tap while the ball is in the air jumps it)
+    if (G.defDrill.kind === 'rush') return rushTap();
+    if (phase === 'live'){ if (G.play.ball.state === 'air') input.jump = true; ptr.mode = 'dmove'; input.defMove = w; }
+    return;
+  }
   // Before the snap, pressing the field snaps the ball and the same press goes on to aim a throw (or, on the
   // highlighted running back, hands off): one motion, no separate tap to snap.
   let fresh = false;
@@ -970,6 +1207,7 @@ function move(e){
     const qb = G.play.qb, d = Math.min(62, len * k), n = len || 1;
     aim.target = { x: Math.min(112, qb.x + pull.x / n * d), y: qb.y + pull.y / n * d };
   } else if (ptr.mode === 'qb') input.qbMove = w;
+  else if (ptr.mode === 'dmove') input.defMove = w;
   else if (ptr.mode === 'steer' || (G.play.carrier && ptr.mode === 'none' && phase === 'live')){ ptr.mode = 'steer'; input.targetY = w.y; }
 }
 function up(e){
@@ -982,9 +1220,9 @@ function up(e){
       if (v.x > Math.abs(v.y) * 1.2) input.dive = true; else input.juke = Math.sign(v.y) || 1;
     }
   }
-  aim = null; input.qbMove = null; input.targetY = null; ptr = null;
+  aim = null; input.qbMove = null; input.targetY = null; input.defMove = null; ptr = null;
 }
-function cancel(){ aim = null; input.qbMove = null; input.targetY = null; ptr = null; }
+function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defMove = null; ptr = null; }
 function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, qbMove: null, qbKeys: null }); ptr = null; aim = null; }
 
 /* ---------- keyboard ---------- */
@@ -999,6 +1237,7 @@ function keydown(e){
   if (k === ' ' || k === 'enter'){
     if ($('.pb-modal').classList.contains('on')) return;
     e.preventDefault(); resume();
+    if (G.youDefend){ if (G.defDrill.kind === 'rush') return rushTap(); input.jump = true; return; }
     if (phase === 'presnap') return doSnap();
     if (phase === 'kick') return S.kickTap(G);
     if (phase === 'live' && G.play.carrier){
@@ -1010,7 +1249,7 @@ function keydown(e){
   }
   if (k === 'c' && phase === 'presnap' && !G.practice){ e.preventDefault(); return $('.pb-modal').dataset.kind === 'call' ? closeModal() : playSheet(); }
   if (k === 'h' && phase === 'presnap' && !$('.pb-modal').classList.contains('on')){ e.preventDefault(); doSnap(); S.handoff(G); return; }
-  if (phase !== 'live') return;
+  if (phase !== 'live' || G.youDefend) return;   // offense keys (throws, handoff, dive) do nothing on defense
   if (/^[1-5]$/.test(k)){ e.preventDefault(); S.throwToReceiver(G, Number(k)); return; }
   if (k === 'h'){ e.preventDefault(); S.handoff(G); return; }
   if (k === 'x'){ e.preventDefault(); if (G.play.carrier) input.dive = true; }
@@ -1022,6 +1261,7 @@ function readKeys(){
   const fwd = R.portrait ? (u ? 1 : 0) - (d ? 1 : 0) : (r ? 1 : 0) - (l ? 1 : 0);
   input.steer = lat;
   input.qbKeys = lat || fwd ? { x: fwd, y: lat } : null;
+  input.defKeys = input.qbKeys;
 }
 
 /* ---------- copy and styles ---------- */
@@ -1210,6 +1450,13 @@ body.pb-open{overflow:hidden}
 .pb-pbc .los{stroke:rgba(255,255,255,.45);stroke-width:1;stroke-dasharray:3 3}
 .pb-pbc .dot{fill:#fff} .pb-pbc .ol{fill:#c9d1d9} .pb-pbc .qb{fill:#9aa4ae}
 .pb-pbc .q{fill:#fff;font:7px 'Press Start 2P',monospace;text-anchor:middle}
+.pb-side button{font-size:9px;padding:10px 6px}
+.pb-ddrills{display:grid;gap:6px}
+.pb-ddrills button{display:grid;gap:5px;text-align:left;background:#1b1f24;border:2px solid #000;box-shadow:0 3px 0 #000;padding:9px 10px}
+.pb-ddrills button b{font-weight:400;font-size:9px;color:#fff}
+.pb-ddrills button small{font-size:6.5px;line-height:1.6;color:#9aa4ae}
+.pb-ddrills button[aria-pressed="true"]{box-shadow:0 0 0 2px #ffd84a,0 3px 0 #000}
+.pb-ddrills button[aria-pressed="true"] b{color:#ffd84a}
 .pb-practice{gap:12px}
 .pb-sub{margin:0;font-size:8px;color:#9aa4ae;line-height:1.8}
 .pb-form{border:2px solid #000;color:#ffd84a;background:#101215}
