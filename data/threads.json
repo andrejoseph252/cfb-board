@@ -1,6 +1,17 @@
 {
- "updated": "2026-10-11T11:21:28+00:00",
+ "updated": "2026-10-11T14:25:56+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Savannah State @ Morehouse (11:00 AM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x38xgv/game_thread_savannah_state_morehouse_1100_am_et/",
+   "published": "2026-10-11T14:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Savannah State",
+    "Morehouse"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Arizona State Defeats Hawai'i 30-12",
