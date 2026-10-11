@@ -10,6 +10,7 @@ import { chartHTML } from './wpchart.js';
 import { banner, theLine, lineChart, hype, tape, recentForm } from './preview.js';
 import { threadsFor, searchUrl } from '../threads.js';
 import { lineFor } from '../lines.js';
+import { ats, atsWhy, fmtLine } from '../ats.js';
 
 const liveIds = new Set();
 export const isLive = id => liveIds.has(id) || state.byId[id]?.state === 'in';
@@ -33,9 +34,17 @@ export function viewGame(id){
   } else {
     // Finished and live games only show the pregame line when it actually moved.
     const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';
-    h += lineScore(g) + wpPanel(g, s) + scoring(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + drives(g, s) + players(g, s);
+    h += atsNote(g, s) + lineScore(g) + wpPanel(g, s) + scoring(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + drives(g, s) + players(g, s);
   }
   return h;
+}
+
+/* Finished games: the closing line and who covered (ESPN's summary keeps the line even when the board's file doesn't). */
+function atsNote(g, s){
+  const a = ats(g, s.line); if (!a) return '';
+  const D = g[a.dog], F = g[a.fav];
+  const verdict = a.result === 'push' ? 'Push' : a.result === 'covered' ? `${F.name} covered` : `${D.name} covered`;
+  return `<p class="ats-note${a.dogCover ? ' dog' : ''}"><b>Closing line ${esc(F.abbr)} ${fmtLine(a.line)}</b> · ${esc(verdict)} · ${esc(atsWhy(g, a))}</p>`;
 }
 
 const PAD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 8h10a4 4 0 0 1 4 4v1.5a3.5 3.5 0 0 1-6.3 2.1L13.5 14h-3l-1.2 1.6A3.5 3.5 0 0 1 3 13.5V12a4 4 0 0 1 4-4zM7.5 10.5v3M6 12h3M15.5 11.5h.01M17.5 13.5h.01"/></svg>';

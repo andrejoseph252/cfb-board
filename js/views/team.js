@@ -7,6 +7,16 @@ import { realMarket } from '../markets.js';
 import { useData } from '../resource.js';
 import { teamLink, logo, detailHead, panel, gameHref } from './components.js';
 import { isMine, STAR } from '../myteam.js';
+import { ats } from '../ats.js';
+
+/* Against the spread, from this team's side: its closing line and whether it covered, as a quiet tag after the score. */
+function atsMark(g, side){
+  const a = ats(g); if (!a) return '';
+  const n = String(a.line).replace(/\.0$/, ''), mine = side === a.fav ? `−${n}` : `+${n}`;
+  const covered = a.result === 'push' ? null : (side === a.fav) === (a.result === 'covered');
+  const label = covered == null ? 'Push' : covered ? 'Covered' : 'Did not cover';
+  return `<span class="sats${covered ? ' c' : ''}" title="${label} (closing line ${mine})" aria-label="${label}, closing line ${mine}">${mine} ${covered == null ? 'P' : covered ? '✓' : '✗'}</span>`;
+}
 
 export function viewTeam(id){
   const e = useData('team:' + id, () => api.teamSchedule(id), parseSchedule);
@@ -37,7 +47,7 @@ export function viewTeam(id){
     if (g.state === 'post' && g.completed){
       const won = me.winner || (!o.winner && Number(me.score) > Number(o.score));
       won ? w++ : l++; cls = won ? 'W' : 'L';
-      res = `<a class="res-link" href="${gameHref(g.id)}"><b class="${cls}">${cls}</b> ${esc(me.score)}-${esc(o.score)}</a>`;
+      res = `<a class="res-link" href="${gameHref(g.id)}"><b class="${cls}">${cls}</b> ${esc(me.score)}-${esc(o.score)}</a>${atsMark(g, side)}`;
     } else if (g.state === 'in'){
       res = `<a class="res-link live" href="${gameHref(g.id)}"><span class="status live">${esc(g.detail)}</span> ${esc(me.score)}-${esc(o.score)}</a>`;
     } else {

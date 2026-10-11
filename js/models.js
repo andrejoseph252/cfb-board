@@ -10,7 +10,10 @@ function parseBook(o){
   const hm = o.homeTeamOdds?.moneyLine ?? o.moneyline?.home?.close?.odds ?? o.moneyline?.home?.open?.odds;
   const am = o.awayTeamOdds?.moneyLine ?? o.moneyline?.away?.close?.odds ?? o.moneyline?.away?.open?.odds;
   const ph = ml2p(hm), pa = ml2p(am);
-  return { pHome: (ph != null && pa != null) ? ph / (ph + pa) : null, details: o.details, ou: o.overUnder ?? null };
+  // The home team's spread (negative: home favored); ESPN's number is from the home side, the favorite flags confirm it.
+  let spread = o.spread != null ? Number(o.spread) : null;
+  if (spread != null && (o.homeTeamOdds?.favorite === true && spread > 0 || o.awayTeamOdds?.favorite === true && spread < 0)) spread = -spread;
+  return { pHome: (ph != null && pa != null) ? ph / (ph + pa) : null, details: o.details, ou: o.overUnder ?? null, spread };
 }
 
 function team(tm, x){

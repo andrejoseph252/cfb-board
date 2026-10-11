@@ -5,6 +5,7 @@ import { pins, picks } from '../picks.js';
 import { excitement, isHot } from '../excitement.js';
 import { lineFor } from '../lines.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
+import { ats, atsWhy, fmtLine } from '../ats.js';
 import { isMine, mySide, myColor, STAR } from '../myteam.js';
 
 export const teamHref = id => `#team/${encodeURIComponent(id)}`;
@@ -148,6 +149,13 @@ export function excitementBadge(g, { open = false } = {}){
 }
 
 /* Final cards: a quiet tag when the winner had a low chance at kickoff, e.g. "Upset 22%". */
+/* The underdog lost but beat the number: "closer than expected", the cover's answer to the upset bolt. */
+function coverTag(g, a){
+  if (!a?.dogCover) return '';
+  return `<span class="cover" title="${esc(atsWhy(g, a))}">${esc(g[a.dog].abbr)} covers +${String(a.line).replace(/\.0$/, '')}</span>`;
+}
+/* "TROY −9.5 · covered" on a final, so you can see at a glance how the favorite did against the spread. */
+const atsInfo = (g, a) => a ? `${g[a.fav].abbr} ${fmtLine(a.line)} · ${a.result === 'covered' ? 'covered' : a.result === 'push' ? 'push' : 'didn\'t cover'}` : null;
 function upsetTag(g, u){
   if (!u) return '';
   return `<span class="upset${u.big ? ' big' : ''}" title="${esc(upsetWhy(g, u))}">${BOLT}${u.big ? 'Big upset' : 'Upset'}${u.p != null ? ` ${pct(u.p)}%` : ''}</span>`;
@@ -155,11 +163,11 @@ function upsetTag(g, u){
 
 /* The whole card opens the game (see main.js); close, late live games get an orange outline. */
 export function card(g){
-  const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id), up = upset(g), mine = mySide(g);
-  const info = [live ? g.sit : null, g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, g.neutral ? 'Neutral site' : null].filter(Boolean);
-  return `<article class="game${live ? ' is-live' : ''}${hot ? ' is-hot' : ''}${pinned ? ' is-pinned' : ''}${up ? ` is-upset${up.big ? ' is-big-upset' : ''}` : ''}${mine ? ' is-mine' : ''}" data-id="${esc(g.id)}"${mine ? ` style="--mine:${esc(myColor())}"` : ''}>
+  const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id), up = upset(g), mine = mySide(g), a = ats(g);
+  const info = [live ? g.sit : null, g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, atsInfo(g, a), g.neutral ? 'Neutral site' : null].filter(Boolean);
+  return `<article class="game${live ? ' is-live' : ''}${hot ? ' is-hot' : ''}${pinned ? ' is-pinned' : ''}${up ? ` is-upset${up.big ? ' is-big-upset' : ''}` : ''}${a?.dogCover ? ' is-cover' : ''}${mine ? ' is-mine' : ''}" data-id="${esc(g.id)}"${mine ? ` style="--mine:${esc(myColor())}"` : ''}>
     ${teamRow(g, 'away')}${teamRow(g, 'home')}${oddsBlock(g)}${excitementBadge(g)}
-    <div class="foot">${statusHTML(g, true)}${upsetTag(g, up)}<span class="finfo">${esc(info.join(' · '))}</span>
+    <div class="foot">${statusHTML(g, true)}${upsetTag(g, up)}${coverTag(g, a)}<span class="finfo">${esc(info.join(' · '))}</span>
       <button class="pinbtn" data-pin aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} ${esc(g.away.name)} at ${esc(g.home.name)}" title="${pinned ? 'Unpin' : 'Pin'}">${PIN}</button></div>
   </article>`;
 }

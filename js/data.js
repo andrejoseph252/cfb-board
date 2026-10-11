@@ -4,6 +4,7 @@ import { parseEvent, parseStandings, parseFpi, parsePredictor, parseRankings } f
 import { state, invalidate } from './state.js';
 import { loadMarkets } from './markets.js';
 import { loadLines } from './lines.js';
+import { loadSpreads } from './ats.js';
 import { pool } from './util.js';
 import { resolvePicks, backfillPicks } from './picks.js';
 
@@ -43,6 +44,7 @@ export async function loadBoard({ silent = false, fresh = false } = {}){
   schedulePoll();
   loadPredictions(state.games);
   loadLines();
+  loadSpreads();
   backfillPicks();
   refreshStandings();
   refreshFpi();

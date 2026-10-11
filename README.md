@@ -43,6 +43,8 @@ opening index.html straight from disk won't work.
 Adding a tab means adding a file in `js/views/` and one line in the `TABS` list in `main.js`.
 
 ## Data
+- Closing point spreads: `data/spreads.json`, saved by the GitHub Action before each kickoff (`scripts/spreads.py`;
+  ESPN's scoreboard drops the line at the final). Used to show whether the favorite covered and to tag underdog covers.
 - Games, scores, rankings, logos, sportsbook lines: ESPN scoreboard.
 - Team schedules, box scores, drives: ESPN team schedule + game summary.
 - Per-play win / cover / over-under probability: ESPN core probabilities feed.

@@ -30,12 +30,15 @@ jobs:
       # The run is still marked failed (and GitHub emails you) when any step fails.
       - run: python scripts/fetch_threads.py
         if: ${{ !cancelled() }}
+      # Closing point spreads (ESPN drops them at the final), so the board can say who covered.
+      - run: python scripts/spreads.py
+        if: ${{ !cancelled() }}
       - name: Commit if changed
         if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add data/markets.json data/threads.json data/lines.json
+          git add data/markets.json data/threads.json data/lines.json data/spreads.json
           git diff --cached --quiet && exit 0
           git commit -m "Update market odds and game threads"
           # Someone may have pushed while this ran; replay the data commit on top and try again.
