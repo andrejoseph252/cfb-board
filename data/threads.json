@@ -1,6 +1,50 @@
 {
- "updated": "2026-10-11T00:37:38+00:00",
+ "updated": "2026-10-11T01:34:08+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Hawai'i @ Arizona State (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2vk0h/game_thread_hawaii_arizona_state_1030_pm_et/",
+   "published": "2026-10-11T01:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Hawai'i",
+    "Arizona State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Boise State @ Fresno State (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2vjzw/game_thread_boise_state_fresno_state_1030_pm_et/",
+   "published": "2026-10-11T01:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Boise State",
+    "Fresno State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Oregon State Defeats San Diego State 66-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2vhpz/postgame_thread_oregon_state_defeats_san_diego/",
+   "published": "2026-10-11T01:26:48+00:00",
+   "gameId": "401860902",
+   "teams": [
+    "Oregon State",
+    "San Diego State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Northern Arizona Defeats Montana 49-44",
+   "url": "https://www.reddit.com/r/CFB/comments/1x2unx0/postgame_thread_northern_arizona_defeats_montana/",
+   "published": "2026-10-11T00:43:54+00:00",
+   "gameId": "401868115",
+   "teams": [
+    "Northern Arizona",
+    "Montana"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Oklahoma Defeats Texas 27-24",
