@@ -1,6 +1,17 @@
 {
- "updated": "2026-10-14T19:46:21+00:00",
+ "updated": "2026-10-14T22:44:18+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Kennesaw State @ Missouri State (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x653td/game_thread_kennesaw_state_missouri_state_730_pm/",
+   "published": "2026-10-14T22:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Kennesaw State",
+    "Missouri State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Jacksonville State Defeats FIU 27-24",
