@@ -1,6 +1,17 @@
 {
- "updated": "2026-10-14T22:44:18+00:00",
+ "updated": "2026-10-15T01:00:11+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] WKU @ Sam Houston (8:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x65rjs/game_thread_wku_sam_houston_800_pm_et/",
+   "published": "2026-10-14T23:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "WKU",
+    "Sam Houston"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Kennesaw State @ Missouri State (7:30 PM ET)",
