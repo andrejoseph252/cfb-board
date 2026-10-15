@@ -1,6 +1,28 @@
 {
- "updated": "2026-10-15T01:00:11+00:00",
+ "updated": "2026-10-15T06:34:51+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] WKU Defeats Sam Houston 16-3",
+   "url": "https://www.reddit.com/r/CFB/comments/1x6b9x7/postgame_thread_wku_defeats_sam_houston_163/",
+   "published": "2026-10-15T03:32:22+00:00",
+   "gameId": "401871068",
+   "teams": [
+    "WKU",
+    "Sam Houston"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Missouri State Defeats Kennesaw State 24-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1x6ana1/postgame_thread_missouri_state_defeats_kennesaw/",
+   "published": "2026-10-15T02:59:11+00:00",
+   "gameId": "401871054",
+   "teams": [
+    "Missouri State",
+    "Kennesaw State"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] WKU @ Sam Houston (8:00 PM ET)",
