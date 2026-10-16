@@ -1,6 +1,17 @@
 {
- "updated": "2026-10-16T19:04:35+00:00",
+ "updated": "2026-10-16T22:15:14+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Columbia @ Penn (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x7tbgx/game_thread_columbia_penn_700_pm_et/",
+   "published": "2026-10-16T22:00:11+00:00",
+   "gameId": null,
+   "teams": [
+    "Columbia",
+    "Penn"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Texas State Defeats Colorado State 66-27",
