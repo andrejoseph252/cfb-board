@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-16T01:49:01+00:00",
+ "updated": "2026-10-16T06:28:43+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas State Defeats Colorado State 66-27",
+   "url": "https://www.reddit.com/r/CFB/comments/1x75q8o/postgame_thread_texas_state_defeats_colorado/",
+   "published": "2026-10-16T03:31:13+00:00",
+   "gameId": "401860923",
+   "teams": [
+    "Texas State",
+    "Colorado State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UAB Defeats ECU 30-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1x75kaz/postgame_thread_uab_defeats_ecu_3017/",
+   "published": "2026-10-16T03:22:13+00:00",
+   "gameId": "401862800",
+   "teams": [
+    "UAB",
+    "ECU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Georgia Southern Defeats Old Dominion 23-15",
+   "url": "https://www.reddit.com/r/CFB/comments/1x75c9t/postgame_thread_georgia_southern_defeats_old/",
+   "published": "2026-10-16T03:10:32+00:00",
+   "gameId": "401869950",
+   "teams": [
+    "Georgia Southern",
+    "Old Dominion"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Colorado State @ Texas State (8:00 PM ET)",
