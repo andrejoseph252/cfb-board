@@ -278,6 +278,25 @@ export function createRenderer(canvas){
     ctx.fillStyle = '#101010'; ctx.fillRect(sx - 3, sy - 19 - b, 7, 4);
     ctx.fillStyle = col; ctx.fillRect(sx - 2, sy - 18 - b, 5, 1); ctx.fillRect(sx - 1, sy - 17 - b, 3, 1); ctx.fillRect(sx, sy - 16 - b, 1, 1);
   }
+  /* Cover drill: where the ball will come down, ringed at your jump range (inside it, a tap gets a hand on it). */
+  function landing(G, r){
+    const b = G.play.ball, pulse = (Math.sin(t * 9) + 1) / 2;
+    const seg = 32, pts = [];
+    for (let a = 0; a < seg; a++){ const th = a / seg * Math.PI * 2; pts.push(toScreen(b.tx + Math.cos(th) * r, b.ty + Math.sin(th) * r)); }
+    ctx.fillStyle = `rgba(255,216,74,${.45 + pulse * .45})`;
+    for (const [x, y] of pts) ctx.fillRect(x, y, 2, 2);
+    const [cx, cy] = toScreen(b.tx, b.ty);
+    ctx.fillRect(cx - 2, cy, 5, 1); ctx.fillRect(cx, cy - 2, 1, 5);
+  }
+  /* The drag stick on defense: a ring where your finger went down and a knob where it is now (screen space). */
+  function stick(v){
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    for (let a = 0; a < 40; a++){ const th = a / 40 * Math.PI * 2; ctx.fillRect(Math.round(v.ax + Math.cos(th) * v.r), Math.round(v.ay + Math.sin(th) * v.r), 1, 1); }
+    const k = Math.max(3, Math.round(v.r * .38));
+    ctx.fillStyle = 'rgba(255,216,74,.85)';
+    for (let y = -k; y <= k; y++){ const w = Math.round(Math.sqrt(k * k - y * y)); ctx.fillRect(Math.round(v.kx) - w, Math.round(v.ky) + y, w * 2 + 1, 1); }
+  }
+
   /* Pass rush timing meter over your rusher: a marker sweeps the bar; tap while it's in the green. */
   function rushMeter(p, m){
     const [sx, sy] = toScreen(p.x, p.y), w = 30, x0 = sx - w / 2, y0 = sy - 30;
@@ -348,7 +367,11 @@ export function createRenderer(canvas){
     if (K){ fx = (K.ball ? Math.max(K.spotX, Math.min(K.ball.x, 108)) : K.spotX) + long * .3; fy = K.ball ? (K.ball.y + MID) / 2 : (K.spotY + MID) / 2; ahead = 0; }
     else if (!P || !P.live && !P.result){ fx = (P ? P.los : G.los); fy = P ? P.b : G.y; ahead = long * (portrait ? .2 : .16); }
     else {
-      const b = P.ball, you = G.youDefend && P.def.find(d => d.user), foc = P.carrier || (b.state === 'air' ? { x: b.x, y: b.y } : you || P.qb);
+      const b = P.ball, you = G.youDefend && P.def.find(d => d.user);
+      // On defense the camera stays with you while the ball is up, framing you and where it will come down,
+      // instead of swinging off after the ball.
+      const air = b.state === 'air' && (you ? { x: (you.x + b.tx) / 2, y: (you.y + b.ty) / 2 } : { x: b.x, y: b.y });
+      const foc = P.carrier || air || you || P.qb;
       fx = foc.x; fy = foc.y; ahead = P.carrier ? long * .14 : canThrow(G) ? long * .24 : long * .1;
       if (aim) { fx = (P.qb.x + aim.x) / 2; fy = (P.qb.y + aim.y) / 2; ahead = long * .05; }
     }
@@ -386,6 +409,7 @@ export function createRenderer(canvas){
       if (view.handoff && !P.carrier) handoffRing(G);
       if (P.target && !P.thrown && !P.carrier) handoffRing(G, P.target, '255,216,74');   // the target drill's man to hit
       const mine = P.def.find(d => d.user || d.rusher); if (mine && !P.result) handoffRing(G, mine, '255,216,74');   // you, on defense
+      if (view.landing && P.ball.state === 'air') landing(G, view.landing);
       const order = [...P.all].sort((a, b) => toScreen(a.x, a.y)[1] - toScreen(b.x, b.y)[1]);
       for (const p of order) player(G, p);
       ball(G);
@@ -399,6 +423,7 @@ export function createRenderer(canvas){
     }
     goalposts();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (view.stick) stick(view.stick);
   }
 
   return {

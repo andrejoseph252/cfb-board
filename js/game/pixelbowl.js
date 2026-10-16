@@ -148,7 +148,9 @@ function loop(ts){
   if (waitingData && state.standings && colors){ waitingData = false; if (phase === 'setup' && (G?.me.name === 'Team' || G?.me.color === '#5a6470')){ pick = defaults(openPrefill); setup(); } }
   const dt = Math.min(.05, last ? (ts - last) / 1000 : 0); last = ts;
   if (!paused && G){ acc += dt; while (acc >= STEP){ update(STEP); acc -= STEP; } }
+  const cover = G?.youDefend && G.defDrill?.kind === 'cover';
   if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
+    stick: cover && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : 0,
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
   if (G) drain();
   hud();
@@ -410,7 +412,7 @@ let driveDone = () => {};
 /* The rush meter: its speed and green window by difficulty. The quarterback's release time too. */
 const RUSH = { rookie: { period: 1.3, win: .3, release: [2.6, 3.2] }, pro: { period: 1.1, win: .24, release: [2.3, 2.9] },
   allpro: { period: .95, win: .19, release: [2.1, 2.6] }, legend: { period: .8, win: .15, release: [1.9, 2.4] } };
-const DDRILLS = { cover: { name: 'Cover drill', tip: 'You are the corner, one on one with their receiver. Drag to stay with him; tap while the ball is in the air to jump the route.' },
+const DDRILLS = { cover: { name: 'Cover drill', tip: 'You are the corner, one on one with their receiver. Drag anywhere like a joystick to stay with him; when the ball goes up, get inside the yellow ring and tap to jump the route.' },
   rush: { name: 'Pass rush', tip: 'You are the edge rusher. Tap the instant the ball is snapped (too early is offside), then tap in the green to beat the tackle, and race the quarterback.' } };
 let keyCtx = null;   // a key third down inside a real game: { main, r, k, then }
 
@@ -565,9 +567,9 @@ function defHint(){
     if (!Rz.won) return `${touch ? 'Tap' : 'Space'} when the marker is in the green to beat the tackle`;
     return 'Get to the quarterback!';
   }
-  if (phase === 'dpre') return touch ? 'Get set: drag to cover him, tap while the ball is in the air to jump the route' : 'Arrows (or drag) to cover him · Space while the ball is in the air to jump the route';
-  if (phase === 'live' && P.ball.state === 'air') return touch ? 'TAP to jump the route!' : 'SPACE to jump the route!';
-  return phase === 'live' ? (touch ? 'Drag to stay with him' : 'Arrows or drag to stay with him') : '';
+  if (phase === 'dpre') return touch ? 'Get set: drag anywhere to steer, tap when the ball is up to jump the route' : 'Arrows (or drag) to cover him · Space when the ball is up to jump the route';
+  if (phase === 'live' && P.ball.state === 'air') return touch ? 'Get in the ring and TAP!' : 'Get in the ring and press SPACE!';
+  return phase === 'live' ? (touch ? 'Drag anywhere to steer · stay on his hip' : 'Arrows or drag to stay with him') : '';
 }
 
 /* Key third downs: about half of the opponent's drives, and nearly every close one late, pause on a third down
@@ -1169,13 +1171,18 @@ function local(e){
 function down(e){
   if (paused || !G || $('.pb-modal').classList.contains('on') && !$('.pb-modal').classList.contains('light')) return;
   resume();
+  // Cover drill: a second finger while one is steering is a tap (jump the route); the steering finger keeps going.
+  if (ptr && ptr.id !== e.pointerId && ptr.mode === 'dstick'){ if (phase === 'live' && G.play.ball.state === 'air') input.jump = true; return; }
   try{ canvas.setPointerCapture(e.pointerId); }catch{}
   const p = local(e), w = R.toWorld(p.x, p.y), now = performance.now();
   ptr = { id: e.pointerId, x0: p.x, y0: p.y, mode: 'none', samples: [{ ...p, t: now }] };
   if (phase === 'kick'){ S.kickTap(G); return; }
-  if (G.youDefend){   // on defense: rush taps, or drag your defender (a tap while the ball is in the air jumps it)
+  if (G.youDefend){   // on defense: rush taps, or steer your defender (a press while the ball is in the air jumps it)
     if (G.defDrill.kind === 'rush') return rushTap();
-    if (phase === 'live'){ if (G.play.ball.state === 'air') input.jump = true; ptr.mode = 'dmove'; input.defMove = w; }
+    // Steering is a stick, not "go where my finger is": the camera moves during the play, so a spot on the screen
+    // isn't a fixed spot on the field, and a tap must never send him running somewhere.
+    if (phase === 'live' && G.play.ball.state === 'air') input.jump = true;
+    ptr.mode = 'dstick'; steerStick(p);
     return;
   }
   // Before the snap, pressing the field snaps the ball and the same press goes on to aim a throw (or, on the
@@ -1207,7 +1214,7 @@ function move(e){
     const qb = G.play.qb, d = Math.min(62, len * k), n = len || 1;
     aim.target = { x: Math.min(112, qb.x + pull.x / n * d), y: qb.y + pull.y / n * d };
   } else if (ptr.mode === 'qb') input.qbMove = w;
-  else if (ptr.mode === 'dmove') input.defMove = w;
+  else if (ptr.mode === 'dstick') steerStick(p);
   else if (ptr.mode === 'steer' || (G.play.carrier && ptr.mode === 'none' && phase === 'live')){ ptr.mode = 'steer'; input.targetY = w.y; }
 }
 function up(e){
@@ -1220,10 +1227,22 @@ function up(e){
       if (v.x > Math.abs(v.y) * 1.2) input.dive = true; else input.juke = Math.sign(v.y) || 1;
     }
   }
-  aim = null; input.qbMove = null; input.targetY = null; input.defMove = null; ptr = null;
+  aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; ptr = null;
 }
-function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defMove = null; ptr = null; }
-function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, qbMove: null, qbKeys: null }); ptr = null; aim = null; }
+function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; ptr = null; }
+function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, qbMove: null, qbKeys: null, defStick: null }); ptr = null; aim = null; }
+
+/* The defender's stick: the drag from where the finger went down sets direction, and how far (up to the ring)
+   sets speed. Dragging past the ring pulls the ring along, so reversing is never more than a ring away. */
+function steerStick(p){
+  const r = Math.max(10, Math.round(Math.min(R.W, R.H) * .09)), dead = r * .18;
+  let dx = p.x - ptr.x0, dy = p.y - ptr.y0, len = Math.hypot(dx, dy);
+  if (len > r){ ptr.x0 = p.x - dx / len * r; ptr.y0 = p.y - dy / len * r; dx = p.x - ptr.x0; dy = p.y - ptr.y0; len = r; }
+  ptr.stick = { ax: ptr.x0, ay: ptr.y0, kx: p.x, ky: p.y, r };
+  if (len < dead){ input.defStick = null; return; }
+  const v = R.dragToWorld(dx, dy), n = Math.hypot(v.x, v.y) || 1, m = Math.min(1, (len - dead) / (r - dead));
+  input.defStick = { x: v.x / n * m, y: v.y / n * m };
+}
 
 /* ---------- keyboard ---------- */
 const KEYMAP = { arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down', arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right' };

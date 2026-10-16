@@ -450,14 +450,18 @@ function cpuRun(G, c){
   if (c.y < 3) steer = 1; else if (c.y > FW - 3) steer = -1;
   return { steer, targetY: null, juke: 0, dive: false };
 }
-/* Your defender: goes where you drag (or the arrow keys point) and jumps the route when you tap. */
+/* How close your defender has to be to where the ball comes down for a jump to get a hand on it (yards). */
+export const JUMP_R = 2.2;
+/* Your defender: runs the way you push the stick (a drag from where your finger went down) or the arrow keys
+   point, at a speed set by how far you push, and jumps the route when you tap. */
 function userDefender(G, d, dt, inp){
   d.jump = Math.max(0, (d.jump || 0) - dt); d.jumpCD = Math.max(0, (d.jumpCD || 0) - dt);
   if (inp.jump && d.jumpCD <= 0){ d.jump = .45; d.jumpCD = .9; emit(G, 'sfx', { name: 'juke' }); }
-  let tx = d.x, ty = d.y;
-  if (inp.defMove){ tx = inp.defMove.x; ty = inp.defMove.y; }
+  let tx = d.x, ty = d.y, push = 1;
+  const st = inp.defStick, m = st ? Math.hypot(st.x, st.y) : 0;
+  if (m > 0){ tx = d.x + st.x / m * 3; ty = d.y + st.y / m * 3; push = m; }
   else if (inp.defKeys){ tx = d.x + inp.defKeys.x * 3; ty = d.y + inp.defKeys.y * 3; }
-  moveToward(d, tx, ty, d.spd * (d.jump > 0 ? 1.1 : 1), dt, 10);
+  moveToward(d, tx, ty, d.spd * push * (d.jump > 0 ? 1.1 : 1), dt, 10);
 }
 /* Ends the current play from outside (drills: the pass rush is over the moment the ball is out). */
 export function stopPlay(G, r){ end(G, r); }
@@ -518,25 +522,29 @@ export function ghostAt(p, T){
 }
 /* Grades a throw against the receiver it was meant for (the one whose path the ball lands nearest):
    timing = in stride along his path (a slight lead is ideal; behind him or too far ahead costs), accuracy = how far
-   to the side of his path, release = how quickly it came out. 0-100 each; the score weights timing most. */
+   to the side of his path, release = how quickly it came out. 0-100 each.
+   Misses fall off on a smooth curve, not a straight line: a yard or so off barely costs, each yard after that costs
+   about a letter grade, and only a ball nowhere near him fails. Behind him counts more than ahead of him. */
+const soft = (miss, half) => 100 / (1 + (miss / half) ** 2);   // 100 on target, 50 at `half` yards off
+const releaseScore = t => clamp(100 - Math.max(0, t - 2.5) * 20, 30, 100);
 export function gradeThrow(P, land, T, aimedAt, strict){
   // Target drill: a ball that clearly goes to someone else (lands nearer a decoy's path, and close to it) scores 0.
   if (strict){
     const near = P.rec.filter(r => r.routeName !== 'block').map(r => ({ r, d: dist(ghostAt(r, T), land) })).sort((a, b) => a.d - b.d)[0];
     if (near && near.r !== aimedAt && near.d < 3.5)
-      return { score: 0, timing: 0, accuracy: 0, release: Math.round(clamp(100 - Math.max(0, P.t - 2.2) * 28, 0, 100)), word: 'WRONG RECEIVER', who: aimedAt.role, wrong: true };
+      return { score: 0, timing: 0, accuracy: 0, release: Math.round(releaseScore(P.t)), word: 'WRONG RECEIVER', who: aimedAt.role, wrong: true };
   }
   // A throw at a named receiver (keys 1-5, or the target) is judged against him; otherwise against whoever it lands nearest.
   const cands = P.rec.filter(r => r.routeName !== 'block' && (!aimedAt || r === aimedAt)).map(r => ({ r, g: ghostAt(r, T) }));
   const best = cands.sort((a, b) => dist(a.g, land) - dist(b.g, land))[0];
-  const release = P.t, rel = clamp(100 - Math.max(0, release - 2.2) * 28, 0, 100);
+  const rel = releaseScore(P.t);
   if (!best || !aimedAt && dist(best.g, land) > 7) return { score: Math.round(rel * .15), timing: 0, accuracy: 0, release: Math.round(rel), word: 'NO ONE THERE', who: null };
   const { r, g } = best, ex = land.x - g.x, ey = land.y - g.y, sp = Math.hypot(g.vx, g.vy);
   let along = 0, cross = Math.hypot(ex, ey), moving = sp > 2;
   if (moving){ const ux = g.vx / sp, uy = g.vy / sp; along = ex * ux + ey * uy; cross = Math.abs(ex * uy - ey * ux); }
-  const timing = clamp(along < -.6 ? 100 - (-.6 - along) * 35 : along > 1 ? 100 - (along - 1) * 30 : 100, 0, 100);
-  const accuracy = clamp(100 - Math.max(0, cross - .5) * 32, 0, 100);
-  const score = Math.round(timing * .5 + accuracy * .35 + rel * .15);
+  const timing = soft(along < -.6 ? -.6 - along : along > 1 ? (along - 1) * .8 : 0, 2.1);
+  const accuracy = soft(Math.max(0, cross - .4), 1.9);
+  const score = Math.round(timing * .45 + accuracy * .4 + rel * .15);
   // The verdict names the biggest problem, or the praise.
   let word;
   if (score >= 93 && timing >= 92 && accuracy >= 90) word = moving ? 'PERFECT' : 'RIGHT ON HIM';
@@ -576,9 +584,9 @@ function resolvePass(G){
   const u = Math.random();
   const you = P.def.find(x => x.user); if (you && P.aimedAt) P.userSep = dist(you, P.aimedAt);   // how tight your coverage was at the catch point
   // Your defender jumping the route (tapped while the ball was in the air) gets first crack at it.
-  const jd = P.def.find(x => x.user && x.jump > 0 && dist(x, land) < 2.2);
+  const jd = P.def.find(x => x.user && x.jump > 0 && dist(x, land) < JUMP_R);
   if (jd){
-    const q = 1 - dist(jd, land) / 2.2;
+    const q = 1 - dist(jd, land) / JUMP_R;
     if (u < .18 + .42 * q) return end(G, { type: 'int', x: jd.x, y: jd.y, by: jd });
     if (u < .55 + .4 * q) return end(G, { type: 'inc', why: 'Swatted away' });
   }
