@@ -28,7 +28,15 @@ function panelHTML(){
     <div class="setgrp"><span>Theme</span>${seg('palette', PALETTES)}</div>
     <div class="setgrp"><span>My team</span>${myTeam
       ? `<div class="mine-set"><b>${STAR}${esc(myTeam.name)}</b><button type="button" data-clearmine>Clear</button></div>`
-      : '<p class="mine-hint">Open any team and tap <b>Make my team</b>. Its game is always pinned, with a ring in its color.</p>'}</div>`;
+      : '<p class="mine-hint">Open any team and tap <b>Make my team</b>. Its game is always pinned, with a ring in its color.</p>'}</div>
+    ${version()}`;
+}
+
+/* The app's version, stamped into the page by scripts/stamp.py (one step per commit that changes the code). */
+function version(){
+  const m = document.querySelector('meta[name="app-version"]'); if (!m) return '';
+  const d = m.dataset.date ? new Date(m.dataset.date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  return `<p class="set-ver">v${esc(m.content)}${d ? ` · ${esc(d)}` : ''}</p>`;
 }
 
 export function initSettings(){
