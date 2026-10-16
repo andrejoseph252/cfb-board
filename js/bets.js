@@ -63,27 +63,6 @@ export function grade(pk, id){
   return { ...base, state: 'settled', result, net: result === 'W' ? toWin : result === 'L' ? -amt : 0, toWin, line, by: Math.abs(d) };
 }
 
-/* The same bets (type and amount) placed blindly on every favorite or every underdog instead of your side. */
-export function strategy(list, which){
-  let net = 0, n = 0;
-  for (const pk of list){
-    if (pk.result !== 'W' && pk.result !== 'L') continue;
-    const { type, amt } = betOf(pk);
-    if (type === 'ml'){
-      const p = priceOf(pk); if (p == null || p === .5) continue;
-      const mine = (p > .5) === (which === 'fav');
-      const q = mine ? p : 1 - p, won = mine ? pk.result === 'W' : pk.result === 'L';
-      net += won ? mlWin(q, amt) : -amt; n++;
-    } else {
-      const line = lineOf(pk, pk.id), mg = marginOf(pk);
-      if (!line || mg == null) continue;
-      const mine = (line < 0) === (which === 'fav'), d = mine ? mg + line : -(mg + line);
-      net += d > 0 ? atsWin(amt) : d < 0 ? -amt : 0; n++;
-    }
-  }
-  return { net, n };
-}
-
 /* The pick's spread as text, e.g. "−7.5" / "+3" / "PK". */
 export const fmtSpread = l => l === 0 ? 'PK' : (l < 0 ? '−' : '+') + String(Math.abs(l)).replace(/\.0$/, '');
 /* "Moneyline at 63¢" (short: "ML 63¢") / "OSU −3.5" for a graded bet. */

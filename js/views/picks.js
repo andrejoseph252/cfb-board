@@ -1,24 +1,27 @@
 import { esc, pct, fmtTime } from '../util.js';
 import { picks } from '../picks.js';
-import { grade, strategy, signed, money, betHow } from '../bets.js';
+import { grade, signed, money, betHow } from '../bets.js';
 import { teamLink, sec, empty, gameHref } from './components.js';
 
 const tone = n => n > .005 ? 'pos' : n < -.005 ? 'neg' : '';
 const shortWk = wk => String(wk || '').replace(/^Week /, 'Wk ');
 
-/* Net per week, oldest first, as up/down bars from a zero line; the best and worst weeks are labeled. */
+/* Net per week, oldest first: bars up (won) or down (lost) from a zero line, filling the card's width. The best and
+   worst weeks carry their amounts; every bar's amount is in its tooltip and in the week headers below. */
+const BAR_H = 54;
 function weekBars(weeks){
   if (weeks.length < 2) return '';
   const max = Math.max(...weeks.map(w => Math.abs(w.net)), 1);
   const hi = weeks.reduce((a, b) => b.net > a.net ? b : a), lo = weeks.reduce((a, b) => b.net < a.net ? b : a);
   const col = w => {
-    const h = Math.abs(w.net) / max * 100, lab = (w === hi && w.net > 0) || (w === lo && w.net < 0);
-    return `<div class="wb" title="${esc(w.wk)}: ${esc(signed(w.net))} (${w.n} settled)">
-      <div class="wb-up">${w.net > 0 ? `${lab ? `<i>${esc(signed(w.net))}</i>` : ''}<b class="pos" style="height:${h}%"></b>` : ''}</div>
-      <div class="wb-dn">${w.net < 0 ? `<b class="neg" style="height:${h}%"></b>${lab ? `<i>${esc(signed(w.net))}</i>` : ''}` : ''}</div>
+    const h = Math.max(2, Math.round(Math.abs(w.net) / max * BAR_H)), lab = (w === hi && w.net > 0) || (w === lo && w.net < 0);
+    const bar = `<b class="${w.net > 0 ? 'pos' : w.net < 0 ? 'neg' : 'zero'}" style="height:${w.net ? h : 2}px"></b>`, amt = lab ? `<i>${esc(signed(w.net))}</i>` : '';
+    return `<div class="wb" title="${esc(w.wk)}: ${esc(signed(w.net))} on ${w.n} bet${w.n === 1 ? '' : 's'}">
+      <div class="wb-up">${w.net > 0 ? amt + bar : ''}</div><div class="wb-dn">${w.net < 0 ? bar + amt : w.net ? '' : bar}</div>
       <span class="wb-x">${esc(shortWk(w.wk))}</span></div>`;
   };
-  return `<div class="wbars" role="img" aria-label="Profit by week: ${esc(weeks.map(w => `${w.wk} ${signed(w.net)}`).join(', '))}">${weeks.map(col).join('')}</div>`;
+  return `<section class="wkc"><h3>Week by week</h3>
+    <div class="wbars" role="img" aria-label="Profit by week: ${esc(weeks.map(w => `${w.wk} ${signed(w.net)}`).join(', '))}">${weeks.map(col).join('')}</div></section>`;
 }
 
 function betCell(p, b){
@@ -37,22 +40,12 @@ export function viewPicks(){
   const net = settled.reduce((t, p) => t + p.b.net, 0), risked = settled.reduce((t, p) => t + p.b.amt, 0);
   const w = settled.filter(p => p.b.result === 'W').length, l = settled.filter(p => p.b.result === 'L').length, pu = settled.length - w - l;
   const atRisk = open.reduce((t, p) => t + p.b.amt, 0), toWin = open.reduce((t, p) => t + p.b.toWin, 0);
-  const unpriced = all.filter(p => p.b.state === 'none' && (p.result === 'W' || p.result === 'L')).length;
 
   let h = sec('My picks') + `<div class="stats">
     <div class="stat"><div class="v ${tone(net)}">${settled.length ? signed(net) : '–'}</div><div class="k">Profit on ${settled.length} settled bet${settled.length === 1 ? '' : 's'}</div></div>
     <div class="stat"><div class="v ${tone(net)}">${risked ? `${net >= 0 ? '+' : '−'}${Math.abs(Math.round(net / risked * 100))}%` : '–'}</div><div class="k">Return${risked ? ` on ${money(risked)} risked` : ''}</div></div>
     <div class="stat"><div class="v">${w}–${l}${pu ? `–${pu}` : ''}</div><div class="k">Won–lost${pu ? '–push' : ''}${w + l ? `, ${pct(w / (w + l))}% hit rate` : ''}</div></div>
     <div class="stat"><div class="v">${open.length ? money(toWin) : '–'}</div><div class="k">${open.length ? `To win on ${open.length} open bet${open.length === 1 ? '' : 's'} (${money(atRisk)} riding)` : 'No open bets'}</div></div></div>`;
-
-  // The same bets placed blindly one way: did your sides beat the simplest strategies?
-  if (settled.length){
-    const fav = strategy(all, 'fav'), dog = strategy(all, 'dog');
-    if (fav.n) h += `<div class="vs-strat"><span>Same ${fav.n} bet${fav.n === 1 ? '' : 's'}</span>
-      <span>You <b class="${tone(net)}">${signed(net)}</b></span>
-      <span>Every favorite <b class="${tone(fav.net)}">${signed(fav.net)}</b></span>
-      <span>Every underdog <b class="${tone(dog.net)}">${signed(dog.net)}</b></span></div>`;
-  }
 
   const groups = {};
   for (const p of all) (groups[p.wk || 'Earlier'] ??= []).push(p);
@@ -62,7 +55,6 @@ export function viewPicks(){
   });
   h += weekBars(weeks.filter(x => x.n).reverse());
 
-  h += `<p class="note">Open a game before kickoff to choose moneyline or spread and how much. Moneyline pays at the market price when you picked; spread pays −110 (risk $11 to win $10) against the line when you picked. Picks made before bets existed count as $10 on the moneyline.${unpriced ? ` ${unpriced} finished bet${unpriced === 1 ? ' has' : 's have'} no price or line and ${unpriced === 1 ? 'isn\'t' : 'aren\'t'} counted.` : ''} Play money only, no fees.</p>`;
 
   for (const { wk, list, n, net: wn } of weeks){
     h += `<h3 class="sec sm">${esc(wk)}<span class="n">${list.length}</span>${n ? `<span class="wk-net ${tone(wn)}">${signed(wn)}</span>` : ''}</h3><div class="plist">` + list.map(p => {
