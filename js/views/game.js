@@ -11,6 +11,9 @@ import { banner, theLine, lineChart, hype, tape, recentForm } from './preview.js
 import { threadsFor, searchUrl } from '../threads.js';
 import { lineFor } from '../lines.js';
 import { ats, atsWhy, fmtLine } from '../ats.js';
+import { picks } from '../picks.js';
+import { primaryMarket } from '../markets.js';
+import { STAKES, grade, betOf, betHow, money, signed, fmtSpread } from '../bets.js';
 
 const liveIds = new Set();
 export const isLive = id => liveIds.has(id) || state.byId[id]?.state === 'in';
@@ -30,11 +33,11 @@ export function viewGame(id){
   let h = banner(g, s) + threadLinks(g);
   if (g.state === 'pre'){
     loadPredictions([g]);
-    h += theLine(g, s) + hype(g) + tape(g) + recentForm(g);
+    h += theLine(g, s) + betPanel(g) + hype(g) + tape(g) + recentForm(g);
   } else {
     // Finished and live games only show the pregame line when it actually moved.
     const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';
-    h += atsNote(g, s) + lineScore(g) + wpPanel(g, s) + scoring(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + drives(g, s) + players(g, s);
+    h += atsNote(g, s) + betPanel(g) + lineScore(g) + wpPanel(g, s) + scoring(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + drives(g, s) + players(g, s);
   }
   return h;
 }
@@ -45,6 +48,44 @@ function atsNote(g, s){
   const D = g[a.dog], F = g[a.fav];
   const verdict = a.result === 'push' ? 'Push' : a.result === 'covered' ? `${F.name} covered` : `${D.name} covered`;
   return `<p class="ats-note${a.dogCover ? ' dog' : ''}"><b>Closing line ${esc(F.abbr)} ${fmtLine(a.line)}</b> · ${esc(verdict)} · ${esc(atsWhy(g, a))}</p>`;
+}
+
+/* Your pick and its bet. Before kickoff: the two sides are pick buttons, and once you've picked, the bet type and
+   amount can be set until kickoff. After: what the bet won or lost. */
+function betPanel(g){
+  const pk = picks[g.id];
+  if (g.state === 'pre' && state.byId[g.id]){
+    const m = primaryMarket(g), sp = Number.isFinite(g.book?.spread) ? g.book.spread : null;
+    const side = sd => {
+      const mine = pk?.side === sd;
+      const p = mine && pk.p != null ? pk.p : m ? (sd === 'home' ? m.pHome : 1 - m.pHome) : null;
+      const line = sp == null ? null : sd === 'home' ? sp : -sp;
+      return `<button type="button" class="bp-side${mine ? ' mine' : ''}" data-pick="${sd}" aria-pressed="${mine}">
+        <span class="bp-team">${mine ? '✓ ' : ''}${esc(g[sd].abbr)}<small>${mine ? 'Your pick · tap to clear' : `Pick ${esc(g[sd].name)}`}</small></span>
+        <span class="bp-row"><span>Moneyline</span><em>${p != null ? `${Math.round(p * 100)}¢` : '–'}</em></span>
+        <span class="bp-row"><span>Spread</span><em>${line != null ? fmtSpread(line) : '–'}</em></span></button>`;
+    };
+    let bet = '<p class="note">Pick a side, then choose moneyline or spread and how much.</p>';
+    if (pk){
+      const b = grade(pk, g.id), { type, amt } = betOf(pk), custom = !STAKES.includes(amt);
+      const seg = (v, l, off) => `<button type="button" data-bettype="${v}" aria-pressed="${type === v}"${off ? ' disabled title="No spread posted yet"' : ''}>${l}</button>`;
+      bet = `<div class="bp-bet">
+        <div class="betseg" role="group" aria-label="Bet type">${seg('ml', 'Moneyline')}${seg('ats', 'Spread', !Number.isFinite(pk.line))}</div>
+        <div class="betseg" role="group" aria-label="Amount">${STAKES.map(v => `<button type="button" data-betamt="${v}" aria-pressed="${amt === v}">$${v}</button>`).join('')}
+          <label class="stake-in${custom ? ' on' : ''}">$<input id="betAmt" type="number" min="1" max="10000" step="1" inputmode="numeric" value="${custom ? amt : ''}" placeholder="Other" aria-label="Other amount"></label></div>
+        <p class="bp-sum">${b.state === 'none' ? 'No price to bet the moneyline yet.' : `<b>${money(amt)}</b> on ${esc(betHow(pk, b))} wins <b class="pos">${money(b.toWin)}</b>`}</p></div>
+        <p class="note">Your bet locks at kickoff.${type === 'ml' ? ' Moneyline pays at the price when you picked.' : ' Spread pays −110 against the line when you picked.'} Play money only.</p>`;
+    }
+    return `<section class="panel betp" data-gid="${esc(g.id)}"><h3>Your pick</h3><div class="bp-sides">${side('away')}${side('home')}</div>${bet}</section>`;
+  }
+  if (!pk) return '';
+  const b = grade(pk, g.id);
+  const v = b.state === 'none' ? `<b class="muted">No ${b.type === 'ml' ? 'price' : 'line'}</b>`
+    : b.state === 'open' ? `<b>To win ${money(b.toWin)}</b>`
+    : `<b class="${b.net > 0 ? 'pos' : b.net < 0 ? 'neg' : ''}">${b.result === 'P' ? 'Push, $0' : signed(b.net)}</b>`;
+  const how = b.state === 'none' ? (b.type === 'ml' ? 'moneyline' : 'spread') : esc(betHow(pk, b)) + (b.type === 'ats' && b.state === 'settled' && b.result !== 'P' ? `, ${b.result === 'W' ? 'covered' : 'missed'} by ${String(b.by).replace(/\.0$/, '')}` : '');
+  return `<section class="panel betp"><h3>Your pick: ${esc(pk.team)}</h3><div class="bp-done">
+    <span class="bp-row"><span><em>${money(b.amt)}</em> on ${how}</span>${v}</span></div></section>`;
 }
 
 const PAD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 8h10a4 4 0 0 1 4 4v1.5a3.5 3.5 0 0 1-6.3 2.1L13.5 14h-3l-1.2 1.6A3.5 3.5 0 0 1 3 13.5V12a4 4 0 0 1 4-4zM7.5 10.5v3M6 12h3M15.5 11.5h.01M17.5 13.5h.01"/></svg>';

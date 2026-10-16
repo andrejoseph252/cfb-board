@@ -21,6 +21,9 @@ export function spreadFor(g, fallback){
   return null;
 }
 
+/* The home team's closing spread from data/spreads.json by game id alone (for picks, which don't keep the game). */
+export const closingSpread = id => { const s = map?.[id]?.s; return Number.isFinite(s) ? s : null; };
+
 /* For a finished game: { fav, dog, line, by, result: 'covered' | 'missed' | 'push', dogCover, details } or null.
    by = how many points past the number (for whoever beat it). dogCover = the underdog lost but covered, the
    "closer than expected" case (an underdog that won outright is an upset instead). */

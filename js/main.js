@@ -3,7 +3,7 @@ import { state, onRender, invalidate } from './state.js';
 import { loadBoard, refreshStandings, refreshFpi, refreshRankings, anyLive, LIVE_POLL } from './data.js';
 import { initSettings } from './settings.js';
 import { initWeekPicker, renderWeekPicker } from './weekpicker.js';
-import { picks, weekLabel, togglePin, setPick, removePick } from './picks.js';
+import { picks, weekLabel, togglePin, setPick, setBet, removePick } from './picks.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc } from './views/components.js';
 import { isMine, setMyTeam, myTeam } from './myteam.js';
@@ -118,9 +118,12 @@ document.addEventListener('click', e => {
   if (t.id === 'retry') return loadBoard({ fresh: true });
   if (t.id === 'drawerClose' || t.id === 'scrim') return closeDrawer();
   if (t.id === 'drawerBack') return back();
-  const g = state.byId[t.closest('.game')?.dataset.id]; if (!g) return;
+  // Cards carry data-id; the game drawer's pick panel carries data-gid.
+  const g = state.byId[t.closest('.game')?.dataset.id ?? t.closest('[data-gid]')?.dataset.gid]; if (!g) return;
   if ('pin' in d) togglePin(g.id);
   else if (d.pick) setPick(g, d.pick);
+  else if (d.bettype) setBet(g, { type: d.bettype });
+  else if (d.betamt) setBet(g, { amt: d.betamt });
 });
 /* News stories: opening one on ESPN marks it read. On phones, tapping a story with a summary unfolds it instead;
    its "Read on ESPN" link opens it. */
@@ -136,6 +139,11 @@ document.addEventListener('input', e => {
   if (e.target.id === 'q'){ state.q = e.target.value; const l = $('#list'); if (l) l.innerHTML = weekList(); lastMain = ''; }
   if (e.target.id === 'tq'){ picking.q = e.target.value; const l = $('#pickList'); if (l) l.innerHTML = pickList(); $('.pick-confs')?.classList.toggle('searching', !!picking.q); lastMain = ''; }
 });
+// A bet's "Other" amount (game drawer) applies when you leave the box or press Enter, not on every keystroke.
+document.addEventListener('change', e => {
+  if (e.target.id !== 'betAmt') return;
+  const g = state.byId[e.target.closest('[data-gid]')?.dataset.gid]; if (g) setBet(g, { amt: e.target.value });
+});
 document.addEventListener('toggle', e => {
   const rc = e.target.dataset?.recap; if (rc){ store.set(rc, e.target.open); lastMain = ''; return; }
   const id = e.target.dataset?.xc; if (!id) return;
@@ -145,6 +153,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && route()) closeDrawer();
   // Team picker: Enter picks the first match.
   if (e.key === 'Enter' && e.target.id === 'tq'){ e.preventDefault(); $('#pickList .pick-team')?.click(); }
+  if (e.key === 'Enter' && e.target.id === 'betAmt') e.target.blur();
 });
 window.addEventListener('hashchange', onHashChange);
 
