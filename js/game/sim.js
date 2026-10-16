@@ -172,10 +172,13 @@ export function setupPlay(G){
 
   // You on defense (drills and key stops): their offense against your defense, one defender yours.
   if (G.defDrill?.kind === 'cover'){
-    // One on one: your corner on their left wideout; just the line, the quarterback and him on offense.
-    const keep = off.filter(p => p.role === 'OL' || p === qb || p === x);
-    off.length = 0; off.push(...keep); rec.length = 0; rec.push(x); x.num = 1;
-    def.length = 0; def.push(cb1);
+    // Your corner on their left wideout. The drill is one on one: just the line, the quarterback and him on offense.
+    // In a game (full) everyone plays, and the quarterback is coming to your man.
+    if (!G.defDrill.full){
+      const keep = off.filter(p => p.role === 'OL' || p === qb || p === x);
+      off.length = 0; off.push(...keep); rec.length = 0; rec.push(x); x.num = 1;
+      def.length = 0; def.push(cb1);
+    }
     Object.assign(cb1, { user: true, spd: 8.6, man: x });
   } else if (G.defDrill?.kind === 'rush'){
     // You're the edge rusher; the rest of the line stays blocked, so the rush is all on you.
@@ -185,7 +188,8 @@ export function setupPlay(G){
   }
 
   G.play = { off, def, qb, rb, rec, all: [...off, ...def], t: 0, live: false, ball: { state: 'held', holder: qb, x: qb.x, y: qb.y, z: 1.6 },
-    carrier: null, result: null, blitz, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [] };
+    carrier: null, result: null, blitz, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [],
+    forceTarget: G.defDrill?.full ? x : null };
   for (const p of G.play.all) p.face = p.team === 'off' ? 1 : -1;
 }
 
@@ -361,7 +365,7 @@ function runCarrier(G, dt, inp){
   const P = G.play, c = P.carrier, D = G.diff;
   // Practice has no one to tackle him: the whistle blows a moment after the catch or handoff.
   if (G.practice && P.t - P.carryT > (P.handed ? 1.8 : 1.1)) return end(G, { type: 'whistle', x: c.x, y: c.y });
-  if (G.defDrill && P.t - P.carryT > 1) return end(G, { type: 'whistle', x: c.x, y: c.y });
+  if (G.defDrill && !G.defDrill.full && P.t - P.carryT > 1) return end(G, { type: 'whistle', x: c.x, y: c.y });
   if (G.youDefend) inp = cpuRun(G, c);   // their ball carrier runs himself
   if (c.dive > 0){
     c.dive -= dt; c.vx = c.spd * 1.15; c.vy *= .9; integrate(c, dt);
@@ -430,8 +434,9 @@ function cpuQB(G){
   if (heat < 3.5 && P.pressureAt == null){ P.pressured = true; P.pressureAt = P.t; }
   const bail = P.pressureAt != null && P.t - P.pressureAt >= Q.react;
   if (P.t < .9 || P.t < P.qbAt && !bail) return;
-  let best = null, bs = -Infinity;
-  for (const r of P.rec){
+  // A cover play in a game: he's coming to your man, open or not.
+  let best = P.forceTarget && !P.forceTarget.down ? P.forceTarget : null, bs = best ? Infinity : -Infinity;
+  for (const r of best ? [] : P.rec){
     if (r.routeName === 'block') continue;
     const sep = Math.min(12, ...P.def.map(d => dist(d, r))), s = sep + (r.x - P.los) * .03;
     if (s > bs){ bs = s; best = r; }
@@ -466,21 +471,41 @@ function userDefender(G, d, dt, inp){
 /* Ends the current play from outside (drills: the pass rush is over the moment the ball is out). */
 export function stopPlay(G, r){ end(G, r); }
 
-/* A key third down in an opponent's drive, played as a pass rush: a sack, or a pressure that forces an
-   incompletion, stalls the drive there (field goal try if in range, else a punt). Returns the adjusted drive. */
-export function applyStop(G, r, k, how){
+/* A key third down in an opponent's drive, played by you. Pass rush: a sack, or a pressure that forces an
+   incompletion, stalls the drive there. Coverage: a pass broken up or incomplete stalls it there, a catch short of
+   the sticks stalls it at the tackle (`gain` yards on), an interception turns it over at the pick (`x`, in the
+   rep's coordinates), a touchdown is a touchdown, and a catch that moves the chains plays the rest of the drive
+   out from where he was brought down. A stalled drive tries a field goal if in range, else punts. 'blocked' and
+   'offside' leave the drive as simulated. Returns the adjusted drive. */
+export function applyStop(G, r, k, how, { gain = 0, x = null } = {}){
   if (how === 'blocked' || how === 'offside') return { ...r, stop: how };
+  if (how === 'converted'){
+    const from = clamp(Math.round(r.path[k] - gain), 1, 99), rest = simDrive(G, from);
+    const path = [...r.path.slice(0, k + 1), ...rest.path], plays = k + 1 + rest.plays;
+    return { ...rest, path, plays, yards: r.path[0] - rest.endAt, time: Math.round((k + 1) * rnd(17, 24)) + rest.time, stop: how };
+  }
   if (how === 'pressure' && Math.random() < .4) return { ...r, stop: 'pressure-converted' };
-  const at = Math.min(99, Math.round(r.path[k] + (how === 'sack' ? rnd(5, 9) : 0)));
-  const path = [...r.path.slice(0, k + 1), at], plays = k + 1, out = { ...r, path, plays, yards: r.path[0] - at, stop: how, half: false };
+  const spot = r.path[k], plays = k + 1, time = Math.round(plays * rnd(17, 24));
+  if (how === 'td'){
+    const path = [...r.path.slice(0, k + 1), 0];
+    return { ...r, path, plays, yards: r.path[0], stop: how, half: false, kind: 'td', points: Math.random() < .04 ? 6 : 7, myX: 25, endAt: 0, time };
+  }
+  if (how === 'int'){
+    // Your ball where you picked it off, measured from your own goal line (in your end zone: a touchback).
+    const at = x == null ? spot : 100 - x, myX = at <= 0 ? 20 : Math.min(95, Math.round(at));
+    const path = [...r.path.slice(0, k + 1), clamp(Math.round(at), 0, 99)];
+    return { ...r, path, plays, yards: r.path[0] - spot, stop: how, half: false, kind: 'int', points: 0, myX, endAt: spot, time };
+  }
+  const at = clamp(Math.round(spot + (how === 'sack' ? rnd(5, 9) : how === 'short' ? -gain : 0)), 1, 99);
+  const path = [...r.path.slice(0, k + 1), at], out = { ...r, path, plays, yards: r.path[0] - at, stop: how, half: false };
   if (at <= 33){
     const good = Math.random() < clamp(.97 - at / 55, .35, .95);
     Object.assign(out, good ? { kind: 'fg', points: 3, myX: 25 } : { kind: 'missfg', points: 0, myX: Math.max(at + 7, 20) });
   } else {
     const land = at - Math.round(rnd(36, 46));
-    Object.assign(out, { kind: 'punt', points: 0, myX: land <= 0 ? 20 : Math.max(1, land + Math.round(rnd(-2, 6))) });
+    Object.assign(out, { kind: G.ot ? 'downs' : 'punt', points: 0, myX: G.ot ? at : land <= 0 ? 20 : Math.max(1, land + Math.round(rnd(-2, 6))) });
   }
-  out.time = Math.round(plays * rnd(17, 24));
+  out.time = time;
   return out;
 }
 
@@ -588,7 +613,7 @@ function resolvePass(G){
   if (jd){
     const q = 1 - dist(jd, land) / JUMP_R;
     if (u < .18 + .42 * q) return end(G, { type: 'int', x: jd.x, y: jd.y, by: jd });
-    if (u < .55 + .4 * q) return end(G, { type: 'inc', why: 'Swatted away' });
+    if (u < .55 + .4 * q) return end(G, { type: 'inc', why: 'Swatted away', by: jd });
   }
   if (rd <= 1.6){
     const contest = dd < 1.7 ? (1.7 - dd) / 1.7 : 0;
@@ -603,7 +628,7 @@ function resolvePass(G){
       return;
     }
     if (u < pCatch + pInt) return end(G, { type: 'int', x: d.x, y: d.y, by: d });
-    return end(G, { type: 'inc', why: contest ? 'Broken up' : 'Dropped' });
+    return end(G, { type: 'inc', why: contest ? 'Broken up' : 'Dropped', by: contest ? d : null });
   }
   if (dd <= 1.3 && u < (.55 - dd * .15) * D.intMul) return end(G, { type: 'int', x: d.x, y: d.y, by: d });
   return end(G, { type: 'inc', why: dd <= 1.3 ? 'Nearly picked' : 'Incomplete' });
@@ -752,7 +777,8 @@ export function stepKick(G, dt){
 /* ---------- the other team's drives ---------- */
 /* Simulates a drive by the opponent starting `ytg` yards from your goal line. Returns what happened and where you
    get the ball back (x from your goal line), plus the yard-line path for the drive-summary animation. */
-export function simDrive(G, ytg, { needed = null } = {}){
+/* `behind`: the drive picks up after a stop (an incompletion or a sack), so it's less likely to finish. */
+export function simDrive(G, ytg, { needed = null, behind = false } = {}){
   ytg = Math.round(clamp(ytg, 1, 99));
   const D = G.diff, q = clamp(D.opp + (rate(G.opp.off) - rate(G.me.def)) / 300, .12, .78);
   let pTD = clamp(q * .82 + (70 - ytg) * .006, .05, .88);
@@ -760,6 +786,7 @@ export function simDrive(G, ytg, { needed = null } = {}){
   const pTO = .11 * (1.25 - q), pMiss = .04;
   // Overtime: if a field goal won't do, they go for it.
   if (needed === 'td'){ pTD = clamp(pTD + pFG * .4, 0, .9); pFG = 0; }
+  if (behind){ pTD *= .7; pFG *= .85; }
   const u = Math.random();
   let kind, endAt, points = 0, myX;
   if (u < pTD){ kind = 'td'; endAt = 0; points = 7; myX = rnd() < .85 ? 25 : Math.round(rnd(18, 40)); }
