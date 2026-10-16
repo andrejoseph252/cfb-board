@@ -4,6 +4,7 @@ import { loadBoard, refreshStandings, refreshFpi, refreshRankings, anyLive, LIVE
 import { initSettings } from './settings.js';
 import { initWeekPicker, renderWeekPicker } from './weekpicker.js';
 import { picks, weekLabel, togglePin, setPick, setBet, removePick } from './picks.js';
+import './pull.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc } from './views/components.js';
 import { isMine, setMyTeam, myTeam } from './myteam.js';

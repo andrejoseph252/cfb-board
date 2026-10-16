@@ -923,3 +923,29 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .news-more{margin-top:6px}
 #drawerBody .chips{margin-bottom:10px}
 @media (max-width:520px){.news-main{grid-template-columns:104px minmax(0,1fr)}.news-h{font-size:14px}.news-main .news-d{display:none}.news-lead .news-h{font-size:23px}.news-vids{grid-auto-columns:168px}}
+
+/* Pull to refresh (js/pull.js): a football in a round chip that slides down from the top; the page never moves. */
+.ptr{position:fixed;top:env(safe-area-inset-top,0px);left:50%;z-index:40;width:44px;height:44px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.18);display:grid;place-items:center;
+  transform:translate(-50%,-44px);opacity:0;transition:transform .2s ease,opacity .2s ease,border-color .15s;pointer-events:none}
+.ptr[hidden]{display:none} .ptr.drag{transition:none}
+.ptr svg{width:28px;height:28px;overflow:visible}
+.ptr-ball,.ptr-wob,.ptr-laces{transform-box:fill-box;transform-origin:center}
+.ptr-ball{transform:rotate(var(--rot,-90deg));transition:transform .12s}
+.ptr-leather{fill:#8A4A24;stroke:#5A2E14;stroke-width:1}
+.ptr-stripe{fill:none;stroke:#F4EFE6;stroke-width:1.3}
+.ptr-laces path{fill:none;stroke:#F4EFE6;stroke-width:1.1;stroke-linecap:round}
+.ptr-ok{display:none;fill:none;stroke:var(--good);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ptr[data-state="ready"]{border-color:var(--accent)}
+.ptr[data-state="ready"] .ptr-ball{transform:rotate(0deg)}
+/* In the air: tilted like a thrown pass, laces rolling around the ball, a slight wobble. */
+.ptr[data-state="busy"] .ptr-ball{transform:rotate(45deg);transition:transform .18s}
+.ptr[data-state="busy"] .ptr-laces{animation:ptr-spiral .42s linear infinite}
+.ptr[data-state="busy"] .ptr-wob{animation:ptr-wobble .84s ease-in-out infinite}
+.ptr[data-state="done"] .ptr-ball{display:none}
+.ptr[data-state="done"] .ptr-ok{display:block;animation:ptr-good .3s ease-out}
+@keyframes ptr-spiral{0%{transform:translateX(-5px) scaleX(.3);opacity:.2}50%{transform:none;opacity:1}100%{transform:translateX(5px) scaleX(.3);opacity:.2}}
+@keyframes ptr-wobble{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes ptr-good{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.ptr-ok{transform-box:fill-box;transform-origin:center bottom}
+@media (prefers-reduced-motion: reduce){ .ptr[data-state="busy"] .ptr-laces,.ptr[data-state="busy"] .ptr-wob,.ptr[data-state="done"] .ptr-ok{animation:none} }

@@ -32,7 +32,8 @@ def modules(entry):
         if f in seen:
             return
         seen.append(f)
-        for m in re.findall(r"^import .*? from '(\.[^']+)';", f.read_text(), re.M):
+        # Both `import x from './a.js';` and bare `import './a.js';` (a module run for its side effects).
+        for m in re.findall(r"^import (?:.+? from )?'(\.[^']+)';", f.read_text(), re.M):
             walk(f.parent / m)
 
     walk(ROOT / entry)

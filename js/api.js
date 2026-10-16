@@ -29,6 +29,9 @@ async function getJSON(url, ttl){
   }
 }
 export const peek = url => cache.get(url)?.data;
+/* Pull to refresh: mark every cached response stale so the next request for it goes to the network. The old copy
+   stays as the fallback, so a refresh that fails still shows the last data. */
+export function expireAll(){ for (const v of cache.values()) if (!v.pending) v.at = 0; }
 /* When a URL's data was actually downloaded. A failed refresh hands back the previous copy, so this is how callers
    tell fresh data from a fallback. */
 export const fetchedAt = url => cache.get(url)?.at || 0;
