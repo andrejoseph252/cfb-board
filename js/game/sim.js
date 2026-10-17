@@ -7,10 +7,10 @@
 export const FW = 53.33, MID = FW / 2, HASH = [20, 33.33], GOAL_HALF = 3.08, BAR = 3.33;
 
 export const DIFFS = {
-  rookie: { name: 'Rookie', lag: .42, defSpd: .93, rush: 4.6, tackle: .75, fool: .92, keyErr: .5, opp: .27, intMul: .5, react: .5, sweep: 2.0, blitz: .1, preview: true },
-  pro:    { name: 'Pro', lag: .32, defSpd: .955, rush: 3.7, tackle: .79, fool: .8, keyErr: .8, opp: .35, intMul: .75, react: .36, sweep: 1.55, blitz: .18, preview: true },
-  allpro: { name: 'All-Pro', lag: .26, defSpd: .97, rush: 3.3, tackle: .82, fool: .68, keyErr: 1.1, opp: .43, intMul: .72, react: .26, sweep: 1.2, blitz: .25, preview: false },
-  legend: { name: 'Legend', lag: .2, defSpd: .985, rush: 3.05, tackle: .85, fool: .55, keyErr: 1.4, opp: .51, intMul: .85, react: .18, sweep: 1.0, blitz: .32, preview: false }
+  rookie: { name: 'Rookie', catchR: 2.1, lag: .42, defSpd: .93, rush: 4.6, tackle: .75, fool: .92, keyErr: .5, opp: .27, intMul: .5, react: .5, sweep: 2.0, blitz: .1, preview: true },
+  pro:    { name: 'Pro', catchR: 1.85, lag: .32, defSpd: .955, rush: 3.7, tackle: .79, fool: .8, keyErr: .8, opp: .35, intMul: .75, react: .36, sweep: 1.55, blitz: .18, preview: true },
+  allpro: { name: 'All-Pro', catchR: 1.6, lag: .26, defSpd: .97, rush: 3.3, tackle: .82, fool: .68, keyErr: 1.1, opp: .43, intMul: .72, react: .26, sweep: 1.2, blitz: .25, preview: false },
+  legend: { name: 'Legend', catchR: 1.5, lag: .2, defSpd: .985, rush: 3.05, tackle: .85, fool: .55, keyErr: 1.4, opp: .51, intMul: .85, react: .18, sweep: 1.0, blitz: .32, preview: false }
 };
 export const LENGTHS = { quick: { name: 'Quick', q: 180 }, standard: { name: 'Standard', q: 300 }, long: { name: 'Long', q: 450 } };
 
@@ -665,16 +665,12 @@ export function applyStop(G, r, k, how, { gain = 0, x = null } = {}){
 export const canThrow = G => { const P = G.play; return P?.live && !P.result && P.ball.state === 'held' && P.ball.holder === P.qb && !P.carrier; };
 export const canHandoff = G => { const P = G.play; return canThrow(G) && !P.handed && !P.noHandoff && P.t < (P.option ? .65 : 1.3); };
 
-/* The ball's flight to a spot: a bullet (flat and quick) unless a defender sits in the throwing lane or it's a deep
-   ball, then it's lofted over him (slower, higher). Shared with the aim arc so what you see is what's thrown. */
+/* The ball's flight to a spot, set by how far it goes (so by how far you pull back): a bullet (flat and quick) on
+   short and intermediate throws, lofted (slower, higher, dropping in over the top) on deep ones. Shared with the aim
+   arc so what you see is what's thrown. */
+export const LOFT_AT = 26;
 export function trajectory(G, tx, ty){
-  const P = G.play, qb = P.qb, d = Math.hypot(tx - qb.x, ty - qb.y) || 1, ux = (tx - qb.x) / d, uy = (ty - qb.y) / d;
-  const inLane = P.def.some(df => {
-    if (df.role === 'DL' || df.down) return false;
-    const along = (df.x - qb.x) * ux + (df.y - qb.y) * uy, off = Math.abs((df.y - qb.y) * ux - (df.x - qb.x) * uy);
-    return along > 2 && along < d - 2.5 && off < 2.2;
-  });
-  const loft = d > 32 || inLane;
+  const qb = G.play.qb, d = Math.hypot(tx - qb.x, ty - qb.y) || 1, loft = d > LOFT_AT;
   return loft ? { T: .4 + d / 21, h: Math.max(.8, d * .24), loft } : { T: .22 + d / 28, h: Math.max(.4, d * .085), loft };
 }
 /* How far your throw can stray from where you aimed (yards, about one standard deviation): more on longer throws,
@@ -686,7 +682,7 @@ export function throwSpread(G, tx, ty){
   if (rush < 2.5) s *= 1.75; else if (rush < 4.5) s *= 1.3;
   const v = Math.hypot(qb.vx, qb.vy); if (v > 2.2) s *= 1 + Math.min(.6, (v - 2.2) * .14);
   if (qb.vx < -1.5) s *= 1.2;
-  s *= ({ rookie: .7, pro: .85, allpro: 1, legend: 1.1 })[G.diffKey] ?? 1;
+  s *= ({ rookie: .55, pro: .75, allpro: 1, legend: 1.1 })[G.diffKey] ?? 1;
   s *= 1 - rate(G.me.off) / 300;
   if (G.practice) s *= .5;
   return s;
@@ -816,7 +812,7 @@ function resolvePass(G){
   }
   // Deep balls are harder: a defender can contest from further away, and the catch itself is tougher.
   const air = Math.max(0, land.x - P.los), CR = 1.7 + Math.min(1.2, air / 25);
-  if (rd <= 1.6){
+  if (rd <= (D.catchR || 1.6)){
     let contest = dd < CR ? (CR - dd) / CR : 0;
     // Leverage, judged along the receiver's run: a defender trailing behind him is shielded out of the play; one on
     // top of him (over a go route, in front of a crosser) is in position to make it.

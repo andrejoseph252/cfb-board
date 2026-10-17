@@ -256,7 +256,7 @@ export function createRenderer(canvas){
     }
   }
   function aimArc(G, aim){
-    // The real flight (lofted over a defender in the lane, or a bullet) and, around the spot, how far the throw can
+    // The real flight (lofted on a deep throw, a bullet otherwise) and, around the spot, how far the throw can
     // stray right now: the ring grows under pressure and on the run.
     const P = G.play, q = P.qb, { h, loft } = trajectory(G, aim.x, aim.y), sd = throwSpread(G, aim.x, aim.y), pts = [];
     for (let i = 0; i <= 24; i++){ const s = i / 24; pts.push(toScreen(q.x + (aim.x - q.x) * s, q.y + (aim.y - q.y) * s, 1.8 - .6 * s + 4 * h * s * (1 - s))); }
