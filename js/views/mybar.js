@@ -38,8 +38,8 @@ export function myTeamBar(){
       if (!g.tbd) line.push(countdown(g));
       if (p != null) right = `<b>${pct(side === 'home' ? p : 1 - p)}%</b><small>to win</small>`;
     } else if (g.state === 'in'){
-      line.push(vsName(g, side), g.detail, g.sit);
-      right = `<b>${esc(t.score)}–${esc(o.score)}</b>${g.liveWp != null ? `<small>${pct(side === 'home' ? g.liveWp : 1 - g.liveWp)}% live</small>` : ''}`;
+      line.push(vsName(g, side), ...(g.syncing ? ['Live'] : [g.detail, g.sit]));
+      right = g.syncing ? '<small>Syncing</small>' : `<b>${esc(t.score)}–${esc(o.score)}</b>${g.liveWp != null ? `<small>${pct(side === 'home' ? g.liveWp : 1 - g.liveWp)}% live</small>` : ''}`;
     } else {
       const won = winnerSide(g) === side, u = upset(g);
       line.push(`${won ? 'Beat' : 'Lost to'} ${vsName(g, side).replace(/^(vs|at) /, '')}`);

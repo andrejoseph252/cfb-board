@@ -14,6 +14,8 @@ import { ats, atsWhy, fmtLine } from '../ats.js';
 import { picks } from '../picks.js';
 import { primaryMarket } from '../markets.js';
 import { STAKES, grade, betOf, betHow, money, signed, fmtSpread } from '../bets.js';
+import { syncOf, mark, nudge, stop, ERRORS } from '../sync.js';
+import { fmtDelay } from './components.js';
 
 const liveIds = new Set();
 export const isLive = id => liveIds.has(id) || state.byId[id]?.state === 'in';
@@ -23,23 +25,128 @@ export function viewGame(id){
   const e = useDataFor(id);
   if (e.err && !e.data) return `<div class="err"><b>Couldn't load this game.</b> ${esc(e.err)}</div>`;
   if (!e.data) return '<div class="skeleton"></div><div class="skeleton tall"></div>';
-  const s = e.data;
-  // Prefer the scoreboard's copy (has odds + conference flags) merged over the summary's.
-  const board = state.byId[id];
+  // Prefer the scoreboard's copy (has odds + conference flags) merged over the summary's. Synced to a stream, the
+  // summary is cut back to the moment the board is showing.
+  const board = state.byId[id], s = board ? cutToBoard(board, e.data) : e.data;
   const g = board ? { ...s.game, ...board, home: { ...s.game.home, ...board.home, lines: s.game.home.lines }, away: { ...s.game.away, ...board.away, lines: s.game.away.lines } } : s.game;
   if (!g.book && s.line) g.book = { pHome: null, details: s.line.details, ou: s.line.ou };
   g.state === 'in' ? liveIds.add(id) : liveIds.delete(id);
 
-  let h = banner(g, s) + threadLinks(g);
+  // Matching a stream: the header goes without the score, clock and down until it's set, so nothing gets spoiled.
+  const masked = g.syncing ? { ...g, detail: 'Live', sit: null, home: { ...g.home, score: '–' }, away: { ...g.away, score: '–' } } : g;
+  let h = banner(masked, s) + threadLinks(g);
+  if (g.state === 'in' || g.syncDelay != null || syncOf(g.id)) h += syncPanel(g);
+  if (g.syncing) return h;
   if (g.state === 'pre'){
     loadPredictions([g]);
     h += theLine(g, s) + betPanel(g) + hype(g) + tape(g) + recentForm(g);
   } else {
     // Finished and live games only show the pregame line when it actually moved.
     const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';
+    if (s.synced) h += '<p class="note">Synced to your stream: team and player stats are hidden, since they would run ahead of it.</p>';
     h += atsNote(g, s) + betPanel(g) + lineScore(g) + wpPanel(g, s) + scoring(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + drives(g, s) + players(g, s);
   }
   return h;
+}
+
+/* ---------- stream sync (sync.js) ---------- */
+/* A synced game's summary is cut to the moment your stream is at: plays and drives by when they happened, scoring
+   by the shown quarter, clock and score, the win % chart to those plays, and the line score rebuilt from the shown
+   score. The cumulative box score can't be wound back, so it's left out. */
+const clockSecs = c => { const [m, x] = String(c || '0:00').split(':').map(Number); return (m || 0) * 60 + (x || 0); };
+function cutToBoard(b, s){
+  if (b.syncDelay == null || b.syncing || b.syncAt == null) return s;
+  const R = b.syncAt, P = b.period, C = b.clock ?? 0, ha = Number(b.home.score), aa = Number(b.away.score);
+  const byClock = p => (p.q < P || (p.q === P && clockSecs(p.clock) >= C)) && (p.home == null || p.home <= ha) && (p.away == null || p.away <= aa);
+  const keep = p => p.w ? p.w <= R : byClock(p);
+  const ids = new Set();
+  const drives = s.drives.map(d => {
+    const plays = d.plays.filter(keep); if (!plays.length) return null;
+    plays.forEach(p => ids.add(String(p.id)));
+    const open = plays.length < d.plays.length;
+    return open ? { ...d, plays, result: 'In progress', isScore: false, desc: `${plays.length} play${plays.length === 1 ? '' : 's'} so far` } : d;
+  }).filter(Boolean);
+  const lines = side => {
+    const before = (s.game[side].lines || []).slice(0, Math.min(P, 5) - 1).map(Number), sum = before.reduce((a, x) => a + (x || 0), 0);
+    return [...before, Number(b[side].score) - sum];
+  };
+  return { ...s, drives, scoring: s.scoring.filter(byClock), wp: s.wp.filter(p => ids.has(String(p.pid))), keep: ids, teamStats: {}, players: {}, synced: true,
+    game: { ...s.game, home: { ...s.game.home, lines: lines('home') }, away: { ...s.game.away, lines: lines('away') } } };
+}
+
+/* The sync panel. Steps: Mark (tap the instant you read your stream's clock), then enter what it said; while ESPN's
+   play-by-play catches up to that moment it shows "Matching"; once set, a live readout of the clock your stream
+   should be showing, to check against the TV, with early/late nudges. */
+const ui = { open: null, step: 'mark', at: 0, q: 1, m: 0, s: 0, expanded: new Set() };   // synced panels start collapsed
+const BETA = '<span class="beta" title="Still working out some kinks">Beta</span>';
+const CHEV_SYNC = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_TV = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="12.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 20.5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 8v5.5l4.6-2.75z" fill="currentColor"/></svg>';
+const ICON_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7.5 12.3l3 3 6-6.4" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const atTime = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+function syncPanel(g){
+  const sy = syncOf(g.id), id = esc(g.id), open = ui.open === g.id;
+  const head = (title, sub = '') => `<div class="sp-head"><span class="sp-ico">${ICON_TV}</span><div><h3>${title} ${BETA}</h3>${sub ? `<p>${sub}</p>` : ''}</div>
+    <button type="button" class="sp-x" data-syncclose aria-label="Close">×</button></div>`;
+  // Synced: collapsed to one row (its ticking clock) unless opened; open, what your stream should be showing plus nudges.
+  if (sy?.delay != null && !sy.pending && !open){
+    const just = Date.now() - (sy.justSynced || 0) < 5000;
+    if (!ui.expanded.has(g.id)) return `<section class="panel syncp synced mini${just ? ' just' : ''}" data-gid="${id}">
+      <button type="button" class="sp-mini" data-synctoggle aria-expanded="false" aria-label="Stream sync: show controls">
+        <span class="sp-ok">${ICON_OK}</span><span class="sm-t"><span class="sm-h">Synced ${BETA}</span><small>Stream ${fmtDelay(sy.delay)} behind${sy.error ? ' · re-sync failed' : ''}</small></span>
+        <b class="sm-clk" data-sclk="${id}">${g.syncing ? '…' : esc(g.detail || '')}</b><span class="sm-chev">${CHEV_SYNC}</span></button></section>`;
+    return `<section class="panel syncp synced${just ? ' just' : ''}" data-gid="${id}">
+      <div class="sp-head"><span class="sp-ok">${ICON_OK}</span><div><h3>Synced to your stream ${BETA}</h3><p>Your stream is <b>${fmtDelay(sy.delay)}</b> behind live. This game is shown as you're seeing it.</p></div>
+        <button type="button" class="sp-x sp-col" data-synctoggle aria-expanded="true" aria-label="Collapse">${CHEV_SYNC}</button></div>
+      ${sy.error ? `<p class="sp-err" role="alert">Re-sync didn't work: ${esc(ERRORS[sy.error] || '')} Still using ${fmtDelay(sy.delay)}.</p>` : ''}
+      <div class="sp-now"><span>Your stream should be at</span><b data-sclk="${id}">${g.syncing ? '…' : esc(g.detail || '')}</b><em>${esc(g.away.abbr)} ${esc(g.away.score)} – ${esc(g.home.abbr)} ${esc(g.home.score)}</em></div>
+      <p class="sp-hint">Watch the clock above against your TV for a few seconds. If the board changes before your stream does, it's early.</p>
+      <div class="sp-nudge"><button type="button" data-syncnudge="1"><b>Board's early</b><small>wait 1s more</small></button><button type="button" data-syncnudge="-1"><b>Board's late</b><small>1s less</small></button></div>
+      <div class="sp-foot"><button type="button" class="chipbtn" data-syncopen>Re-sync</button><button type="button" class="chipbtn" data-syncstop>Stop syncing</button></div></section>`;
+  }
+  // Matching: waiting for ESPN's play-by-play to reach the marked moment.
+  if (sy?.pending) return `<section class="panel syncp" data-gid="${id}">${head('Matching your stream…')}
+    <div class="sp-wait"><span class="mspin" aria-hidden="true"></span><p>Finding when the clock read <b>Q${sy.pending.period} ${Math.floor(sy.pending.clock / 60)}:${String(sy.pending.clock % 60).padStart(2, '0')}</b> on the field. ESPN's play-by-play runs a little behind, so this can take up to a minute.</p></div>
+    <div class="sp-foot"><button type="button" class="chipbtn" data-syncstop>Cancel</button></div></section>`;
+  if (!open){
+    const err = sy?.error ? `<p class="sp-err" role="alert">${esc(ERRORS[sy.error] || '')}</p>` : '';
+    return `<div class="syncbar${err ? ' err' : ''}" data-gid="${id}"><span class="sp-ico">${ICON_TV}</span><span class="sb-t"><b>Watching on a delay?</b> ${BETA}<br>Sync this game to your stream.</span>
+      <button type="button" class="sb-go" data-syncopen>${sy?.error ? 'Try again' : 'Sync'}</button>${err}</div>`;
+  }
+  // Step 1: mark.
+  if (ui.step === 'mark') return `<section class="panel syncp" data-gid="${id}">${head('Sync to your stream', 'Two quick steps. Have the game on in front of you.')}
+    <ol class="sp-steps"><li class="on"><b>1</b><span>Look at the game clock on your stream</span></li><li class="on"><b>2</b><span>Tap <strong>Mark</strong> the instant you read it</span></li><li><b>3</b><span>Enter the time you saw</span></li></ol>
+    <button type="button" class="sp-mark" data-syncmark><span>Mark</span><small>tap as you read the clock</small></button>
+    <p class="sp-hint">Best while the clock is running (not during a timeout or a break).</p></section>`;
+  // Step 2: what did it say?
+  const qs = [1, 2, 3, 4].map(q => `<button type="button" data-syncq="${q}" aria-pressed="${ui.q === q}">${q <= 4 ? 'Q' + q : 'OT'}</button>`).join('');
+  return `<section class="panel syncp" data-gid="${id}">${head('What did the clock say?', `You marked at ${atTime(ui.at)}.`)}
+    <div class="sp-enter"><div class="sp-q" role="group" aria-label="Quarter">${qs}</div>
+      <div class="sp-clock"><input id="syncM" type="number" inputmode="numeric" min="0" max="15" value="${ui.m}" aria-label="Minutes"><b>:</b><input id="syncS" type="number" inputmode="numeric" min="0" max="59" value="${String(ui.s).padStart(2, '0')}" aria-label="Seconds"></div></div>
+    <button type="button" class="sp-go" data-syncgo>Sync</button>
+    <div class="sp-foot"><button type="button" class="chipbtn" data-syncremark>Mark again</button></div></section>`;
+}
+/* Mark is timed from the press itself (not the release), the closest thing to the moment they read the clock. The
+   time box starts at the board's clock for the game: the live one, or your stream's if it's already synced. */
+let pressAt = 0;
+export const syncPress = () => { pressAt = Date.now(); };
+function marked(gid){
+  const g = state.byId[gid], c = g?.clock ?? 0, at = Date.now() - pressAt < 2000 ? pressAt : Date.now();
+  Object.assign(ui, { open: gid, step: 'enter', at, q: Math.min(4, Math.max(1, g?.period || 1)), m: Math.floor(c / 60), s: c % 60 });
+}
+export function syncAction(d, gid){
+  if ('syncopen' in d){ Object.assign(ui, { open: gid, step: 'mark' }); const sy = syncOf(gid); if (sy) sy.error = null; }
+  else if ('syncremark' in d) ui.step = 'mark';
+  else if ('syncclose' in d){ ui.open = null; const sy = syncOf(gid); if (sy?.error) sy.error = null; }
+  else if ('syncstop' in d){ stop(gid); ui.open = null; }
+  else if (d.syncnudge) nudge(gid, Number(d.syncnudge));
+  else if (d.syncq) ui.q = Number(d.syncq);
+  else if ('syncmark' in d) marked(gid);
+  else if ('syncgo' in d){ mark(gid, ui.q, ui.m * 60 + ui.s, ui.at); ui.open = null; ui.expanded.add(gid); }   // open after syncing, for the confirmation
+  else if ('synctoggle' in d) ui.expanded.has(gid) ? ui.expanded.delete(gid) : ui.expanded.add(gid);
+}
+export function syncInput(el){
+  if (el.id === 'syncM') ui.m = Math.max(0, Math.min(15, Number(el.value) || 0));
+  if (el.id === 'syncS') ui.s = Math.max(0, Math.min(59, Number(el.value) || 0));
 }
 
 /* Finished games: the closing line and who covered (ESPN's summary keeps the line even when the board's file doesn't). */
@@ -122,7 +229,8 @@ function lineScore(g){
 
 function wpPanel(g, s){
   // Full per-play feed (win + cover + over/under); fall back to the summary's win-only series while it loads or if it fails.
-  const pr = useData('prob:' + g.id, () => api.probabilities(g.id, isLive(g.id)), parseProbabilities).data;
+  const all = useData('prob:' + g.id, () => api.probabilities(g.id, isLive(g.id)), parseProbabilities).data;
+  const pr = all && s.keep ? all.filter(p => s.keep.has(String(p.pid))) : all;
   const pts = pr?.length >= 5 ? pr : s.wp;
   if (pts.length < 5) return '';
   const plays = new Map();

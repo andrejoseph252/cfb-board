@@ -44,7 +44,7 @@ export function banner(g, s){
   };
   const mid = g.state === 'pre' ? `<div class="mh-vs">${g.neutral ? 'vs' : 'at'}</div>`
     : `<div class="mh-score"><span class="${done && g.home.winner ? 'dim' : ''}">${esc(g.away.score)}</span><i></i><span class="${done && g.away.winner ? 'dim' : ''}">${esc(g.home.score)}</span></div>
-       <div class="mh-status${g.state === 'in' ? ' live' : ''}">${esc(g.detail || '')}</div>`;
+       <div class="mh-status${g.state === 'in' ? ' live' : ''}"${g.state === 'in' && g.syncDelay != null && !g.syncing ? ` data-sclk="${esc(g.id)}"` : ''}>${esc(g.detail || '')}</div>`;
   const d = new Date(g.date), up = upset(g);
   const strip = [
     up ? `<b class="mh-upset${up.big ? ' big' : ''}">${BOLT}${up.big ? 'Big upset' : 'Upset'}</b><span>${esc(upsetWhy(g, up))}</span>` : null,

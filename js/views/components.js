@@ -2,11 +2,12 @@ import { esc, pct, fmtTime, fmtDay, plural } from '../util.js';
 import { state } from '../state.js';
 import { marketsFor, sourceLabel } from '../markets.js';
 import { pins, picks } from '../picks.js';
-import { excitement, isHot } from '../excitement.js';
+import { excitement, isHot, realizedExcitement } from '../excitement.js';
 import { lineFor } from '../lines.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
 import { ats, atsWhy, fmtLine } from '../ats.js';
 import { isMine, mySide, myColor, STAR } from '../myteam.js';
+import { scored, momentum } from '../live.js';
 
 export const teamHref = id => `#team/${encodeURIComponent(id)}`;
 export const gameHref = id => `#game/${encodeURIComponent(id)}`;
@@ -48,7 +49,7 @@ export function ballClass(g, t){
   return g.redZone ? ' has-ball rz' : ' has-ball';
 }
 
-function teamRow(g, side){
+function teamRow(g, side, fx){
   const t = g[side], opp = g[side === 'home' ? 'away' : 'home'];
   const lose = g.state === 'post' && g.completed && !t.winner && opp.winner;
   const pk = picks[g.id], mine = pk && pk.side === side;
@@ -58,10 +59,13 @@ function teamRow(g, side){
     ${t.id ? `<a href="${teamHref(t.id)}" tabindex="-1" aria-hidden="true">${logo(t.logo)}</a>` : logo(t.logo)}
     <span class="tname"><span class="tn">${teamLink(t)}</span>${ball ? '<span class="sr"> has the ball</span>' : ''}<span class="rec">${esc(t.record || '')}</span>${fpiTag(t.id)}</span>
     ${mine ? `<span class="mypick ${pk.result || ''}">${pk.result === 'W' ? 'Pick hit' : pk.result === 'L' ? 'Pick missed' : 'Your pick'}</span>` : '<span></span>'}
-    <span class="score">${g.state === 'pre' ? '' : esc(t.score ?? '')}</span></div>`;
+    <span class="score${fx?.side === side ? ' bump' : ''}"${fx?.side === side ? ` style="--d:-${Math.round(fx.elapsed)}ms"` : ''}>${g.state === 'pre' ? '' : g.syncing ? '–' : esc(t.score ?? '')}</span></div>`;
 }
 
 export function statusHTML(g, bare = false){
+  if (g.state === 'in' && g.syncing) return '<span class="status live">Live</span>';   // matching a stream: the clock would run ahead
+  // Synced to a stream: the clock is your stream's, ticking in place every half second (sync.js).
+  if (g.state === 'in' && g.syncDelay != null) return `<span class="status live" data-sclk="${esc(g.id)}">${esc(g.detail)}</span>${g.sit && !bare ? `<span>${esc(g.sit)}</span>` : ''}`;
   if (g.state === 'in') return `<span class="status live">${esc(g.detail)}</span>${g.sit && !bare ? `<span>${esc(g.sit)}</span>` : ''}`;
   if (g.state === 'post') return `<span class="status">${esc(g.detail || 'Final')}</span>`;
   const d = new Date(g.date);
@@ -98,10 +102,24 @@ export function lineMove(g){
 /* Live: ESPN's win probability as of the latest play, which arrives with every scoreboard poll. (Market prices come
    through the bot and can be hours old mid-game, so they're only shown before kickoff and after.) */
 function liveOdds(g){
+  if (g.syncing) return `<div class="odds syncing"><span class="mspin" aria-hidden="true"></span>Matching your stream…</div>`;
   if (g.liveWp == null) return '';
   const pa = pct(1 - g.liveWp), ph = 100 - pa;
   return `${meter(g, g.liveWp, 'ESPN live win probability')}
     <div class="odds"><b>${esc(g.away.abbr)} ${pa}%</b><span class="src">Live win %</span><b>${ph}% ${esc(g.home.abbr)}</b></div>`;
+}
+
+/* A scoring play just happened: the card wipes to the scoring team's color with their logo and the new score. A
+   re-render mid-way picks up where it was (negative animation delay), so a refresh never restarts it. */
+const inkOn = hex => { const c = String(hex || '#777').replace('#', ''), n = parseInt(c.length === 3 ? [...c].map(x => x + x).join('') : c, 16) || 0;
+  return ((n >> 16 & 255) * .299 + (n >> 8 & 255) * .587 + (n & 255) * .114) > 160 ? '#111' : '#fff'; };
+function scoreFx(g, e){
+  if (!e) return '';
+  const t = g[e.side], o = g[e.side === 'home' ? 'away' : 'home'], a = Number(t.score), b = Number(o.score);
+  const word = { td: 'Touchdown', fg: 'Field goal', safety: 'Safety' }[e.kind];
+  const where = a > b ? `leads ${a}–${b}` : a < b ? `trails ${a}–${b}` : `ties it ${a}–${b}`;
+  return `<div class="tdfx ${e.kind}" style="--tc:${esc(t.color)};--ti:${inkOn(t.color)};--d:-${Math.round(e.elapsed)}ms;--len:${e.length}ms" aria-hidden="true">
+    <span class="tdfx-logo">${logo(t.logo, 'logo')}</span><span class="tdfx-t"><b>${word}</b><small>${esc(t.abbr)} ${where}</small></span></div>`;
 }
 
 /* Before kickoff the two percentages (or team abbreviations, with no line yet) are the pick buttons. */
@@ -136,8 +154,23 @@ function drivers(x){
 }
 const CHEV = '<svg class="xc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+/* Live: the excitement index so far, how much the win % has swung over the game (the game drawer's number), with
+   its tier and what that means in plain words. */
+const LIVE_XC = { 'Instant classic': ['hi', 'wild swings all game'], Thriller: ['hi', 'big momentum swings'],
+  Competitive: ['mid', 'back and forth'], 'Mostly one-sided': ['lo', 'little drama so far'] };
+function liveExcitement(g){
+  if (g.syncing) return '';
+  const x = realizedExcitement((momentum(g) || []).map(([, v]) => v));
+  if (!x) return '<div class="xc xlive pending"><span class="xc-sum">Excitement so far <b>…</b></span></div>';
+  const [cls, what] = LIVE_XC[x.label];
+  const flips = x.flips ? `<span class="xl-flip" title="The favorite has flipped ${x.flips} time${x.flips === 1 ? '' : 's'}">⇄ ${x.flips}</span>` : '';
+  return `<div class="xc xlive" title="Excitement index: the total swing in win probability so far. Under 1 is one-sided, 2.2 and up a thriller, 3.5 and up an instant classic.">
+    <span class="xc-sum"><span class="xc-score ${cls}">${x.index.toFixed(1)}</span><b class="xc-label">${esc(x.label)}</b><span class="xc-tags">${esc(what)}</span>${flips}</span></div>`;
+}
+
 export function excitementBadge(g, { open = false } = {}){
   if (g.state === 'post') return '';
+  if (g.state === 'in') return liveExcitement(g);
   const x = excitement(g);
   if (x.pending) return '<div class="xc pending"><span class="xc-sum">Excitement <b>…</b></span></div>';
   const [, label, cls] = x.tier;
@@ -161,13 +194,16 @@ function upsetTag(g, u){
   return `<span class="upset${u.big ? ' big' : ''}" title="${esc(upsetWhy(g, u))}">${BOLT}${u.big ? 'Big upset' : 'Upset'}${u.p != null ? ` ${pct(u.p)}%` : ''}</span>`;
 }
 
+const SYNC_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 14h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.8 5.4v3.7L9.9 7.25z" fill="currentColor"/></svg>';
+export const fmtDelay = s => { const t = Math.round(s); return t >= 60 ? `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` : `${t}s`; };
+
 /* The whole card opens the game (see main.js); close, late live games get an orange outline. */
 export function card(g){
-  const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id), up = upset(g), mine = mySide(g), a = ats(g);
-  const info = [live ? g.sit : null, g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, atsInfo(g, a), g.neutral ? 'Neutral site' : null].filter(Boolean);
+  const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id), up = upset(g), mine = mySide(g), a = ats(g), fx = live ? scored(g) : null;
+  const info = [live && !g.syncing ? g.sit : null, g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, atsInfo(g, a), g.neutral ? 'Neutral site' : null].filter(Boolean);
   return `<article class="game${live ? ' is-live' : ''}${hot ? ' is-hot' : ''}${pinned ? ' is-pinned' : ''}${up ? ` is-upset${up.big ? ' is-big-upset' : ''}` : ''}${a?.dogCover ? ' is-cover' : ''}${mine ? ' is-mine' : ''}" data-id="${esc(g.id)}"${mine ? ` style="--mine:${esc(myColor())}"` : ''}>
-    ${teamRow(g, 'away')}${teamRow(g, 'home')}${oddsBlock(g)}${excitementBadge(g)}
-    <div class="foot">${statusHTML(g, true)}${upsetTag(g, up)}${coverTag(g, a)}<span class="finfo">${esc(info.join(' · '))}</span>
+    ${teamRow(g, 'away', fx)}${teamRow(g, 'home', fx)}${oddsBlock(g)}${excitementBadge(g)}${scoreFx(g, fx)}
+    <div class="foot">${statusHTML(g, true)}${g.syncDelay != null && (live || g.state === 'post') ? `<span class="synctag" title="Shown as on your stream, ${fmtDelay(g.syncDelay)} behind live">${SYNC_ICON}Synced</span>` : ''}${upsetTag(g, up)}${coverTag(g, a)}<span class="finfo">${esc(info.join(' · '))}</span>
       <button class="pinbtn" data-pin aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} ${esc(g.away.name)} at ${esc(g.home.name)}" title="${pinned ? 'Unpin' : 'Pin'}">${PIN}</button></div>
   </article>`;
 }

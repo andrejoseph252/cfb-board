@@ -37,6 +37,7 @@ function game(e, c){
   return {
     id: e.id, date: e.date, tbd: (e.timeValid ?? c.timeValid) === false, home: side('home'), away: side('away'),
     state: st.state, detail: st.shortDetail, completed: !!st.completed,
+    period: c.status?.period ?? null, clock: c.status?.clock ?? null,
     neutral: !!c.neutralSite, confGame: !!c.conferenceCompetition, venue: c.venue?.fullName,
     tv: c.broadcasts?.[0]?.names?.[0] ?? c.broadcasts?.[0]?.media?.shortName,
     book: parseBook(c.odds?.[0]), sit: c.situation?.downDistanceText,
@@ -137,7 +138,7 @@ function smooth(pts, keys){
 /* Core API per-play probabilities: win, cover (vs the spread) and over (vs the total), all from the home side's view. */
 export function parseProbabilities(j){
   const pts = (j.items || []).map(x => ({
-    seq: Number(x.sequenceNumber) || 0, pid: /\/plays\/(\d+)/.exec(x.play?.$ref || '')?.[1] ?? null,
+    seq: Number(x.sequenceNumber) || 0, pid: /\/plays\/(\d+)/.exec(x.play?.$ref || '')?.[1] ?? null, left: x.secondsLeft ?? null,
     home: x.homeWinPercentage, cover: x.spreadCoverProbHome ?? null, over: x.totalOverProb ?? null
   })).filter(p => p.home != null).sort((a, b) => a.seq - b.seq);
   return smooth(pts, ['home', 'cover', 'over']);
@@ -167,7 +168,7 @@ export function parseSummary(j){
   const drive = d => ({
     side: teamSide(d.team?.id), desc: d.description, result: d.displayResult || d.result, isScore: !!d.isScore,
     q: d.start?.period?.number, start: d.start?.text, clock: d.start?.clock?.displayValue,
-    plays: (d.plays || []).map(p => ({ id: p.id, text: p.text, clock: p.clock?.displayValue, q: p.period?.number, away: p.awayScore, home: p.homeScore }))
+    plays: (d.plays || []).map(p => ({ id: p.id, text: p.text, clock: p.clock?.displayValue, q: p.period?.number, away: p.awayScore, home: p.homeScore, w: Date.parse(p.wallclock) || null }))
   });
   const drives = [...(j.drives?.previous || []).map(drive), ...(j.drives?.current && !j.drives.previous?.some(d => d.id === j.drives.current.id) ? [drive(j.drives.current)] : [])];
   const wp = smooth((j.winprobability || []).filter(p => p.homeWinPercentage != null).map(p => ({ pid: p.playId, home: p.homeWinPercentage })), ['home']);

@@ -41,6 +41,8 @@ export function renderDetail(){
   }
   const key = r.type + ':' + r.id;
   if (el.hidden){ restoreFocus = document.activeElement; el.hidden = false; document.body.classList.add('drawer-open'); }
+  // Typing a clock time into the stream sync panel: hold refreshes until they're done, so the boxes keep what they typed.
+  if (key === lastKey && document.activeElement?.matches?.('#drawerBody .syncp input')) return;
   // A bug in one view shows an error in the drawer instead of leaving it stuck on its loading skeleton.
   let html;
   try{ html = r.type === 'news' ? viewNews() : r.type === 'team' ? viewTeam(r.id) : viewGame(r.id); }

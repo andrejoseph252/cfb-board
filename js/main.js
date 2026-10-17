@@ -5,6 +5,7 @@ import { initSettings } from './settings.js';
 import { initWeekPicker, renderWeekPicker } from './weekpicker.js';
 import { picks, weekLabel, togglePin, setPick, setBet, removePick } from './picks.js';
 import './pull.js';
+import { fire } from './live.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc } from './views/components.js';
 import { isMine, setMyTeam, myTeam } from './myteam.js';
@@ -12,6 +13,7 @@ import { viewWeek, weekList, viewTop25 } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
 import { viewPicks } from './views/picks.js';
+import { syncAction, syncInput, syncPress } from './views/game.js';
 import { viewMyTeam, picking, pickList } from './views/teamtab.js';
 import { news, hasUnseen, setNewsFilter, markRead, toggleStory } from './news.js';
 
@@ -102,6 +104,8 @@ document.addEventListener('click', e => {
   if (d.rk){ state.rk = d.rk; store.set('rk', d.rk); return invalidate('main'); }
   if (d.rkconf){ state.rkConf = d.rkconf; return invalidate('main'); }
   if (d.unpick) return removePick(d.unpick);
+  // Stream sync, in a live game's drawer (game.js).
+  if (['syncopen', 'syncclose', 'syncstop', 'syncnudge', 'syncgo', 'syncq', 'syncmark', 'syncremark', 'synctoggle'].some(k => k in d) && t.closest('[data-gid]')){ syncAction(d, t.closest('[data-gid]').dataset.gid); return invalidate('detail'); }
   if (d.mine){
     // From the picker: choose (tapping the current team just closes it). From a team page: toggle.
     const fromPicker = !!t.closest('.picker'), team = { id: d.mine, name: d.name, color: d.color, logo: d.logo };
@@ -136,7 +140,12 @@ document.addEventListener('click', e => {
   }
   markRead(a.dataset.read);
 });
+// Stream sync's Mark button counts from the press, not the release.
+document.addEventListener('pointerdown', e => {
+  if (e.target.closest?.('[data-syncmark]')) syncPress();
+});
 document.addEventListener('input', e => {
+  if (e.target.closest?.('.syncp')) syncInput(e.target);
   if (e.target.id === 'q'){ state.q = e.target.value; const l = $('#list'); if (l) l.innerHTML = weekList(); lastMain = ''; }
   if (e.target.id === 'tq'){ picking.q = e.target.value; const l = $('#pickList'); if (l) l.innerHTML = pickList(); $('.pick-confs')?.classList.toggle('searching', !!picking.q); lastMain = ''; }
 });
@@ -177,6 +186,16 @@ function goWeek(v){
   const [st, wk] = v.split('-'); state.st = st; state.week = wk; state.q = '';
   state.pickedWeek = v !== state.current;
   loadBoard();
+}
+
+/* Localhost only: Shift+T previews a live card's touchdown graphic (Shift+F a field goal) without waiting for a score. */
+if (['localhost', '127.0.0.1'].includes(location.hostname)){
+  window.__live = { fire, state };
+  document.addEventListener('keydown', e => {
+    if (!e.shiftKey || !/^[TF]$/.test(e.key) || e.target.closest?.('input, textarea')) return;
+    const live = state.games.filter(g => g.state === 'in'), g = live[Math.floor(Math.random() * live.length)];
+    if (g) fire(g, Math.random() < .5 ? 'home' : 'away', e.key === 'T' ? 'td' : 'fg');
+  });
 }
 
 /* ---------- boot ---------- */
