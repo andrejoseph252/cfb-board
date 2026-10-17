@@ -499,6 +499,8 @@ main > .chips:first-child{margin-bottom:18px}
 .rbtn svg{width:18px;height:18px;flex:none}
 .rbtn:hover{background:color-mix(in srgb,#FF4500 10%,var(--surface))}
 .rbtn.ghost{border-color:var(--line);font-weight:600;color:var(--muted)}
+.rbtn.take{border-color:#E8B64C;color:var(--ink);background:color-mix(in srgb,#E8B64C 12%,var(--surface))}
+.rbtn.take svg{color:#E8B64C}
 
 
 /* Possession: a soft wash of warm "ball" light behind the row of the team with the ball, a halo on its stripe, and a

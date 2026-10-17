@@ -7,10 +7,10 @@
 export const FW = 53.33, MID = FW / 2, HASH = [20, 33.33], GOAL_HALF = 3.08, BAR = 3.33;
 
 export const DIFFS = {
-  rookie: { name: 'Rookie', lag: .42, defSpd: .9, rush: 4.6, tackle: .7, fool: .92, keyErr: .5, opp: .27, intMul: .5, react: .5, sweep: 2.0, blitz: .1, preview: true },
+  rookie: { name: 'Rookie', lag: .42, defSpd: .93, rush: 4.6, tackle: .75, fool: .92, keyErr: .5, opp: .27, intMul: .5, react: .5, sweep: 2.0, blitz: .1, preview: true },
   pro:    { name: 'Pro', lag: .32, defSpd: .955, rush: 3.7, tackle: .79, fool: .8, keyErr: .8, opp: .35, intMul: .75, react: .36, sweep: 1.55, blitz: .18, preview: true },
-  allpro: { name: 'All-Pro', lag: .26, defSpd: .985, rush: 3.3, tackle: .83, fool: .68, keyErr: 1.1, opp: .43, intMul: .72, react: .26, sweep: 1.2, blitz: .25, preview: false },
-  legend: { name: 'Legend', lag: .2, defSpd: 1.015, rush: 3.05, tackle: .87, fool: .55, keyErr: 1.4, opp: .51, intMul: .85, react: .18, sweep: 1.0, blitz: .32, preview: false }
+  allpro: { name: 'All-Pro', lag: .26, defSpd: .97, rush: 3.3, tackle: .82, fool: .68, keyErr: 1.1, opp: .43, intMul: .72, react: .26, sweep: 1.2, blitz: .25, preview: false },
+  legend: { name: 'Legend', lag: .2, defSpd: .985, rush: 3.05, tackle: .85, fool: .55, keyErr: 1.4, opp: .51, intMul: .85, react: .18, sweep: 1.0, blitz: .32, preview: false }
 };
 export const LENGTHS = { quick: { name: 'Quick', q: 180 }, standard: { name: 'Standard', q: 300 }, long: { name: 'Long', q: 450 } };
 
@@ -92,6 +92,9 @@ const POOL = {
   RB: ['flat', 'swing', 'wheel', 'block', 'in', 'flat']
 };
 const SPEED = { QB: 7.0, RB: 8.1, X: 8.35, Z: 8.35, SL: 8.2, TE: 7.3, OL: 5.0, DL: 6.9, LB: 7.6, CB: 8.4, S: 8.3 };
+/* How fast each position can change speed or direction (yards per second, per second): skill players get to top
+   speed in about half a second, linemen take longer, and nobody turns on a dime. Stopping is a bit quicker. */
+const ACCEL = { QB: 15, RB: 21, X: 19, Z: 19, SL: 20, TE: 16, OL: 15, DL: 13, LB: 16, CB: 19, S: 17 };
 
 function mk(role, team, x, y, spd, extra = {}){
   return { role, team, x, y, vx: 0, vy: 0, spd, hist: [], face: team === 'off' ? 1 : -1, step: 0, stun: 0, missCD: 0,
@@ -206,8 +209,17 @@ function moveToward(p, tx, ty, spd, dt, gain = 7){
   const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
   let vx = 0, vy = 0;
   if (d > .05){ const s = Math.min(spd, d * 6); vx = dx / d * s; vy = dy / d * s; }
+  accelToward(p, vx, vy, dt, gain);
+}
+/* Changes a player's velocity toward (vx, vy), no faster than his position allows: momentum, so a defender who
+   overcommits overruns a cut and a runner can't reverse in an instant. */
+function accelToward(p, vx, vy, dt, gain = 7){
   const k = Math.min(1, gain * dt);
-  p.vx += (vx - p.vx) * k; p.vy += (vy - p.vy) * k;
+  let ax = (vx - p.vx) * k, ay = (vy - p.vy) * k;
+  const slowing = vx * p.vx + vy * p.vy < p.vx * p.vx + p.vy * p.vy;
+  const lim = (ACCEL[p.role] || 16) * (slowing ? 1.25 : 1) * dt, m = Math.hypot(ax, ay);
+  if (m > lim){ ax *= lim / m; ay *= lim / m; }
+  p.vx += ax; p.vy += ay;
 }
 function integrate(p, dt){
   p.x += p.vx * dt; p.y += p.vy * dt;
@@ -285,8 +297,16 @@ export function step(G, dt, inp){
     let tx, ty, spd = d.spd;
     if (running){
       const l = lead(d, carrier); tx = l.x; ty = l.y;
-      // Linebackers read the play for a beat before they come downhill.
-      if (P.handed && d.role === 'LB' && P.t - P.handT < .22){ spd = d.spd * .4; }
+      // Pursuit: a man chasing from behind runs flat out to make up ground (one coming downhill doesn't need to).
+      if ((d.x - carrier.x) * carrier.vx + (d.y - carrier.y) * carrier.vy < 0) spd = d.spd * 1.05;
+      // Close to the runner, a defender breaks down: shorter steps, eyes on his hips, aiming at him rather than
+      // a spot down the field. That's what lets a well-timed juke beat him.
+      // (Only one coming at him: a pursuer from behind keeps running full tilt.)
+      const cv = Math.hypot(carrier.vx, carrier.vy) || 1, ahead = ((d.x - carrier.x) * carrier.vx + (d.y - carrier.y) * carrier.vy) / cv > 0;
+      if (ahead && dist(d, carrier) < 3.2){ tx = carrier.x + carrier.vx * .12; ty = carrier.y + carrier.vy * .12; spd = d.spd * .9; }
+      // Linebackers read the play for a beat before they come downhill: they scrape sideways with the ball first,
+      // which is what lets a runner find a hole or cut back.
+      if (P.handed && d.role === 'LB' && P.t - P.handT < .6){ tx = d.x + .4; ty = carrier.y; spd = d.spd * .55; }
       if (d.role === 'DL' && !d.free){
         // Run blocking: linemen hold their man until he sheds.
         if (P.t < d.shed * .45 + .5){ spd = d.spd * .25; } else d.free = true;
@@ -307,7 +327,7 @@ export function step(G, dt, inp){
     } else if (d.zone){
       const [lo, hi] = d.zone, mine = P.rec.filter(r => r.y >= lo && r.y <= hi && r.routeName !== 'block');
       const deepest = mine.sort((a, b) => b.x - a.x)[0], c = (lo + hi) / 2;
-      tx = Math.min(Math.max(P.los + 11, deepest ? deepest.x + 4 : P.los + 12), 109.5);
+      tx = Math.min(Math.max(P.los + 12, deepest ? deepest.x + 6 : P.los + 13), 109.5);   // keep everything in front
       ty = deepest ? c + (deepest.y - c) * .6 : c;
     } else if (d.spy){ tx = P.los + 5.5; ty = qb.y; }
     else { tx = d.x; ty = d.y; }
@@ -354,8 +374,8 @@ function becomeCarrier(P, p){
     if (o === p || o.role === 'OL' || o.role === 'QB') continue;
     o.mode = null; o.route = []; o.blockOn = null;
     if (!P.handed) continue;
-    // The tight end takes a linebacker; wideouts take the defensive backs.
-    const fits = d => o.role === 'TE' ? d.role === 'LB' : d.role === 'CB' || d.role === 'S';
+    // The tight end and the slot take linebackers; the outside receivers take the defensive backs.
+    const fits = d => o.role === 'TE' || o.role === 'SL' ? d.role === 'LB' : d.role === 'CB' || d.role === 'S';
     const near = P.def.filter(d => fits(d) && !d.eng && !P.off.some(x => x.blockOn === d) && d.x > o.x - 2).sort((a, b) => dist(a, o) - dist(b, o))[0];
     o.blockOn = near && dist(near, o) < 8 ? near : null;
   }
@@ -375,43 +395,80 @@ function runCarrier(G, dt, inp){
   // Blocks: a blocker who reaches his man ties him up for a moment.
   for (const o of P.off){
     const f = o.blockOn;
-    if (f && !f.eng && dist(o, f) < 1 && f.stun <= 0){ f.eng = { by: o, until: P.t + rnd(.4, 1.1) }; o.blockOn = null; }
+    if (f && !f.eng && dist(o, f) < 1 && f.stun <= 0){ f.eng = { by: o, until: P.t + rnd(.8, 1.6) }; o.blockOn = null; }
   }
   // Carrying the ball costs a little speed, so pursuers with good angles can run him down.
-  let spd = c.spd * .97 * (c.stumble > 0 ? .55 : 1);
-  c.stumble = Math.max(0, c.stumble - dt);
-  if (inp.juke && c.jukeCD <= 0){
-    c.juke = .28; c.jukeCD = 1; c.jukeDir = inp.juke;
+  const base = c.spd * .97, slow = c.stumble > 0 ? .55 : c.truck > 0 ? .85 : 1;
+  c.stumble = Math.max(0, c.stumble - dt); c.truck = Math.max(0, (c.truck || 0) - dt);
+  const sp = Math.hypot(c.vx, c.vy), dir = sp > .5 ? { x: c.vx / sp, y: c.vy / sp } : { x: 1, y: 0 };
+  const near = P.def.filter(d => !d.down && d.stun <= 0 && !d.eng).map(d => ({ d, dd: dist(d, c) })).sort((a, b) => a.dd - b.dd);
+
+  /* Juke: a hard cut away from the nearest man closing in. It beats him only if it's timed as he arrives (about
+     two yards away is the sweet spot) and only him; everyone else keeps coming. */
+  if (inp.juke && c.jukeCD <= 0 && c.dive <= 0){
+    const m = near.find(x => x.dd < 4.2 && (x.d.x - c.x) * dir.x + (x.d.y - c.y) * dir.y > -.5);
+    const away = m ? Math.sign(c.y - m.d.y) || (inp.juke > 0 ? 1 : -1) : Math.sign(inp.juke) || 1;
+    c.juke = .3; c.jukeCD = 1.1; c.jukeDir = away;
     emit(G, 'sfx', { name: 'juke' });
-    for (const d of P.def) if (d.stun <= 0 && dist(d, c) < 2.8 && Math.random() < D.fool){ d.stun = .8; d.missCD = .9; pop(P, d.x, d.y, 'JUKED!', '#7df9ff'); }
+    if (m){
+      const timing = clamp(1 - Math.abs(m.dd - 2.1) / 1.6, 0, 1);
+      if (Math.random() < D.fool * timing * (1 + rate(G.me.off) / 250)){ m.d.stun = .75; m.d.missCD = 1; pop(P, m.d.x, m.d.y, 'JUKED!', '#7df9ff'); }
+    }
   }
-  if (inp.dive && c.dive <= 0 && c.juke <= 0){ c.dive = .32; emit(G, 'sfx', { name: 'juke' }); return; }
-  let vy;
-  if (c.juke > 0){ c.juke -= dt; vy = c.jukeDir * spd * 1.15; }
-  else if (inp.targetY != null) vy = clamp((inp.targetY - c.y) * 3.2, -spd * .62, spd * .62);
-  else vy = (inp.steer || 0) * spd * .62;
-  const vx = Math.sqrt(Math.max(spd * spd - vy * vy, (spd * .35) ** 2));
-  const k = Math.min(1, 9 * dt); c.vx += (vx - c.vx) * k; c.vy += (vy - c.vy) * k;
+  /* Truck: lower the shoulder into the man in front (better odds of running through him, a little slower), or with
+     nobody there, dive forward for the extra yard. */
+  if (inp.truck && c.dive <= 0 && c.juke <= 0 && (c.truckCD || 0) <= 0){
+    const m = near.find(x => x.dd < 2.4 && (x.d.x - c.x) * dir.x + (x.d.y - c.y) * dir.y > 0);
+    if (m){ c.truck = .5; c.truckCD = 1.3; emit(G, 'sfx', { name: 'juke' }); }
+    else { c.dive = .32; emit(G, 'sfx', { name: 'juke' }); return; }
+  }
+  c.truckCD = Math.max(0, (c.truckCD || 0) - dt);
+
+  /* Steering: the runner goes where the stick points, as fast as it's pushed. No stick: he keeps running the way
+     he's going. Momentum (accelToward) makes a hard cut cost speed. */
+  let tvx, tvy;
+  const st = inp.carStick, m = st ? Math.hypot(st.x, st.y) : 0;
+  if (c.juke > 0){ c.juke -= dt; tvx = dir.x * base * .55; tvy = c.jukeDir * base * 1.05; }
+  else if (m > .05){ const push = Math.min(1, m); tvx = st.x / m * base * slow * push; tvy = st.y / m * base * slow * push; }
+  else { tvx = (sp > 2 ? dir.x : 1) * base * slow; tvy = (sp > 2 ? dir.y : 0) * base * slow; }
+  if (c.juke > 0){ c.vx += (tvx - c.vx) * Math.min(1, 14 * dt); c.vy += (tvy - c.vy) * Math.min(1, 14 * dt); }   // the cut itself is explosive
+  else accelToward(c, tvx, tvy, dt, 10);
   integrate(c, dt);
   if (c.x >= 100) return end(G, { type: 'td', x: c.x, y: c.y });
   if (checkBounds(G, c)) return;
-  // Tackles: a defender who gets a hand on him gets one try; one a step or two away dives for him (worse odds,
-  // and a miss leaves him sprawled on the turf).
+
+  /* Tackles. Each defender in reach gets one try, decided by the hit: head on is the surest, from the side less so,
+     an arm tackle from behind least; closing speed helps; a second man arriving (gang tackle) or a runner already
+     stumbling makes it likelier; a truck makes a frontal tackle harder. A tackled runner falls forward a little
+     unless he's stood up head on, and a big hit can jar the ball loose. */
+  const cs = Math.hypot(c.vx, c.vy), fwd = cs > .5 ? { x: c.vx / cs, y: c.vy / cs } : { x: 1, y: 0 };
   for (const d of P.def){
     if (d.stun > 0 || d.missCD > 0 || d.eng || d.down || d.role === 'DL' && !d.free && d.ol) continue;
-    const dd = dist(d, c), reach = d.x > c.x - .8 ? 1.5 : 1.15;
+    const dd = dist(d, c), rx = (d.x - c.x) / (dd || 1), ry = (d.y - c.y) / (dd || 1);
+    const front = rx * fwd.x + ry * fwd.y, reach = front > -.3 ? 1.25 : 1.0;
     if (dd > reach) continue;
-    const close = dd <= .95;
-    let p = D.tackle * (c.juke > 0 ? .3 : 1) * (close ? 1 : .6) * (1 + rate(G.opp.def) / 300 - rate(G.me.off) / 300);
-    if (d.x < c.x - .3) p *= .82;   // arm tackles from behind
-    if (!close){ d.x += (c.x - d.x) * .65; d.y += (c.y - d.y) * .65; }
+    const closing = Math.max(0, -((d.vx - c.vx) * rx + (d.vy - c.vy) * ry));
+    const help = P.def.some(o => o !== d && !o.down && o.stun <= 0 && !o.eng && dist(o, c) < 2.3);
+    let p = D.tackle * (front > .35 ? .96 : front > -.35 ? .88 : .86);
+    p += Math.min(.06, closing * .009);
+    if (front <= .35) p -= Math.max(0, cs - 6.5) * .02;   // a runner at full speed is hard to grab from the side
+    if (c.truck > 0 && front > .2) p *= .62;
+    if (help) p += .1;
+    if (c.stumble > 0) p += .14;
+    p *= 1 + rate(G.opp.def) / 300 - rate(G.me.off) / 300;
+    p = clamp(p, .35, .97);
     if (Math.random() < p){
-      if (Math.random() < .009) return end(G, { type: 'fumble', x: c.x, y: c.y, by: d });
-      return end(G, { type: 'tackle', x: c.x + .4, y: c.y, by: d });
+      const big = closing > 6.5;
+      if (Math.random() < .0025 + (big ? .01 : 0) + (front < -.35 ? .003 : 0)) return end(G, { type: 'fumble', x: c.x, y: c.y, by: d });
+      if (big){ pop(P, c.x, c.y, 'BIG HIT!', '#ff5a4e'); emit(G, 'shake', { a: 4 }); }
+      // Forward progress: a runner hit from the side or behind falls forward; one stood up head on doesn't.
+      const fall = front > .35 ? Math.max(0, cs * .07 - closing * .05) : rnd(.5, 1.5);
+      return end(G, { type: 'tackle', x: c.x + Math.max(0, fwd.x) * fall + .2, y: c.y, by: d });
     }
-    d.missCD = 1.4; c.stumble = .25;
-    if (close){ d.stun = .45; pop(P, c.x, c.y, pick(['BROKEN TACKLE!', 'SPIN!', 'STIFF ARM!']), '#ffd84a'); }
-    else { d.stun = 1.1; d.down = true; d.vx = d.vy = 0; pop(P, d.x, d.y, 'MISSED!', '#ffd84a'); }
+    d.missCD = 1.3; c.stumble = .32;
+    if (c.truck > 0 && front > .2){ d.stun = .9; d.down = true; d.vx = d.vy = 0; pop(P, d.x, d.y, 'TRUCKED!', '#ffd84a'); }
+    else if (front > -.35){ d.stun = .5; pop(P, c.x, c.y, pick(['BROKEN TACKLE!', 'SPIN!', 'STIFF ARM!']), '#ffd84a'); }
+    else { d.stun = 1; d.down = true; d.vx = d.vy = 0; pop(P, d.x, d.y, 'SHAKEN OFF!', '#ffd84a'); }
     emit(G, 'sfx', { name: 'juke' });
   }
 }
@@ -443,7 +500,7 @@ function cpuQB(G){
   }
   if (!best) return;
   let T = .6, g;
-  for (let i = 0; i < 5; i++){ g = ghostAt(best, T); T = .3 + Math.hypot(g.x - qb.x, g.y - qb.y) / 24; }
+  for (let i = 0; i < 5; i++){ g = ghostAt(best, T); T = trajectory(G, g.x, g.y).T; }
   const e = Q.err * (P.pressured ? 2.2 : 1), wob = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15 * e;
   P.aimedAt = best;
   throwTo(G, g.x + wob(), g.y + wob());
@@ -453,7 +510,8 @@ function cpuRun(G, c){
   const ahead = G.play.def.filter(d => d.x > c.x - 1 && d.stun <= 0 && !d.down).sort((a, b) => dist(a, c) - dist(b, c))[0];
   let steer = ahead && dist(ahead, c) < 5 ? (ahead.y > c.y ? -1 : 1) : 0;
   if (c.y < 3) steer = 1; else if (c.y > FW - 3) steer = -1;
-  return { steer, targetY: null, juke: 0, dive: false };
+  const n = Math.hypot(1, steer * .6);
+  return { carStick: { x: 1 / n, y: steer * .6 / n }, juke: 0, truck: false };
 }
 /* How close your defender has to be to where the ball comes down for a jump to get a hand on it (yards). */
 export const JUMP_R = 2.2;
@@ -513,10 +571,42 @@ export function applyStop(G, r, k, how, { gain = 0, x = null } = {}){
 export const canThrow = G => { const P = G.play; return P?.live && !P.result && P.ball.state === 'held' && P.ball.holder === P.qb && !P.carrier; };
 export const canHandoff = G => { const P = G.play; return canThrow(G) && !P.handed && P.t < 1.3; };
 
+/* The ball's flight to a spot: a bullet (flat and quick) unless a defender sits in the throwing lane or it's a deep
+   ball, then it's lofted over him (slower, higher). Shared with the aim arc so what you see is what's thrown. */
+export function trajectory(G, tx, ty){
+  const P = G.play, qb = P.qb, d = Math.hypot(tx - qb.x, ty - qb.y) || 1, ux = (tx - qb.x) / d, uy = (ty - qb.y) / d;
+  const inLane = P.def.some(df => {
+    if (df.role === 'DL' || df.down) return false;
+    const along = (df.x - qb.x) * ux + (df.y - qb.y) * uy, off = Math.abs((df.y - qb.y) * ux - (df.x - qb.x) * uy);
+    return along > 2 && along < d - 2.5 && off < 2.2;
+  });
+  const loft = d > 32 || inLane;
+  return loft ? { T: .4 + d / 21, h: Math.max(.8, d * .24), loft } : { T: .22 + d / 28, h: Math.max(.4, d * .085), loft };
+}
+/* How far your throw can stray from where you aimed (yards, about one standard deviation): more on longer throws,
+   under pressure, on the run and backpedaling; less on easier levels and for better offenses. */
+export function throwSpread(G, tx, ty){
+  const P = G.play, qb = P.qb, d = Math.hypot(tx - qb.x, ty - qb.y);
+  let s = .22 + d * .017;
+  const rush = Math.min(9, ...P.def.filter(x => (x.free || x.blitz) && !x.eng && x.stun <= 0).map(x => dist(x, qb)));
+  if (rush < 2.5) s *= 1.75; else if (rush < 4.5) s *= 1.3;
+  const v = Math.hypot(qb.vx, qb.vy); if (v > 2.2) s *= 1 + Math.min(.6, (v - 2.2) * .14);
+  if (qb.vx < -1.5) s *= 1.2;
+  s *= ({ rookie: .7, pro: .85, allpro: 1, legend: 1.1 })[G.diffKey] ?? 1;
+  s *= 1 - rate(G.me.off) / 300;
+  if (G.practice) s *= .5;
+  return s;
+}
+const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
+/* Your slingshot throw: lands near where you aimed, by the spread above. */
+export function userThrow(G, tx, ty){
+  const s = throwSpread(G, tx, ty);
+  return throwTo(G, tx + gauss() * s, ty + gauss() * s);
+}
 export function throwTo(G, tx, ty){
   const P = G.play, qb = P.qb, ball = P.ball, D = G.diff;
-  const d = Math.hypot(tx - qb.x, ty - qb.y);
-  Object.assign(ball, { state: 'air', fx: qb.x + .3, fy: qb.y, tx, ty, t: 0, T: .3 + d / 24, h: Math.max(.6, d * .17) });
+  const fl = trajectory(G, tx, ty);
+  Object.assign(ball, { state: 'air', fx: qb.x + .3, fy: qb.y, tx, ty, t: 0, T: fl.T, h: fl.h });
   P.thrown = true; G.stats.att++;
   emit(G, 'sfx', { name: 'throw' });
   // The intended receiver works back to the ball; nearby defenders break on it after a beat.
@@ -583,7 +673,7 @@ export function gradeThrow(P, land, T, aimedAt, strict){
 export function throwToReceiver(G, num){
   const P = G.play, r = P.rec.find(p => p.num === num); if (!r || !canThrow(G)) return false;
   const qb = P.qb; let T = .5;
-  for (let i = 0; i < 4; i++){ const tx = r.x + r.vx * T, ty = r.y + r.vy * T; T = .3 + Math.hypot(tx - qb.x, ty - qb.y) / 24; }
+  for (let i = 0; i < 4; i++){ T = trajectory(G, r.x + r.vx * T, r.y + r.vy * T).T; }
   const g = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
   const e = G.diff.keyErr * (.6 + Math.hypot(r.x - qb.x, r.y - qb.y) / 30);
   P.aimedAt = r;
@@ -616,12 +706,21 @@ function resolvePass(G){
     if (u < .55 + .4 * q) return end(G, { type: 'inc', why: 'Swatted away', by: jd });
   }
   if (rd <= 1.6){
-    const contest = dd < 1.7 ? (1.7 - dd) / 1.7 : 0;
+    let contest = dd < 1.7 ? (1.7 - dd) / 1.7 : 0;
+    // Leverage: a defender between the ball and the receiver (undercutting) is the danger; one trailing the
+    // receiver is shielded by him.
+    if (contest && d && r){
+      const L = Math.hypot(land.x - b.fx, land.y - b.fy) || 1, ux = (b.fx - land.x) / L, uy = (b.fy - land.y) / L;
+      const sd = (d.x - land.x) * ux + (d.y - land.y) * uy, sr = (r.x - land.x) * ux + (r.y - land.y) * uy;
+      contest *= sd < sr - .4 ? .65 : sd > sr + .3 ? 1.25 : 1;
+    }
     const pCatch = clamp(.96 - rd * .07 - contest * .6 * (.6 + .4 * D.intMul) + rate(G.me.off) / 400, .1, .98);
     const pInt = contest && dd < rd ? .3 * D.intMul * contest : 0;
     if (u < pCatch){
       G.stats.comp++;
       r.x = land.x; r.y = land.y; r.mode = null;
+      // Catching the ball costs a receiver his momentum (more in traffic): he has to secure it and turn upfield.
+      const keep = contest > .2 ? .2 : .35; r.vx *= keep; r.vy *= keep;
       emit(G, 'sfx', { name: 'catch' }); pop(P, r.x, r.y, contest > .3 ? 'GREAT CATCH!' : 'CAUGHT', contest > .3 ? '#ffd84a' : '#fff');
       if (r.x >= 100) return end(G, { type: 'td', x: r.x, y: r.y, pass: true });
       becomeCarrier(P, r); P.catchX = r.x;

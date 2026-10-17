@@ -9,6 +9,7 @@ import { myTeam } from '../myteam.js';
 import { logoUrl } from '../views/components.js';
 import { inkOn } from '../views/preview.js';
 import * as S from './sim.js';
+import { weekChallenges, challengeById } from '../challenges.js';
 import { createRenderer } from './draw.js';
 import { initAudio, setSound, soundOn, sfx, resume } from './sfx.js';
 
@@ -93,7 +94,9 @@ const $ = s => root?.querySelector(s);
 export function open({ prefill = null, exit = () => {} } = {}){
   onExit = exit; openPrefill = prefill; waitingData = !(state.standings && colors);
   if (!root) freshSettings();
-  if (root){ if (prefill && phase === 'setup'){ pick = defaults(prefill); setup(); } return; }
+  const chal = prefill?.challenge ? challengeById(prefill.challenge) : null;
+  if (Array.isArray(prefill) === false) prefill = null;
+  if (root){ if (chal) startChallenge(chal); else if (prefill && phase === 'setup'){ pick = defaults(prefill); setup(); } return; }
   if (!document.getElementById('pb-font')){
     const l = Object.assign(document.createElement('link'), { id: 'pb-font', rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap' });
     document.head.append(l);
@@ -105,6 +108,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-hud" hidden><div class="pb-bug"></div><div class="pb-dd"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
     <button class="pb-jump" type="button" hidden aria-label="Jump the route">JUMP</button>
+    <div class="pb-moves" hidden><button class="pb-mv" type="button" data-mv="juke" aria-label="Juke">JUKE</button><button class="pb-mv" type="button" data-mv="truck" aria-label="Truck">TRUCK</button></div>
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
   canvas = $('.pb-cv'); R = createRenderer(canvas); R.resize();
@@ -114,12 +118,20 @@ export function open({ prefill = null, exit = () => {} } = {}){
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', cancel);
   // Its own button, so a press on the field only ever steers; a second thumb can hit it mid-drag.
   $('.pb-jump').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); resume(); jumpRoute(); });
+  // With the ball: moves on their own buttons, so a press on the field only ever steers.
+  $('.pb-moves').addEventListener('pointerdown', e => {
+    const b = e.target.closest('[data-mv]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation(); resume();
+    if (!carrierLive()) return;
+    if (b.dataset.mv === 'juke') input.juke = Math.sign(input.carStick?.y || 0) || 1; else input.truck = true;
+  });
   root.addEventListener('click', onClick); root.addEventListener('input', onInput);
   window.addEventListener('resize', onResize); window.addEventListener('orientationchange', onResize); window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
   document.addEventListener('visibilitychange', onHide);
   pick = defaults(prefill);
   setup();
-  loadColors().then(() => { if (root && phase === 'setup') setup(); });
+  // Opened from a game's "Play this moment": straight to that challenge once team colors are in.
+  loadColors().then(() => { if (!root) return; if (chal) startChallenge(chal); else if (phase === 'setup') setup(); });
   last = 0; raf = requestAnimationFrame(loop);
 }
 export function close(){
@@ -153,10 +165,10 @@ function loop(ts){
   if (!paused && G){ acc += dt; while (acc >= STEP){ update(STEP); acc -= STEP; } }
   const cover = G?.youDefend && G.defDrill?.kind === 'cover';
   if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
-    stick: cover && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : 0,
+    stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : 0,
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
   if (G) drain();
-  hud(); syncJump();
+  hud(); syncJump(); syncMoves();
 }
 
 function update(dt){
@@ -170,7 +182,7 @@ function update(dt){
     if (!G.ot && !G.practice && !G.youDefend) S.useClock(G, dt);
     if (G.youDefend) defLive(dt);
     S.step(G, dt, input);
-    input.juke = 0; input.dive = false; input.jump = false;
+    input.juke = 0; input.dive = false; input.jump = false; input.truck = false;
     if (G.youDefend && G.defDrill.kind === 'rush' && G.play.thrown && !G.play.result) S.stopPlay(G, { type: 'released' });
     if (aim && !S.canThrow(G)) aim = null;
     if (G.play.result) playOver();
@@ -213,6 +225,7 @@ function setup(){
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label></div>
     <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
+    <button class="pb-go pb-take" type="button" data-pb="challenges"><span>TAKE OVER</span><small>Replay this week's real late-game moments</small></button>
     <div class="pb-btns pb-menu2"><button class="pb-go alt" type="button" data-pb="practice">PRACTICE</button><button class="pb-go alt" type="button" data-pb="playbook">MY PLAYBOOK</button></div>
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
@@ -655,6 +668,54 @@ function keyDone(g){
   finishOppDrive(merged, then);
 }
 
+/* ---------- take over: real late-game moments (challenges.js) ---------- */
+const chalDone = id => saved.challenges?.[id];
+const chalTeam = t => { const ti = teamInfo(t.id); return withImage({ ...ti, name: ti.name === 'Team' ? t.name : ti.name, abbr: ti.abbr === 'TEAM' ? t.abbr : ti.abbr,
+  logo: ti.logo || t.logo, color: ti.color === '#5a6470' && t.color ? t.color : ti.color }); };
+const clockText = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+function challengesScreen(){
+  phase = 'setup';
+  const shell = body => modal(`<div class="pb-setup pb-chal"><div class="pb-ph"><b>TAKE OVER</b><button class="pb-x" type="button" data-pb="menu" aria-label="Back">${ICON.x}</button></div>
+    <p class="pb-sub">Real moments from this week's close games. Take over for the team that lost and win it from there.</p>${body}</div>`);
+  shell('<p class="pb-sub pb-load">Finding this week\'s late-game moments…</p>');
+  weekChallenges().then(list => {
+    if (!root || !$('.pb-chal')) return;
+    if (!list.length) return shell('<p class="pb-sub">No close finishes yet this week. Check back once Saturday\'s games wrap up.</p>');
+    const logoTag = t => t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : '';
+    shell(`<div class="pb-chlist">${list.map(c => { const d = chalDone(c.id);
+      return `<div class="pb-ch${d?.won ? ' won' : ''}" style="--c:${esc(c.me.color || '#5a6470')}"><div class="pb-chh">${logoTag(c.me)}<b>${esc(c.me.abbr)}</b><i>vs</i>${logoTag(c.opp)}<b>${esc(c.opp.abbr)}</b>
+        <span class="pb-chtag">${esc(c.tag.toUpperCase())}</span></div><p>${esc(c.title)}</p>
+        <div class="pb-chf"><small>${d?.won ? 'BEATEN' : d ? `${d.tries} ${d.tries === 1 ? 'TRY' : 'TRIES'}` : 'REAL: ' + esc(c.real.toUpperCase())}</small>
+        <button class="pb-go" type="button" data-pb="chalgo" data-id="${esc(c.id)}">${d?.won ? 'PLAY AGAIN' : 'PLAY'}</button></div></div>`; }).join('')}</div>`);
+  });
+}
+/* Sets the scene from the real moment (score, quarter, clock, spot, down and distance), then the normal game flow
+   takes over: your drive, their simulated drives, overtime if it's tied. */
+function startChallenge(c){
+  closeModal(); initAudio(saved.sound);
+  G = S.newGame(chalTeam(c.me), chalTeam(c.opp), saved.diff, saved.len);
+  Object.assign(G, { quarter: c.quarter, clock: c.clock, score: [...c.score], challenge: c, firstHalfReceiver: 'opp' });
+  snaps = 0; showHud(true);
+  S.startDrive(G, c.x); G.down = c.down; G.toGo = c.toGo; R.snapCamera(G); S.setupPlay(G);
+  phase = 'modal';
+  const lead = c.score[0] - c.score[1];
+  modal(`<div class="pb-card pb-chintro"><span class="pb-chtag">${esc(c.tag.toUpperCase())}</span><h2>TAKE OVER</h2>${scoreLine(true)}
+    <p class="pb-chsit">Q4 · ${clockText(c.clock)} · ${ord(c.down)} & ${c.toGo >= 100 - c.x ? 'GOAL' : c.toGo} · ${yardLine(c.x)}</p>
+    <p>${esc(c.title)}</p><p class="pb-sub">${lead > 0 ? 'Win the game: run out the clock or score again.' : lead === 0 ? 'Win the game. Tied at the end goes to overtime.' : 'Win the game. Score, then make it hold.'} In real life, ${esc(c.real)}.</p>
+    <button class="pb-go" type="button" data-pb="chalplay">PLAY IT</button></div>`);
+}
+function challengeFinal(){
+  phase = 'final'; showHud(true);
+  const c = G.challenge, won = G.score[0] > G.score[1];
+  const rec = saved.challenges = saved.challenges || {}, r = rec[c.id] || { won: false, tries: 0 };
+  if (!G.recorded){ G.recorded = true; r.tries++; if (won) r.won = true; rec[c.id] = r; save(); }
+  sfx(won ? 'td' : 'boo'); if (won) G.cheer = 6;
+  modal(`<div class="pb-card pb-final"><h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'CHALLENGE BEATEN!' : 'NOT THIS TIME'}</h2>${scoreLine(true)}
+    <p>${won ? `You did what ${esc(c.me.name)} couldn't.` : `Same story as real life: ${esc(c.real)}.`}</p>
+    <p class="pb-rec">${r.won ? 'Beaten' : 'Not beaten yet'} · ${r.tries} ${r.tries === 1 ? 'try' : 'tries'}</p>
+    <div class="pb-btns"><button class="pb-go" type="button" data-pb="chalretry">${won ? 'PLAY AGAIN' : 'TRY AGAIN'}</button><button class="pb-go alt" type="button" data-pb="challenges">CHALLENGES</button><button class="pb-go alt" type="button" data-pb="exit">EXIT</button></div></div>`);
+}
+
 /* ---------- overtime (college style) ---------- */
 function startOT(){
   G.ot = 1; G.quarter = 5; G.runoff = 0;
@@ -1024,6 +1085,7 @@ function practiceHud(){
 
 /* ---------- the end ---------- */
 function final(){
+  if (G.challenge) return challengeFinal();
   phase = 'final'; showHud(true);
   const won = G.score[0] > G.score[1], st = G.stats;
   // Only a game played to the end counts, and only once.
@@ -1098,8 +1160,8 @@ function hintText(){
   if (G.practice && G.play?.target && (phase === 'presnap' || phase === 'live' && S.canThrow(G))) return `Hit the gold target: the ${(S.ROLE_NAMES[G.play.target.role] || '').toLowerCase()} · press and pull back`;
   if (phase === 'presnap') return G.call === 'run' ? (touch ? 'Tap to snap and run' : 'Click or press Space to snap and run') : touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
   if (phase === 'live'){
-    if (G.play.carrier) return touch ? 'Drag to steer · flick sideways to juke · flick ahead to dive' : `${R.portrait ? '← →' : '↑ ↓'} steer · Space juke · X dive · or drag`;
-    if (S.canThrow(G)) return touch ? 'Pull back and release to throw · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · H hand off';
+    if (G.play.carrier) return touch ? 'Drag to steer · JUKE as he closes in · TRUCK through him' : 'Arrows to steer · Space juke (time it as he closes) · X truck, or dive with no one in front';
+    if (S.canThrow(G)) return touch ? 'Pull back to throw · tap a receiver for a quick throw · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · H hand off';
   }
   return '';
 }
@@ -1189,7 +1251,11 @@ function onClick(e){
     case 'rematch': { const me = G.me, opp = G.opp; closeModal(); G = S.newGame(me, opp, saved.diff, saved.len); return startGame(); }
     case 'menu': closeModal(); return setup();
     case 'resume': return unpause();
-    case 'restart': { paused = false; behind = null; closeModal(); return startGame(); }
+    case 'restart': { paused = false; behind = null; closeModal(); return G.challenge ? startChallenge(G.challenge) : startGame(); }
+    case 'challenges': return challengesScreen();
+    case 'chalgo': { const c = challengeById(b.dataset.id); return c && startChallenge(c); }
+    case 'chalplay': closeModal(); return presnap();
+    case 'chalretry': return startChallenge(G.challenge);
     case 'pause': return paused ? unpause() : pause();
     case 'sound': saved.sound = !soundOn(); setSound(saved.sound); save(); b.innerHTML = saved.sound ? ICON.sound : ICON.mute; return;
     case 'timeout': if (G.timeouts > 0 && G.runoff > 0){ G.timeouts--; G.runoff = 0; sfx('whistle'); banner('TIMEOUT', `${G.timeouts} left`, '#7df9ff', 900); } return;
@@ -1239,13 +1305,20 @@ function down(e){
   }
   if (phase !== 'live') return;
   const P = G.play;
-  if (P.carrier){ ptr.mode = 'steer'; input.targetY = w.y; return; }
+  if (P.carrier){ ptr.mode = 'cstick'; steerStick(p, 'carStick'); return; }
   // Generous targets for fingers: the back (hand off) or the quarterback (scramble), whichever is nearer.
   const dRb = hypot(w, P.rb), dQb = hypot(w, P.qb);
   if (S.canHandoff(G) && dRb < 3.2 && dRb < dQb){ S.handoff(G); return; }
   if (S.canThrow(G)){
     if (dQb < 2.2 && !fresh){ ptr.mode = 'qb'; input.qbMove = w; }
-    else { ptr.mode = 'aim'; aim = { active: false, target: null }; }
+    else {
+      ptr.mode = 'aim'; aim = { active: false, target: null };
+      // A quick tap on a receiver (no pull) throws to him; pressing and pulling back is the slingshot as always.
+      if (!fresh){
+        const near = P.rec.filter(r => r.routeName !== 'block' && !r.down).map(r => { const [sx, sy] = R.toScreen(r.x, r.y); return { r, d: Math.hypot(sx - p.x, sy - 8 - p.y) }; }).sort((a, b) => a.d - b.d)[0];
+        if (near && near.d < 18){ ptr.tapRec = near.r.num; ptr.t0 = now; }
+      }
+    }
   }
 }
 function move(e){
@@ -1259,22 +1332,38 @@ function move(e){
     aim.target = { x: Math.min(112, qb.x + pull.x / n * d), y: qb.y + pull.y / n * d };
   } else if (ptr.mode === 'qb') input.qbMove = w;
   else if (ptr.mode === 'dstick') steerStick(p);
-  else if (ptr.mode === 'steer' || (G.play.carrier && ptr.mode === 'none' && phase === 'live')){ ptr.mode = 'steer'; input.targetY = w.y; }
+  else if (ptr.mode === 'cstick') steerStick(p, 'carStick');
+  // A finger already down when the ball changes hands (a handoff tap, a catch) becomes the stick from here.
+  else if (carrierLive() && (ptr.mode === 'none' || ptr.mode === 'aim')){ ptr.mode = 'cstick'; ptr.x0 = p.x; ptr.y0 = p.y; aim = null; steerStick(p, 'carStick'); }
 }
 function up(e){
   if (!ptr || ptr.id !== e.pointerId) return;
-  if (ptr.mode === 'aim' && aim?.active && S.canThrow(G)) S.throwTo(G, aim.target.x, aim.target.y);
-  if (ptr.mode === 'steer' && phase === 'live' && G.play.carrier){
-    const s = ptr.samples, a = s[0], b = s[s.length - 1];
-    if (b && a && b.t - a.t < 170 && Math.hypot(b.x - a.x, b.y - a.y) > 9){
-      const v = R.dragToWorld(b.x - a.x, b.y - a.y);
-      if (v.x > Math.abs(v.y) * 1.2) input.dive = true; else input.juke = Math.sign(v.y) || 1;
-    }
-  }
-  aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; ptr = null;
+  if (ptr.mode === 'aim' && aim?.active && S.canThrow(G)) S.userThrow(G, aim.target.x, aim.target.y);
+  else if (ptr.mode === 'aim' && ptr.tapRec && performance.now() - ptr.t0 < 400 && S.canThrow(G)) S.throwToReceiver(G, ptr.tapRec);
+  aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; input.carStick = null; ptr = null;
 }
-function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; ptr = null; }
-function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, qbMove: null, qbKeys: null, defStick: null }); ptr = null; aim = null; }
+function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; input.carStick = null; ptr = null; }
+function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, truck: false, qbMove: null, qbKeys: null, defStick: null, carStick: null }); ptr = null; aim = null; }
+
+/* With the ball (yours, not on defense): the JUKE and TRUCK buttons. JUKE glows gold when a defender is in the
+   sweet spot for one (about two yards out); TRUCK reads DIVE when nobody's in front to run through. */
+const carrierLive = () => G?.play?.carrier && !G.youDefend && phase === 'live' && !G.play.result;
+let movesState = '';
+function syncMoves(){
+  const box = $('.pb-moves'); if (!box) return;
+  let st = 'off';
+  if (carrierLive() && !paused && !$('.pb-modal').classList.contains('on')){
+    const c = G.play.carrier, sp = Math.hypot(c.vx, c.vy) || 1;
+    const ahead = G.play.def.filter(d => !d.down && d.stun <= 0 && !d.eng && ((d.x - c.x) * c.vx + (d.y - c.y) * c.vy) / sp > -.3).map(d => Math.hypot(d.x - c.x, d.y - c.y));
+    const near = Math.min(99, ...ahead);
+    st = `${near > 1.2 && near < 3.1 && (c.jukeCD || 0) <= 0 ? 'hot' : 'on'}|${near < 2.4 ? 'TRUCK' : 'DIVE'}`;
+  }
+  if (st === movesState) return; movesState = st;
+  box.hidden = st === 'off'; if (st === 'off') return;
+  const [heat, label] = st.split('|');
+  box.querySelector('[data-mv="juke"]').classList.toggle('hot', heat === 'hot');
+  box.querySelector('[data-mv="truck"]').textContent = label;
+}
 
 /* Jump the route: only while the ball is in the air (an early press would waste the jump's cooldown). */
 const coverLive = () => G?.youDefend && G.defDrill?.kind === 'cover' && G.play;
@@ -1291,14 +1380,14 @@ function syncJump(){
 
 /* The defender's stick: the drag from where the finger went down sets direction, and how far (up to the ring)
    sets speed. Dragging past the ring pulls the ring along, so reversing is never more than a ring away. */
-function steerStick(p){
+function steerStick(p, key = 'defStick'){
   const r = Math.max(10, Math.round(Math.min(R.W, R.H) * .09)), dead = r * .18;
   let dx = p.x - ptr.x0, dy = p.y - ptr.y0, len = Math.hypot(dx, dy);
   if (len > r){ ptr.x0 = p.x - dx / len * r; ptr.y0 = p.y - dy / len * r; dx = p.x - ptr.x0; dy = p.y - ptr.y0; len = r; }
   ptr.stick = { ax: ptr.x0, ay: ptr.y0, kx: p.x, ky: p.y, r };
-  if (len < dead){ input.defStick = null; return; }
+  if (len < dead){ input[key] = null; return; }
   const v = R.dragToWorld(dx, dy), n = Math.hypot(v.x, v.y) || 1, m = Math.min(1, (len - dead) / (r - dead));
-  input.defStick = { x: v.x / n * m, y: v.y / n * m };
+  input[key] = { x: v.x / n * m, y: v.y / n * m };
 }
 
 /* ---------- keyboard ---------- */
@@ -1328,7 +1417,7 @@ function keydown(e){
   if (phase !== 'live' || G.youDefend) return;   // offense keys (throws, handoff, dive) do nothing on defense
   if (/^[1-5]$/.test(k)){ e.preventDefault(); S.throwToReceiver(G, Number(k)); return; }
   if (k === 'h'){ e.preventDefault(); S.handoff(G); return; }
-  if (k === 'x'){ e.preventDefault(); if (G.play.carrier) input.dive = true; }
+  if (k === 'x'){ e.preventDefault(); if (G.play.carrier) input.truck = true; }
 }
 function keyup(e){ const k = KEYMAP[e.key.toLowerCase()]; if (k) keys.delete(k); }
 function readKeys(){
@@ -1338,14 +1427,17 @@ function readKeys(){
   input.steer = lat;
   input.qbKeys = lat || fwd ? { x: fwd, y: lat } : null;
   input.defKeys = input.qbKeys;
+  // Arrow keys steer the ball carrier like the stick (unless a finger is already steering).
+  if (ptr?.mode !== 'cstick'){ const n = Math.hypot(fwd, lat); input.carStick = n ? { x: fwd / n, y: lat / n } : null; }
 }
 
 /* ---------- copy and styles ---------- */
 const HOW = `<ul>
   <li><b>Pass:</b> press anywhere and drag <i>back</i> like a slingshot: the press snaps the ball, release throws. The arc shows where it lands; lead your receiver. Colored tags show who's open (green), tight (yellow) or covered (red). Keys 1–5 throw to that receiver.</li>
   <li><b>Run:</b> tap the glowing running back (H on a keyboard) to snap and hand off in one go. A plain tap just snaps; press on the QB and drag to scramble.</li>
-  <li><b>With the ball:</b> drag to steer, flick sideways to juke, flick ahead to dive. Keys: arrows or WASD, Space to juke, X to dive.</li>
+  <li><b>With the ball:</b> drag anywhere to steer (like a joystick: you can cut, stop and cut back). JUKE beats the man closing in if you time it as he arrives; the button glows when it's time. TRUCK lowers your shoulder into him, or dives for the extra yard when no one's in front. Keys: arrows or WASD, Space to juke, X to truck.</li>
   <li><b>Kicks:</b> tap to lock the aim, tap again for power. Mind the wind.</li>
+  <li><b>Take over:</b> replay real late-game moments from this week's close games: the real score, clock, spot and teams. Win the game to beat the challenge.</li>
   <li><b>Defense:</b> every opponent drive has a pass play at your man (you're the gold-ringed corner): drag anywhere to steer, and when the ball's up get in the yellow ring and hit JUMP (Space). Key third downs make you the edge rusher: tap at the snap, then tap in the green.</li>
   <li>Between plays the clock runs; snap fast to save time, or call a timeout. The other team's drives are simulated.</li></ul>`;
 const ICON = {
@@ -1377,11 +1469,18 @@ body.pb-open{overflow:hidden}
 .pb-tools button{width:34px;height:34px;display:grid;place-items:center;background:#101215;border:2px solid #000;box-shadow:0 0 0 2px #2c3138}
 .pb-tools svg{width:16px;height:16px;image-rendering:pixelated}
 .pb-bar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);display:flex;justify-content:center;gap:8px;pointer-events:none}
-/* Cover plays: the JUMP button, under the right thumb. Dim until the ball is thrown, gold and pulsing while it's up. */
-.pb-jump{position:absolute;right:calc(env(safe-area-inset-right,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);width:74px;height:74px;border-radius:50%;
+/* Cover plays: the JUMP button, bottom left (under the left thumb). Dim until the ball is thrown, gold and pulsing while it's up. */
+.pb-jump{position:absolute;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);width:74px;height:74px;border-radius:50%;
   display:grid;place-items:center;background:#101215;border:2px solid #000;box-shadow:0 0 0 3px #3a4048,0 4px 0 #000;color:#7c848e;font-size:10px;letter-spacing:.06em;
   touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:background .12s,color .12s}
 .pb-jump[hidden]{display:none}
+/* With the ball: JUKE and TRUCK, bottom left. JUKE glows when a defender is in the sweet spot. */
+.pb-moves{position:absolute;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);display:flex;gap:12px}
+.pb-moves[hidden]{display:none}
+.pb-mv{width:70px;height:70px;border-radius:50%;display:grid;place-items:center;background:#101215;border:2px solid #000;box-shadow:0 0 0 3px #3a4048,0 4px 0 #000;
+  color:#e8eaec;font-size:9px;letter-spacing:.04em;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.pb-mv:active{transform:translateY(3px);box-shadow:0 0 0 3px #3a4048,0 1px 0 #000}
+.pb-mv.hot{background:#ffd84a;color:#101215;box-shadow:0 0 0 3px #fff3b0,0 4px 0 #000,0 0 16px rgba(255,216,74,.6)}
 .pb-jump.hot{background:#ffd84a;color:#101215;box-shadow:0 0 0 3px #fff3b0,0 4px 0 #000,0 0 16px rgba(255,216,74,.6);animation:pb-jump .45s ease-in-out infinite alternate}
 .pb-jump:active{transform:translateY(3px);box-shadow:0 0 0 3px #3a4048,0 1px 0 #000}
 @keyframes pb-jump{to{box-shadow:0 0 0 5px #fff3b0,0 4px 0 #000,0 0 28px rgba(255,216,74,.9)}}
@@ -1521,6 +1620,25 @@ body.pb-open{overflow:hidden}
 .pb-nohist{text-align:center}
 .pb-best{font-style:normal;color:#111;background:#ffd84a;padding:1px 3px;margin-right:5px;font-size:6px}
 .pb-menu2{flex-wrap:nowrap}
+.pb-take{display:grid;gap:6px;background:#101215;color:#ffd84a !important;box-shadow:0 4px 0 #000,inset 0 0 0 2px #ffd84a}
+.pb-take small{font-size:7px;color:#c9d1d9;letter-spacing:.02em}
+.pb-chlist{display:grid;gap:10px;margin-top:6px}
+.pb-ch{display:grid;gap:8px;padding:12px;background:#15181c;border:2px solid #000;box-shadow:0 0 0 2px #2c3138,inset 4px 0 0 var(--c)}
+.pb-ch.won{box-shadow:0 0 0 2px #ffd84a,inset 4px 0 0 var(--c)}
+.pb-chh{display:flex;align-items:center;gap:6px;font-size:9px}
+.pb-chh img{width:22px;height:22px;object-fit:contain}
+.pb-chh i{font-style:normal;color:#8a929c;font-size:7px}
+.pb-chtag{margin-left:auto;padding:4px 6px;font-size:7px;background:#ffd84a;color:#111;white-space:nowrap}
+.pb-ch p{margin:0;font:12px/1.45 'Public Sans',system-ui,sans-serif;color:#e8eaec}
+.pb-chf{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pb-chf small{font-size:7px;color:#8a929c;line-height:1.5}
+.pb-ch.won .pb-chf small{color:#ffd84a}
+.pb-chf .pb-go{padding:9px 14px;font-size:9px;flex:none}
+.pb-chintro .pb-chtag{margin:0 auto 4px;display:inline-block}
+.pb-chintro{text-align:center}
+.pb-chsit{font-size:9px;color:#ffd84a}
+.pb-chintro p{font-family:'Public Sans',system-ui,sans-serif;font-size:13px;line-height:1.45}
+.pb-chintro .pb-chsit{font-family:inherit}
 .pb-menu2 .pb-go{flex:1 1 0}
 .pb-tabs button{font-size:7.5px;padding:8px 6px}
 .pb-empty{padding:18px 8px;white-space:normal;text-align:center;flex:1}

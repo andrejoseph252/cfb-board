@@ -118,6 +118,7 @@ document.addEventListener('click', e => {
   if (t.id === 'newsBtn'){ location.hash = '#news'; return; }
   if (t.id === 'playBtn'){ return openGame(); }
   if (d.play){ return openGame(d.play.split(',')); }
+  if (d.challenge){ return openGame({ challenge: d.challenge }); }
   if (d.newsf) return setNewsFilter(d.newsf);
   if (d.newsopen){ setNewsFilter(d.newsopen); location.hash = '#news'; return; }
   if (t.id === 'retry') return loadBoard({ fresh: true });

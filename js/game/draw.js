@@ -2,7 +2,7 @@
    the full width of the field) and the
    browser scales it up with crisp pixels. Landscape screens show the field sideways (you drive right); portrait
    phones show it upright (you drive up). Sprites are always drawn upright; only positions are rotated. */
-import { FW, MID, HASH, GOAL_HALF, BAR, canThrow, clamp } from './sim.js';
+import { FW, MID, HASH, GOAL_HALF, BAR, canThrow, clamp, trajectory, throwSpread } from './sim.js';
 import { drawText, drawTextCentered, textWidth } from './font.js';
 
 const S = 5;   // logical pixels per yard
@@ -255,13 +255,15 @@ export function createRenderer(canvas){
     }
   }
   function aimArc(G, aim){
-    const P = G.play, q = P.qb, d = Math.hypot(aim.x - q.x, aim.y - q.y), h = Math.max(.6, d * .17), pts = [];
+    // The real flight (lofted over a defender in the lane, or a bullet) and, around the spot, how far the throw can
+    // stray right now: the ring grows under pressure and on the run.
+    const P = G.play, q = P.qb, { h, loft } = trajectory(G, aim.x, aim.y), sd = throwSpread(G, aim.x, aim.y), pts = [];
     for (let i = 0; i <= 24; i++){ const s = i / 24; pts.push(toScreen(q.x + (aim.x - q.x) * s, q.y + (aim.y - q.y) * s, 1.8 - .6 * s + 4 * h * s * (1 - s))); }
-    dotted(pts, '#ffffff', 2);
-    const [tx, ty] = toScreen(aim.x, aim.y);
-    ctx.fillStyle = '#fff';
-    for (let a = 0; a < 16; a++){ const r = 5 + Math.sin(t * 8) * .6; ctx.fillRect(Math.round(tx + Math.cos(a / 16 * Math.PI * 2) * r), Math.round(ty + Math.sin(a / 16 * Math.PI * 2) * r * .55), 1, 1); }
-    ctx.fillRect(tx, ty, 1, 1);
+    dotted(pts, loft ? '#ffd84a' : '#ffffff', 2);
+    const [tx, ty] = toScreen(aim.x, aim.y), seg = 24;
+    ctx.fillStyle = loft ? 'rgba(255,216,74,.85)' : 'rgba(255,255,255,.85)';
+    for (let a = 0; a < seg; a++){ const th = a / seg * Math.PI * 2, [x, y] = toScreen(aim.x + Math.cos(th) * sd * 1.6, aim.y + Math.sin(th) * sd * 1.6); ctx.fillRect(x, y, 1, 1); }
+    ctx.fillStyle = '#fff'; ctx.fillRect(tx - 1, ty, 3, 1); ctx.fillRect(tx, ty - 1, 1, 3);
   }
   /* The running back glows before and just after the snap: tap him to hand off (ring at his feet, under the
      sprites; arrow above his head, over them). */
@@ -365,13 +367,20 @@ export function createRenderer(canvas){
     const long = (portrait ? H : W) / S, lat = (portrait ? W : H) / S;
     let fx, fy, ahead;
     if (K){ fx = (K.ball ? Math.max(K.spotX, Math.min(K.ball.x, 108)) : K.spotX) + long * .3; fy = K.ball ? (K.ball.y + MID) / 2 : (K.spotY + MID) / 2; ahead = 0; }
-    else if (!P || !P.live && !P.result){ fx = (P ? P.los : G.los); fy = P ? P.b : G.y; ahead = long * (portrait ? .2 : .16); }
+    else if (!P || !P.live && !P.result){
+      fx = (P ? P.los : G.los); fy = P ? P.b : G.y; ahead = long * (portrait ? .2 : .16);
+      // Covering: frame your corner and the quarterback together, so the matchup and the formation are both in view.
+      const cb = G.youDefend && G.defDrill?.kind === 'cover' && P?.def.find(d => d.user);
+      if (cb) fy = (cb.y + P.qb.y) / 2;
+    }
     else {
       const b = P.ball, you = G.youDefend && P.def.find(d => d.user);
       // On defense the camera stays with you while the ball is up, framing you and where it will come down,
       // instead of swinging off after the ball.
       const air = b.state === 'air' && (you ? { x: (you.x + b.tx) / 2, y: (you.y + b.ty) / 2 } : { x: b.x, y: b.y });
-      const foc = P.carrier || air || you || P.qb;
+      // Covering before the throw: halfway between you and the quarterback (your man is right by you).
+      const pair = you && G.defDrill?.kind === 'cover' && b.state === 'held' ? { x: (you.x + P.qb.x) / 2, y: (you.y + P.qb.y) / 2 } : null;
+      const foc = P.carrier || air || pair || you || P.qb;
       fx = foc.x; fy = foc.y; ahead = P.carrier ? long * .14 : canThrow(G) ? long * .24 : long * .1;
       if (aim) { fx = (P.qb.x + aim.x) / 2; fy = (P.qb.y + aim.y) / 2; ahead = long * .05; }
     }

@@ -1,11 +1,11 @@
 import { esc } from '../util.js';
-import { state } from '../state.js';
+import { state, invalidate } from '../state.js';
 import * as api from '../api.js';
 import { parseSummary, parseProbabilities } from '../models.js';
 import { loadPredictions } from '../data.js';
 import { realizedExcitement } from '../excitement.js';
 import { useData } from '../resource.js';
-import { teamLink, logo, panel } from './components.js';
+import { teamLink, logo, panel, fmtDelay } from './components.js';
 import { chartHTML } from './wpchart.js';
 import { banner, theLine, lineChart, hype, tape, recentForm } from './preview.js';
 import { threadsFor, searchUrl } from '../threads.js';
@@ -15,7 +15,7 @@ import { picks } from '../picks.js';
 import { primaryMarket } from '../markets.js';
 import { STAKES, grade, betOf, betHow, money, signed, fmtSpread } from '../bets.js';
 import { syncOf, mark, nudge, stop, ERRORS } from '../sync.js';
-import { fmtDelay } from './components.js';
+import { challengeFor, knownFor, isClose } from '../challenges.js';
 
 const liveIds = new Set();
 export const isLive = id => liveIds.has(id) || state.byId[id]?.state === 'in';
@@ -209,10 +209,19 @@ function threadLinks(g){
   const links = [
     game ? btn(game, 'Game thread') : (g.state !== 'pre' || soon) ? find('Game Thread', 'Find game thread') : '',
     post ? btn(post, 'Postgame thread') : g.state === 'post' ? find('Postgame Thread', 'Find postgame thread') : '',
-    // Coach Andre's Bowl, the arcade game: play this matchup yourself.
+    // Coach Andre's Bowl, the arcade game: take over the real late-game moment of a close final, or play the matchup.
+    takeOver(g),
     `<button class="rbtn ghost" type="button" data-play="${esc(g.away.id)},${esc(g.home.id)}">${PAD}<span>Play this matchup</span></button>`
   ].filter(Boolean);
   return `<div class="rlinks">${links.join('')}</div>`;
+}
+
+/* A close final's real late-game moment, as a challenge in the arcade game (looked up once, then kept on the device). */
+function takeOver(g){
+  if (g.state !== 'post' || !isClose(g)) return '';
+  const c = knownFor(g.id);
+  if (c === undefined){ challengeFor(g).then(x => { if (x) invalidate('detail'); }); return ''; }
+  return c ? `<button class="rbtn take" type="button" data-challenge="${esc(c.id)}" title="${esc(c.title)}">${PAD}<span>Play this moment</span></button>` : '';
 }
 
 const statTable = (g, rows) => `<table class="tbl compact vs"><thead><tr><th class="num">${esc(g.away.abbr)}</th><th></th><th class="num">${esc(g.home.abbr)}</th></tr></thead>
