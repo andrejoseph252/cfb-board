@@ -210,7 +210,8 @@ export function createRenderer(canvas){
     // Cached per uniform (team colors) and skin, so a new matchup never reuses the last team's jerseys.
     const img = sprite(`${away ? 'o' : 'm'}${p.skin}${cols.h}${cols.j}${cols.p}${cols.l}${cols.stripe}${cols.trim}`, { ...cols, s: p.skin }, view, frame, flip, p.down);
     const big = p.role === 'OL' || p.role === 'DL';
-    ctx.drawImage(img, sx - (img.width >> 1), sy - img.height + 1, img.width + (big && !p.down ? 1 : 0), img.height);
+    const hop = p.celebrate && !p.down ? Math.round(Math.abs(Math.sin(t * 9 + p.x)) * 4) : 0;   // touchdown celebration
+    ctx.drawImage(img, sx - (img.width >> 1), sy - img.height + 1 - hop, img.width + (big && !p.down ? 1 : 0), img.height);
     if (p.stun > 0 && !p.down){ ctx.fillStyle = '#ffd84a'; const a = t * 8; ctx.fillRect(sx + Math.round(Math.cos(a) * 4), sy - 14 + Math.round(Math.sin(a) * 1.5), 1, 1); ctx.fillRect(sx - Math.round(Math.cos(a) * 4), sy - 14 - Math.round(Math.sin(a) * 1.5), 1, 1); }
   }
   function ball(G){
@@ -417,6 +418,7 @@ export function createRenderer(canvas){
       if (P.live && canThrow(G) && !view.aim && !G.youDefend) labels(G);
       if (view.handoff && !P.carrier) handoffRing(G);
       if (P.target && !P.thrown && !P.carrier) handoffRing(G, P.target, '255,216,74');   // the target drill's man to hit
+      if (view.readKey) handoffRing(G, view.readKey, '255,216,74');   // the read option's key: the end left unblocked
       const mine = P.def.find(d => d.user || d.rusher); if (mine && !P.result) handoffRing(G, mine, '255,216,74');   // you, on defense
       if (view.landing && P.ball.state === 'air') landing(G, view.landing);
       const order = [...P.all].sort((a, b) => toScreen(a.x, a.y)[1] - toScreen(b.x, b.y)[1]);

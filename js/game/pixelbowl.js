@@ -9,9 +9,10 @@ import { myTeam } from '../myteam.js';
 import { logoUrl } from '../views/components.js';
 import { inkOn } from '../views/preview.js';
 import * as S from './sim.js';
+import { attachNames } from './names.js';
 import { weekChallenges, challengeById } from '../challenges.js';
 import { createRenderer } from './draw.js';
-import { initAudio, setSound, soundOn, sfx, resume } from './sfx.js';
+import { initAudio, setSound, soundOn, sfx, resume, crowd } from './sfx.js';
 
 const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
@@ -105,9 +106,10 @@ export function open({ prefill = null, exit = () => {} } = {}){
   root = document.createElement('div');
   root.className = 'pb'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
   root.innerHTML = `<canvas class="pb-cv"></canvas>
-    <div class="pb-hud" hidden><div class="pb-bug"></div><div class="pb-dd"></div></div>
+    <div class="pb-hud" hidden><div class="pb-bug"></div><div class="pb-dd"></div><div class="pb-pbp" aria-live="polite"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
     <button class="pb-jump" type="button" hidden aria-label="Jump the route">JUMP</button>
+    <button class="pb-rp" type="button" hidden aria-label="Watch the replay">▶ REPLAY</button><div class="pb-rlabel" aria-hidden="true">REPLAY</div>
     <div class="pb-moves" hidden><button class="pb-mv" type="button" data-mv="juke" aria-label="Juke">JUKE</button><button class="pb-mv" type="button" data-mv="truck" aria-label="Truck">TRUCK</button></div>
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
@@ -118,6 +120,8 @@ export function open({ prefill = null, exit = () => {} } = {}){
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', cancel);
   // Its own button, so a press on the field only ever steers; a second thumb can hit it mid-drag.
   $('.pb-jump').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); resume(); jumpRoute(); });
+  $('.pb-rp').addEventListener('click', e => { e.stopPropagation(); startReplay(); });
+  canvas.addEventListener('pointerdown', () => { if (phase === 'replay') endReplay(); });   // tap to skip the replay
   // With the ball: moves on their own buttons, so a press on the field only ever steers.
   $('.pb-moves').addEventListener('pointerdown', e => {
     const b = e.target.closest('[data-mv]'); if (!b) return;
@@ -155,20 +159,23 @@ function onResize(){ R?.resize(); }
 function onHide(){ if (document.hidden && G && !paused && ['presnap', 'live', 'dead', 'kick'].includes(phase)) pause(); }
 
 /* ---------- main loop ---------- */
-let waitingData = true;
+let waitingData = true, freeze = 0;
 function loop(ts){
   raf = requestAnimationFrame(loop);
   R.resize();   // cheap when nothing changed; catches any size change the observer missed
   // Opened straight to #play before the board's team data arrived: fill in the real teams once it does.
   if (waitingData && state.standings && colors){ waitingData = false; if (phase === 'setup' && (G?.me.name === 'Team' || G?.me.color === '#5a6470')){ pick = defaults(openPrefill); setup(); } }
   const dt = Math.min(.05, last ? (ts - last) / 1000 : 0); last = ts;
-  if (!paused && G){ acc += dt; while (acc >= STEP){ update(STEP); acc -= STEP; } }
+  if (freeze > 0){ freeze -= dt; acc = 0; }
+  else if (!paused && G){ acc += dt; while (acc >= STEP){ update(STEP); acc -= STEP; } }
+  if (G && !paused && phase !== 'setup') crowd(crowdLevel()); else crowd(0);
   const cover = G?.youDefend && G.defDrill?.kind === 'cover';
   if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
     stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : 0,
-    handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick || phase === 'live' && S.canHandoff(G)) });
+    handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick && !G.play?.noHandoff || phase === 'live' && S.canHandoff(G)),
+    readKey: phase === 'live' && G.play?.option && !G.play.carrier ? G.play.option.key : null });
   if (G) drain();
-  hud(); syncJump(); syncMoves();
+  hud(); syncJump(); syncMoves(); syncReplay();
 }
 
 function update(dt){
@@ -183,9 +190,12 @@ function update(dt){
     if (G.youDefend) defLive(dt);
     S.step(G, dt, input);
     input.juke = 0; input.dive = false; input.jump = false; input.truck = false;
+    if (!G.youDefend && !G.practice) recordFrame();
     if (G.youDefend && G.defDrill.kind === 'rush' && G.play.thrown && !G.play.result) S.stopPlay(G, { type: 'released' });
     if (aim && !S.canThrow(G)) aim = null;
     if (G.play.result) playOver();
+  } else if (phase === 'replay'){
+    replayStep(dt);
   } else if (phase === 'dead'){
     deadT += dt;
     for (const p of G.play.all){ if (!p.down){ p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; } }
@@ -200,6 +210,7 @@ function drain(){
   for (const e of G.events){
     if (e.type === 'sfx') sfx(e.name);
     else if (e.type === 'shake') R.shake(e.a);
+    else if (e.type === 'hitstop') freeze = Math.max(freeze, e.s);   // a big hit: the game holds for a beat
     else if (e.type === 'quarter') banner(`${ord(e.q)} QUARTER`, '', '#7df9ff', 1300);
   }
   G.events.length = 0;
@@ -248,14 +259,20 @@ function startGame(){
   saved.lastMe = pick.me; saved.lastOpp = pick.opp; save();
   initAudio(saved.sound);
   G = S.newGame(G.me, G.opp, saved.diff, saved.len);
+  attachNames(G.me, G.opp);
   snaps = 0;
   showHud(true);
   // Coin toss.
   const meWins = Math.random() < .5;
   phase = 'modal';
-  modal(`<div class="pb-card"><div class="pb-coin"><i></i></div><h2>COIN TOSS</h2><p class="pb-toss" hidden>${meWins ? `You won the toss and will receive.` : `${esc(G.opp.name)} won the toss and will receive.`}</p>
+  // A real coin: your logo on one face, theirs on the other, tossed up spinning and landing on the winner's side.
+  const face = (t, cls) => `<div class="pb-cface ${cls}" style="--c:${esc(t.color)}">${t.logo ? `<img src="${esc(logoUrl(t.logo, 180))}" alt="">` : `<b>${esc(t.abbr)}</b>`}</div>`;
+  modal(`<div class="pb-card pb-tosscard"><h2>COIN TOSS</h2>
+    <div class="pb-coin3d"><div class="pb-cshadow"></div><div class="pb-cup"><div class="pb-cflip ${meWins ? 'me' : 'opp'}">${face(G.me, 'front')}${face(G.opp, 'back')}<i class="pb-cedge"></i></div></div></div>
+    <p class="pb-toss" hidden>${meWins ? `${esc(G.me.name)} won the toss and will receive.` : `${esc(G.opp.name)} won the toss and will receive.`}</p>
     <button class="pb-go" type="button" data-pb="toss" hidden>${meWins ? 'RECEIVE' : 'KICK OFF'}</button></div>`);
-  setTimeout(() => { $('.pb-toss')?.removeAttribute('hidden'); $('[data-pb="toss"]')?.removeAttribute('hidden'); sfx('whistle'); }, 1200);
+  sfx('kick');
+  setTimeout(() => { $('.pb-toss')?.removeAttribute('hidden'); $('[data-pb="toss"]')?.removeAttribute('hidden'); sfx('whistle'); }, 1900);
   G.firstHalfReceiver = meWins ? 'me' : 'opp';
 }
 function afterToss(){
@@ -266,28 +283,55 @@ const kickoffYtg = () => Math.random() < .8 ? 75 : Math.round(60 + Math.random()
 function kickoffToMe(){ startMyDrive(Math.random() < .8 ? 25 : Math.round(18 + Math.random() * 22)); }
 
 function startMyDrive(x){
-  S.startDrive(G, x); R.snapCamera(G); presnap();
+  S.startDrive(G, x); newDrive(); R.snapCamera(G); presnap();
+}
+/* Your drive, play by play (with real names), shown at the top of the next card: the opponent's drive, halftime or
+   the final. */
+function newDrive(){ G.drive = { start: G.los, log: [], plays: 0, result: null }; }
+function driveLog(line, play = false){ if (G.drive && line){ G.drive.log.push(line); if (play) G.drive.plays++; } }
+function endDrive(result, endX = G.los){
+  const d = G.drive; if (!d || d.result) return;
+  d.result = result; d.yds = Math.round(endX - d.start); G.lastDrive = d;
+}
+function driveRecap(){
+  const d = G.lastDrive; if (!d || d.shown || !d.log.length) return '';
+  d.shown = true;
+  return `<div class="pb-recap"><div class="pb-rh"><b>YOUR DRIVE</b><span>${d.plays} play${d.plays === 1 ? '' : 's'} · ${d.yds} yds · ${esc(d.result)}</span></div>
+    <ol class="pb-rlist">${d.log.map(l => `<li>${esc(l)}</li>`).join('')}</ol></div>`;
 }
 function presnap(){
   if (!G.ot && G.clock <= 0) return clockOut();
-  G.call = null; G.callRoutes = null;   // a called play is for one snap; every play starts back on Random
+  G.call = null; G.callRoutes = null; G.pa = false;   // a called play is for one snap; every play starts back on Random (the formation stays)
   S.setupPlay(G); phase = 'presnap'; aim = null; resetInput();
   if (G.down === 4 && !G.twoPt) fourthDown();
 }
 function doSnap(){
   if (phase !== 'presnap') return;
   closeModal();
+  // Now and then a lineman jumps: 5 yards back, no play.
+  if (!G.practice && !G.twoPt && !G.challenge?.noFlags && Math.random() < .01){
+    sfx('whistle'); banner('FLAG · FALSE START', '5 yards, replay the down', '#ffd84a', 1500); driveLog('Flag: false start, 5 yards');
+    G.los = Math.max(1, G.los - 5); G.toGo = Math.min(Math.round(100 - G.los), G.toGo + 5); G.runoff = 0; S.setupPlay(G); return;
+  }
   G.runoff = 0; snaps++;
   S.snap(G); phase = 'live';
-  if (G.call === 'run') S.handoff(G);
+  if (S.RUN_CALLS[G.call]) S.startRun(G, G.call);
 }
 
 function playOver(){
   const r = G.play.result;
   phase = 'dead'; deadT = 0; aim = null; deadWait = 1.25;
+  // Big plays get a replay button (touchdowns, turnovers, 20+ yards), and a little longer to tap it.
+  const gain = (r.x ?? G.play.los) - G.play.los;
+  G.replay = !G.youDefend && !G.practice && frames.length > 20 && (['td', 'int', 'fumble'].includes(r.type) || gain >= 20) ? frames.slice() : null;
+  frames = [];
   if (G.practice) return practicePlayOver(r);
   if (G.youDefend) return defPlayOver(r);
-  if (r.type === 'td'){ banner(G.twoPt ? 'TWO POINTS!' : 'TOUCHDOWN!', G.twoPt ? '' : G.me.name.toUpperCase(), G.me.color, 2300); sfx('td'); G.cheer = 3; deadWait = 2.5; }
+  // After a pass, what they were in: learn to read the coverage.
+  if (G.play.thrown && G.play.coverage) G.play.pops.push({ x: G.play.los + 6, y: S.MID, text: `VS ${G.play.coverage.toUpperCase()}`, color: '#9fc4ff', t: 0 });
+  if (G.replay) deadWait = Math.max(deadWait, 3.2);
+  if (r.type === 'td'){ sfx('band'); }
+  if (r.type === 'td'){ const sc = G.me.names?.[G.play.carrier?.role]; banner(G.twoPt ? 'TWO POINTS!' : 'TOUCHDOWN!', G.twoPt ? '' : (sc ? `${sc} · ` : '') + G.me.name.toUpperCase(), G.me.color, 2300); sfx('td'); G.cheer = 3; deadWait = 2.5; }
   else if (r.type === 'int'){ banner('INTERCEPTED', '', '#ff5a4e', 1800); sfx('turnover'); deadWait = 2; }
   else if (r.type === 'fumble'){ banner('FUMBLE!', '', '#ff5a4e', 1800); sfx('turnover'); deadWait = 2; }
   else if (r.type === 'sack'){ G.play.pops.push({ x: r.x, y: r.y, text: 'SACKED', color: '#ff5a4e', t: 0 }); }
@@ -299,22 +343,108 @@ function afterPlay(){
   phase = 'wait';
   if (G.practice) return practiceAfter();
   if (G.youDefend) return defAfter();
-  const out = S.applyResult(G), lp = G.lastPlay;
+  // A flag on the play? Your call when declining is better for you (offside after a big gain).
+  const pen = S.callPenalty(G);
+  if (pen){
+    sfx('whistle');
+    if (pen.choice){
+      phase = 'modal'; pendingPen = pen;
+      return modal(`<div class="pb-card pb-flag"><h2>FLAG</h2><p class="pb-fl">${pen.name}</p><p>${pen.desc}. Or decline it and keep the ${Math.round(G.play.result.x - G.play.los)}-yard gain.</p>
+        <div class="pb-btns"><button class="pb-go" type="button" data-pb="penacc">ACCEPT · 5 YDS</button><button class="pb-go alt" type="button" data-pb="pendec">DECLINE · KEEP THE PLAY</button></div></div>`);
+    }
+    return takePenalty(pen);
+  }
+  return applyPlay();
+}
+let pendingPen = null;
+function takePenalty(pen){
+  banner(`FLAG · ${pen.name}`, pen.desc, '#ffd84a', 2000);
+  driveLog(`Flag: ${pen.name.toLowerCase()}`);
+  const out = S.enforcePenalty(G, pen);
+  if (out === 'next') return setTimeout(() => G && presnap(), 900);
+  return applyOutcome(out);
+}
+function applyPlay(){ return applyOutcome(S.applyResult(G)); }
+/* ---------- instant replay ---------- */
+/* Every 2nd tick of your plays: where everyone (and the ball) was. A big play replays at half speed, letterboxed. */
+let frames = [], tickN = 0, rp = null;
+function recordFrame(){
+  if (tickN++ % 2) return;
+  const P = G.play;
+  frames.push({ p: P.all.map(o => [o.x, o.y, o.vx, o.vy, o.face, o.down, o.step]), b: [P.ball.x, P.ball.y, P.ball.z, P.ball.state, P.ball.holder] });
+  if (frames.length > 900) frames.shift();
+}
+function startReplay(){
+  if (!G.replay || phase !== 'dead') return;
+  rp = { f: G.replay, i: 0, keep: G.play.all.map(o => [o.x, o.y, o.vx, o.vy, o.face, o.down, o.step]), ball: { ...G.play.ball } };
+  phase = 'replay'; root.classList.add('pb-replaying'); syncReplay();
+}
+function replayStep(dt){
+  rp.i += dt * 15;   // half speed: frames were recorded at 30 a second
+  const f = rp.f[Math.min(rp.f.length - 1, Math.floor(rp.i))], P = G.play;
+  P.all.forEach((o, k) => { const s = f.p[k]; if (s) [o.x, o.y, o.vx, o.vy, o.face, o.down, o.step] = s; });
+  [P.ball.x, P.ball.y, P.ball.z, P.ball.state, P.ball.holder] = f.b;
+  if (rp.i >= rp.f.length + 15) endReplay();
+}
+function endReplay(){
+  if (!rp) return;
+  const P = G.play; P.all.forEach((o, k) => { const s = rp.keep[k]; if (s) [o.x, o.y, o.vx, o.vy, o.face, o.down, o.step] = s; }); Object.assign(P.ball, rp.ball);
+  rp = null; G.replay = null; root.classList.remove('pb-replaying'); syncReplay();
+  afterPlay();
+}
+function syncReplay(){
+  const b = $('.pb-rp'); if (b) b.hidden = !(G?.replay && phase === 'dead');
+}
+
+/* The crowd: quiet between plays, louder on third and fourth down, in the red zone, late in a close game, and in a
+   roar after a score (G.cheer). */
+function crowdLevel(){
+  if (!G || phase === 'modal' && $('.pb-modal').dataset.kind === 'pause') return 0;
+  let l = .05;
+  if (G.down >= 3) l += .04; if (G.los >= 80) l += .04;
+  if (G.quarter >= 4 && Math.abs(G.score[0] - G.score[1]) <= 8) l += .04;
+  return l + Math.min(.25, (G.cheer || 0) * .08);
+}
+
+/* One line of play-by-play under the scoreboard after each of your plays, with real names when they're in. */
+let pbpTimer = 0;
+function pbp(text){
+  const el = $('.pb-pbp'); if (!el || !text) return;
+  el.textContent = text; el.classList.add('on'); clearTimeout(pbpTimer); pbpTimer = setTimeout(() => el.classList.remove('on'), 3200);
+}
+function playLine(){
+  const P = G.play, r = P.result, n = G.me.names || {}, q = n.QB || 'QB', c = P.carrier, who = c ? n[c.role] || ({ RB: 'Back', QB: q, TE: 'Tight end' })[c.role] || 'Receiver' : null;
+  const g = Math.round((r.x ?? P.los) - P.los), yd = x => `${x} yard${Math.abs(x) === 1 ? '' : 's'}`;
+  if (r.type === 'td') return P.thrown ? `${q} to ${who}, ${Math.round(100 - P.los)}-yard touchdown` : `${who}, ${Math.round(100 - P.los)}-yard touchdown run`;
+  if (r.type === 'int') return `${q} intercepted`;
+  if (r.type === 'fumble') return `${who} fumbles, recovered by the defense`;
+  if (r.type === 'sack') return `${q} sacked for a loss of ${Math.max(0, -g)}`;
+  if (r.type === 'inc') return `${q} incomplete${r.why && r.why !== 'Incomplete' ? ` (${r.why.toLowerCase()})` : ''}`;
+  if (!c) return '';
+  const base = P.thrown ? `${q} to ${who} for ${yd(g)}` : g >= 0 ? `${who} for ${yd(g)}` : `${who}, loss of ${-g}`;
+  return base + (r.type === 'oob' ? ', out of bounds' : '');
+}
+function applyOutcome(out){
+  const lp = G.lastPlay, line = playLine();
+  pbp(line);
   if (G.twoPt){
     G.twoPt = false;
     if (out === 'td'){ G.score[0] += 2; } else banner('NO GOOD', 'Two-point try fails', '#ff5a4e', 1300);
+    driveLog(out === 'td' ? 'Two-point try is good' : 'Two-point try fails');
     return afterMyScore();
   }
+  driveLog(line, true);
   switch (out){
     case 'next':
       if (lp.first){ sfx('first'); banner('FIRST DOWN', '', '#ffd84a', 900); }
       return presnap();
-    case 'td': G.score[0] += 6; return extraPoint();
+    case 'td': G.score[0] += 6; endDrive('TOUCHDOWN', 100); return extraPoint();
     case 'turnover':
+      endDrive(lp.type === 'int' ? 'INTERCEPTED' : 'FUMBLE', G.play.los);
       if (lp.pick6 && !G.ot){ G.score[1] += 7; banner('PICK SIX', `${G.opp.name} scores`, '#ff5a4e', 1800); sfx('boo'); return setTimeout(() => G && kickoffToMe(), 1600); }
       return endMyPossession(G.turnoverX);
-    case 'downs': banner('TURNOVER ON DOWNS', '', '#ff5a4e', 1500); sfx('turnover'); return setTimeout(() => G && endMyPossession(G.turnoverX), 1300);
-    case 'safety': G.score[1] += 2; banner('SAFETY', '', '#ff5a4e', 1500); sfx('boo'); return setTimeout(() => G && endMyPossession(60), 1300);
+    case 'downs': endDrive('TURNOVER ON DOWNS'); banner('TURNOVER ON DOWNS', '', '#ff5a4e', 1500); sfx('turnover'); return setTimeout(() => G && endMyPossession(G.turnoverX), 1300);
+    case 'safety': endDrive('SAFETY', 0); G.score[1] += 2; banner('SAFETY', '', '#ff5a4e', 1500); sfx('boo'); return setTimeout(() => G && endMyPossession(60), 1300);
   }
 }
 
@@ -345,6 +475,7 @@ function doPunt(){
   closeModal(); phase = 'modal';
   const p = S.punt(G);
   sfx('kick'); banner(`PUNT · ${p.net} YDS`, p.touchback ? 'Touchback' : '', '#fff', 1400);
+  driveLog(`Punt, ${p.net} yards${p.touchback ? ', touchback' : ''}`); endDrive('PUNT');
   setTimeout(() => G && endMyPossession(p.oppX), 1300);
 }
 function startKick(kind){
@@ -355,9 +486,11 @@ function afterKick(){
   const K = G.kick; G.kick = null;
   if (K.kind === 'pat'){
     if (K.good){ G.score[0] += 1; banner('GOOD!', '', '#4cff7a', 900); } else banner('NO GOOD', K.why, '#ff5a4e', 1200);
+    driveLog(K.good ? 'Extra point is good' : 'Extra point is no good');
     return afterMyScore();
   }
   G.stats.fga++;
+  driveLog(`${K.dist}-yard field goal ${K.good ? 'is good' : 'is no good'}`); endDrive(K.good ? 'FIELD GOAL' : 'MISSED FIELD GOAL');
   if (K.good){ G.stats.fgm++; G.score[0] += 3; banner('IT\'S GOOD!', `${K.dist}-yard field goal`, '#4cff7a', 1500); G.cheer = 2; return setTimeout(() => G && afterMyScore(), 900); }
   banner('NO GOOD', K.why, '#ff5a4e', 1400);
   setTimeout(() => G && endMyPossession(Math.min(K.spotX, 80)), 900);
@@ -365,6 +498,7 @@ function afterKick(){
 
 function clockOut(){
   phase = 'modal';
+  if (G.drive && !G.drive.result && G.drive.log.length) endDrive(G.quarter <= 2 ? 'END OF HALF' : 'END OF GAME');
   if (G.quarter <= 2) return halftime();
   if (G.score[0] === G.score[1]) return startOT();
   final();
@@ -372,7 +506,7 @@ function clockOut(){
 function halftime(){
   sfx('whistle');
   const st = G.stats;
-  modal(`<div class="pb-card"><h2>HALFTIME</h2>${scoreLine()}
+  modal(`<div class="pb-card"><h2>HALFTIME</h2>${scoreLine()}${driveRecap()}
     <p class="pb-stat">${st.comp}/${st.att} passing · ${st.passYds} yds · ${st.passTD} TD${st.int ? ` · ${st.int} INT` : ''}<br>${st.rush} rushes · ${st.rushYds} yds</p>
     <button class="pb-go" type="button" data-pb="half">START 2ND HALF</button></div>`);
 }
@@ -408,6 +542,7 @@ function finishOppDrive(r, then){
   modal(`<div class="pb-card pb-drive" style="--c:${esc(G.opp.color)}">
     <div class="pb-dh">${G.opp.logo ? `<img src="${esc(logoUrl(G.opp.logo, 72))}" alt="">` : ''}<b>${esc(G.opp.name)}</b><span>ON OFFENSE</span></div>
     <div class="pb-strip" style="--me:${esc(G.me.color)};--op:${esc(G.opp.color)}"><i class="pb-mark" style="left:${ytg}%"></i></div>
+    <div class="pb-ticker" aria-live="polite"></div>
     <div class="pb-dres" style="color:${col}" hidden>${word}</div>
     <div class="pb-dsub" hidden>${r.plays} play${r.plays === 1 ? '' : 's'} · ${r.yards} yds${G.ot ? '' : ` · ${mmss(r.time)}`}</div>
     ${r.cover ? `<div class="pb-dsub pb-stopline" hidden>${esc(COVER[r.cover] || '')}</div>` : ''}
@@ -417,7 +552,12 @@ function finishOppDrive(r, then){
   const tick = setInterval(() => {
     if (!root || !$('.pb-mark')){ clearInterval(tick); return; }
     i++;
-    if (i < r.path.length){ $('.pb-mark').style.left = `${r.path[i]}%`; sfx('blip'); return; }
+    if (i < r.path.length){
+      $('.pb-mark').style.left = `${r.path[i]}%`; sfx('blip');
+      const t = $('.pb-ticker'), line = driveLine(r.path[i - 1] - r.path[i]);
+      if (t && line){ t.insertAdjacentHTML('beforeend', `<div>${esc(line)}</div>`); while (t.children.length > 3) t.firstElementChild.remove(); }
+      return;
+    }
     clearInterval(tick);
     G.score[1] += r.points;
     for (const el of root.querySelectorAll('.pb-dres, .pb-dsub, [data-pb="drive"]')) el.hidden = false;
@@ -431,6 +571,17 @@ function finishOppDrive(r, then){
   };
 }
 let driveDone = () => {};
+/* The opponent's drive, a play at a time, with their real names when they're in: big gains are passes, the rest a
+   mix of runs and short passes. */
+function driveLine(gain){
+  const n = G.opp.names || {}, q = n.QB || 'Their QB', rb = n.RB || 'their back', wr = [n.X, n.Z, n.SL, n.TE].filter(Boolean);
+  const to = wr.length ? wr[Math.floor(Math.random() * wr.length)] : 'a receiver', yd = x => `${x} yard${Math.abs(x) === 1 ? '' : 's'}`;
+  gain = Math.round(gain);
+  if (gain < 0) return Math.random() < .5 ? `${q} sacked, loss of ${-gain}` : `${rb}, loss of ${-gain}`;
+  if (gain === 0) return Math.random() < .6 ? `${q} incomplete` : `${rb}, no gain`;
+  if (gain >= 12 || Math.random() < .45) return `${q} to ${to} for ${yd(gain)}`;
+  return `${rb} for ${yd(gain)}`;
+}
 
 /* ---------- you on defense: cover drill, pass rush drill, key third downs ---------- */
 /* The rush meter: its speed and green window by difficulty. The quarterback's release time too. */
@@ -614,7 +765,7 @@ function coverPrompt(r, opts, then){
   const c = Math.floor(Math.random() * Math.min(3, r.path.length - 1)), at = r.path[c];
   const down = c === 0 || Math.random() < .4 ? 1 : 2, toGo = Math.min(at, down === 1 ? 10 : 3 + Math.floor(Math.random() * 8));
   keyPending = { r, k: c, then, toGo, down, opts, kind: 'cover' };
-  modal(`<div class="pb-card pb-drive" style="--c:${esc(G.opp.color)}">
+  modal(`<div class="pb-card pb-drive" style="--c:${esc(G.opp.color)}">${driveRecap()}
     <div class="pb-dh">${G.opp.logo ? `<img src="${esc(logoUrl(G.opp.logo, 72))}" alt="">` : ''}<b>${esc(G.opp.name)}</b><span>ON OFFENSE</span></div>
     <div class="pb-strip" style="--me:${esc(G.me.color)};--op:${esc(G.opp.color)}"><i class="pb-mark" style="left:${at}%"></i></div>
     <div class="pb-dres" style="color:#ffd84a">${ord(down)} & ${toGo >= at ? 'GOAL' : toGo} AT YOUR ${at}</div>
@@ -694,9 +845,10 @@ function challengesScreen(){
 function startChallenge(c){
   closeModal(); initAudio(saved.sound);
   G = S.newGame(chalTeam(c.me), chalTeam(c.opp), saved.diff, saved.len);
+  attachNames(G.me, G.opp);
   Object.assign(G, { quarter: c.quarter, clock: c.clock, score: [...c.score], challenge: c, firstHalfReceiver: 'opp' });
   snaps = 0; showHud(true);
-  S.startDrive(G, c.x); G.down = c.down; G.toGo = c.toGo; R.snapCamera(G); S.setupPlay(G);
+  S.startDrive(G, c.x); G.down = c.down; G.toGo = c.toGo; newDrive(); R.snapCamera(G); S.setupPlay(G);
   phase = 'modal';
   const lead = c.score[0] - c.score[1];
   modal(`<div class="pb-card pb-chintro"><span class="pb-chtag">${esc(c.tag.toUpperCase())}</span><h2>TAKE OVER</h2>${scoreLine(true)}
@@ -728,7 +880,7 @@ function myOT(){
   G.otBase = [...G.score];
   if (G.ot >= 3){ S.startDrive(G, 97); G.toGo = 3; G.twoPt = true; }
   else S.startDrive(G, 75);
-  R.snapCamera(G); banner(G.ot === 1 ? 'OVERTIME' : `${G.ot}OT`, '', '#7df9ff', 1100);
+  newDrive(); R.snapCamera(G); banner(G.ot === 1 ? 'OVERTIME' : `${G.ot}OT`, '', '#7df9ff', 1100);
   presnap();
 }
 function otOpp(){
@@ -751,21 +903,29 @@ function otCheck(){
 
 /* ---------- play calling (in a game) ---------- */
 /* A compact sheet of play cards before the snap. A call lasts one play; Random is the default. */
-let sheetTab = 'std';
+let sheetTab = 'std', hotOpen = false;
 function playSheet(){
   if (phase !== 'presnap' || G.practice || $('.pb-modal').classList.contains('on')) return;
   const all = S.PRACTICE_ROLES, current = G.call === 'custom' ? 'u:' + G.callId : G.call || '';
   const card = (v, name, tip, routes) => `<button type="button" data-pb="callpick" data-v="${esc(v)}" aria-pressed="${current === v}">
       ${formationSVG(all, routes, true)}<b>${esc(name)}</b><small>${esc(tip)}</small></button>`;
-  const custom = sheetTab === 'custom';
+  const custom = sheetTab === 'custom', runs = sheetTab === 'runs';
   const cards = custom
     ? (saved.plays.length ? saved.plays.map(p => card('u:' + p.id, p.name, 'Your play', p.routes)).join('')
       : '<p class="pb-sub pb-empty">No plays yet. Make some in My Playbook on the main menu (or save routes from practice).</p>')
-    : card('', 'Random', 'Mix it up, like always', {}) + Object.entries(S.CONCEPTS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('') + card('run', S.RUN_CALL.name, S.RUN_CALL.tip, S.RUN_CALL.routes);
+    : runs ? Object.entries(S.RUN_CALLS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('')
+    : card('', 'Random', 'Mix it up, like always', {}) + Object.entries(S.CONCEPTS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('');
+  const form = G.formation || 'gun', tab = (v, l) => `<button type="button" data-pb="calltab" data-v="${v}" aria-pressed="${sheetTab === v}">${l}</button>`;
+  // Hot routes: change any receiver's route on this play (it becomes a one-off custom call).
+  const rec = G.play?.rec.filter(r => r.routeName !== 'block' || r.role === 'RB') || [], cur = Object.fromEntries(rec.map(r => [r.role, r.routeName]));
   modal(`<div class="pb-card pb-calls"><div class="pb-ph"><b>CALL A PLAY</b><button class="pb-x" type="button" data-pb="callclose" aria-label="Close">${ICON.x}</button></div>
-    <div class="pb-seg pb-tabs"><button type="button" data-pb="calltab" data-v="std" aria-pressed="${!custom}">PLAYBOOK</button><button type="button" data-pb="calltab" data-v="custom" aria-pressed="${custom}">CUSTOM (${saved.plays.length})</button></div>
+    <div class="pb-form" role="group" aria-label="Formation">${Object.entries(S.FORMATIONS).map(([k, l]) => `<button type="button" data-pb="formpick" data-v="${k}" aria-pressed="${form === k}">${l.toUpperCase()}</button>`).join('')}</div>
+    <div class="pb-seg pb-tabs">${tab('std', 'PASS')}${tab('runs', 'RUN')}${tab('custom', `CUSTOM (${saved.plays.length})`)}</div>
     <div class="pb-callrow">${cards}</div>
-    <p class="pb-sub">Your call is for this play only.</p></div>`, true, 'call');
+    ${runs ? '' : `<div class="pb-callopts"><button type="button" class="pb-pa" data-pb="patoggle" aria-pressed="${!!G.pa}">PLAY ACTION${G.pa ? ' ON' : ''}</button><span>Fake the handoff first: backers bite (more if you've run well)</span></div>
+    <details class="pb-hot"${hotOpen ? ' open' : ''}><summary>HOT ROUTES</summary>${routeRows(rec.map(r => r.role), cur, 'hot')}</details>`}
+    <p class="pb-sub">Your call is for this play only; the formation stays until you change it.</p></div>`, true, 'call');
+  $('.pb-hot')?.addEventListener('toggle', e => { hotOpen = e.target.open; });
   const row = $('.pb-callrow'), on = row.querySelector('[aria-pressed="true"]');
   if (on) row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
 }
@@ -1094,7 +1254,7 @@ function final(){
   if (complete && !G.recorded){ G.recorded = true; won ? rec.w++ : rec.l++; saved.results[G.diffKey] = rec; save(); }
   sfx(won ? 'td' : 'boo');
   if (won) G.cheer = 6;
-  modal(`<div class="pb-card pb-final"><h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'VICTORY!' : 'FINAL'}</h2>${scoreLine(true)}
+  modal(`<div class="pb-card pb-final"><h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'VICTORY!' : 'FINAL'}</h2>${scoreLine(true)}${driveRecap()}
     <table class="pb-tbl"><tr><td>Passing</td><td>${st.comp}/${st.att}, ${st.passYds} yds, ${st.passTD} TD, ${st.int} INT</td></tr>
     <tr><td>Rushing</td><td>${st.rush} for ${st.rushYds} yds, ${st.rushTD} TD</td></tr>
     <tr><td>Kicking</td><td>${st.fgm}/${st.fga} FG</td></tr><tr><td>Longest play</td><td>${st.longest} yds</td></tr>
@@ -1128,7 +1288,7 @@ function hud(){
   const q = G.ot ? (G.ot === 1 ? 'OT' : `${G.ot}OT`) : `Q${G.quarter}`;
   const dd = G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
   const late = S.lateInHalf(G), live = phase === 'presnap';
-  const callName = G.call === 'run' ? S.RUN_CALL.name : G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || 'Random';
+  const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || 'Random')) + (G.pa ? ' · PA' : '') + (G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation]}` : '');
   const sheetUp = $('.pb-modal').classList.contains('on');
   const btns = !live || paused ? '' : [
     sheetUp ? '' : `<button type="button" data-pb="call" class="pb-call">PLAY: ${esc(callName.toUpperCase())} ▾</button>`,
@@ -1158,7 +1318,9 @@ function hintText(){
   }
   if (snaps > 8 && saved.diff !== 'rookie') return '';
   if (G.practice && G.play?.target && (phase === 'presnap' || phase === 'live' && S.canThrow(G))) return `Hit the gold target: the ${(S.ROLE_NAMES[G.play.target.role] || '').toLowerCase()} · press and pull back`;
-  if (phase === 'presnap') return G.call === 'run' ? (touch ? 'Tap to snap and run' : 'Click or press Space to snap and run') : touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
+  if (phase === 'presnap' && G.call === 'option') return touch ? 'Snap, then read the end (gold ring): he takes the back, keep it; he sits, tap the back' : 'Snap, then read the end (gold ring): he takes the back, keep it; he sits, H to give';
+  if (phase === 'presnap' && G.call === 'qbdraw') return touch ? 'Tap to snap: show pass, then the quarterback runs it' : 'Space to snap: show pass, then the quarterback runs it';
+  if (phase === 'presnap') return S.RUN_CALLS[G.call] ? (touch ? 'Tap to snap and run' : 'Click or press Space to snap and run') : touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
   if (phase === 'live'){
     if (G.play.carrier) return touch ? 'Drag to steer · JUKE as he closes in · TRUCK through him' : 'Arrows to steer · Space juke (time it as he closes) · X truck, or dive with no one in front';
     if (S.canThrow(G)) return touch ? 'Pull back to throw · tap a receiver for a quick throw · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · H hand off';
@@ -1202,6 +1364,14 @@ function onClick(e){
       closeModal(); if (phase === 'presnap') S.setupPlay(G); return;
     }
     case 'calltab': sheetTab = b.dataset.v; closeModal(); return playSheet();
+    case 'formpick': G.formation = b.dataset.v; if (phase === 'presnap') S.setupPlay(G); closeModal(); return playSheet();
+    case 'patoggle': G.pa = !G.pa; if (S.RUN_CALLS[G.call]) G.call = null; if (phase === 'presnap') S.setupPlay(G); closeModal(); return playSheet();
+    case 'hot': {
+      const cur = Object.fromEntries(G.play.rec.map(r => [r.role, r.routeName]));
+      cur[b.dataset.role] = b.dataset.v || undefined;
+      Object.assign(G, { call: 'custom', callId: null, callName: 'Hot routes', callRoutes: cur });
+      if (phase === 'presnap') S.setupPlay(G); closeModal(); return playSheet();
+    }
     case 'playbook': return playbookScreen();
     case 'pbnew': return editPlay(null, 'playbook');
     case 'pbedit': return editPlay(findPlay(b.dataset.id), 'playbook');
@@ -1251,6 +1421,8 @@ function onClick(e){
     case 'rematch': { const me = G.me, opp = G.opp; closeModal(); G = S.newGame(me, opp, saved.diff, saved.len); return startGame(); }
     case 'menu': closeModal(); return setup();
     case 'resume': return unpause();
+    case 'penacc': { closeModal(); const p = pendingPen; pendingPen = null; return takePenalty(p); }
+    case 'pendec': { closeModal(); pendingPen = null; banner('DECLINED', 'Keep the play', '#c9d1d9', 900); return applyPlay(); }
     case 'restart': { paused = false; behind = null; closeModal(); return G.challenge ? startChallenge(G.challenge) : startGame(); }
     case 'challenges': return challengesScreen();
     case 'chalgo': { const c = challengeById(b.dataset.id); return c && startChallenge(c); }
@@ -1378,13 +1550,15 @@ function syncJump(){
   b.hidden = st === 'off'; b.classList.toggle('hot', st === 'hot');
 }
 
-/* The defender's stick: the drag from where the finger went down sets direction, and how far (up to the ring)
-   sets speed. Dragging past the ring pulls the ring along, so reversing is never more than a ring away. */
+/* The stick (your defender, or your ball carrier): the drag from where the finger went down sets direction, and how
+   far (up to the ring) sets speed. */
 function steerStick(p, key = 'defStick'){
+  // The ring stays where the finger went down until it lifts; dragging past the edge just holds the knob on the rim
+  // (full speed that way), so going back the other way is always the same short move.
   const r = Math.max(10, Math.round(Math.min(R.W, R.H) * .09)), dead = r * .18;
   let dx = p.x - ptr.x0, dy = p.y - ptr.y0, len = Math.hypot(dx, dy);
-  if (len > r){ ptr.x0 = p.x - dx / len * r; ptr.y0 = p.y - dy / len * r; dx = p.x - ptr.x0; dy = p.y - ptr.y0; len = r; }
-  ptr.stick = { ax: ptr.x0, ay: ptr.y0, kx: p.x, ky: p.y, r };
+  if (len > r){ dx = dx / len * r; dy = dy / len * r; len = r; }
+  ptr.stick = { ax: ptr.x0, ay: ptr.y0, kx: ptr.x0 + dx, ky: ptr.y0 + dy, r };
   if (len < dead){ input[key] = null; return; }
   const v = R.dragToWorld(dx, dy), n = Math.hypot(v.x, v.y) || 1, m = Math.min(1, (len - dead) / (r - dead));
   input[key] = { x: v.x / n * m, y: v.y / n * m };
@@ -1474,6 +1648,15 @@ body.pb-open{overflow:hidden}
   display:grid;place-items:center;background:#101215;border:2px solid #000;box-shadow:0 0 0 3px #3a4048,0 4px 0 #000;color:#7c848e;font-size:10px;letter-spacing:.06em;
   touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:background .12s,color .12s}
 .pb-jump[hidden]{display:none}
+.pb-rp{position:absolute;right:calc(env(safe-area-inset-right,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);padding:12px 14px;font-size:10px;
+  background:#101215;color:#ffd84a;border:2px solid #000;box-shadow:0 0 0 2px #ffd84a,0 4px 0 #000}
+.pb-rp[hidden]{display:none}
+.pb-rlabel{position:absolute;left:16px;top:calc(env(safe-area-inset-top,0px) + 92px);font-size:12px;color:#ff5a4e;text-shadow:0 2px 0 #000;display:none;animation:pb-blink 1s steps(2) infinite}
+.pb::before,.pb::after{content:"";position:absolute;left:0;right:0;height:0;background:#000;z-index:1;transition:height .25s;pointer-events:none}
+.pb::before{top:0} .pb::after{bottom:0}
+.pb.pb-replaying::before,.pb.pb-replaying::after{height:9vh}
+.pb.pb-replaying .pb-rlabel{display:block}
+@keyframes pb-blink{50%{opacity:.25}}
 /* With the ball: JUKE and TRUCK, bottom left. JUKE glows when a defender is in the sweet spot. */
 .pb-moves{position:absolute;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);display:flex;gap:12px}
 .pb-moves[hidden]{display:none}
@@ -1545,9 +1728,33 @@ body.pb-open{overflow:hidden}
 .pb-list button{display:flex;align-items:center;gap:8px;padding:7px 8px;background:#1b1f24;border:2px solid #000;border-left:6px solid var(--c);text-align:left;font-size:8px;line-height:1.4}
 .pb-list button[hidden]{display:none}
 .pb-list img,.pb-list i{width:22px;height:22px;flex:none;image-rendering:auto}
-.pb-coin{width:56px;height:56px;margin:0 auto;perspective:200px}
-.pb-coin i{display:block;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#e2b33c 60%,#a8781c);border:3px solid #000;animation:pbFlip .3s linear 4}
-@keyframes pbFlip{50%{transform:rotateY(90deg) translateY(-14px)}100%{transform:rotateY(180deg)}}
+/* The coin toss: a gold coin with a team on each face, tossed (the up-and-down) while it flips end over end (the
+   spin), landing on the winner's face. Its shadow shrinks as it rises. */
+.pb-tosscard{text-align:center}
+.pb-coin3d{position:relative;width:128px;height:214px;margin:2px auto 4px;perspective:600px}
+.pb-cshadow{position:absolute;left:50%;bottom:4px;width:84px;height:12px;margin-left:-42px;border-radius:50%;background:rgba(0,0,0,.45);filter:blur(2px);animation:pbShadow 1.7s cubic-bezier(.3,0,.3,1) both}
+.pb-cup{position:absolute;left:50%;bottom:18px;width:104px;height:104px;margin-left:-52px;animation:pbToss 1.7s cubic-bezier(.3,0,.3,1) both}
+.pb-cflip{position:relative;width:100%;height:100%;transform-style:preserve-3d;animation:pbSpinMe 1.7s cubic-bezier(.2,.6,.3,1) both}
+.pb-cflip.opp{animation-name:pbSpinOpp}
+.pb-cface{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  background:radial-gradient(circle at 34% 30%,#fff6c8 0,#f2c94c 34%,#c9952b 70%,#8a5f14 100%);
+  box-shadow:inset 0 0 0 5px #8a5f14,inset 0 0 0 7px #f7d878,inset 0 0 0 11px color-mix(in srgb,var(--c) 85%,#000),0 2px 0 #000}
+.pb-cface::after{content:"";position:absolute;inset:11px;border-radius:50%;background:radial-gradient(circle at 40% 35%,color-mix(in srgb,var(--c) 55%,#fff) 0,var(--c) 60%,color-mix(in srgb,var(--c) 65%,#000) 100%);z-index:0}
+.pb-cface img{position:relative;z-index:1;width:56px;height:56px;object-fit:contain;image-rendering:auto;filter:drop-shadow(0 1px 0 rgba(0,0,0,.5))}
+.pb-cface b{position:relative;z-index:1;font-size:14px;color:#fff;text-shadow:0 2px 0 #000}
+.pb-cface.back{transform:rotateX(180deg)}
+.pb-cedge{position:absolute;inset:0;border-radius:50%;transform:translateZ(-1px);background:#8a5f14}
+@keyframes pbToss{0%{transform:translateY(0)}45%{transform:translateY(-86px)}88%{transform:translateY(0)}94%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+@keyframes pbShadow{0%{transform:scale(1);opacity:.9}45%{transform:scale(.45);opacity:.35}88%,100%{transform:scale(1);opacity:.9}}
+@keyframes pbSpinMe{from{transform:rotateX(0)}to{transform:rotateX(2160deg)}}
+@keyframes pbSpinOpp{from{transform:rotateX(0)}to{transform:rotateX(2340deg)}}
+@media (prefers-reduced-motion: reduce){ .pb-cup,.pb-cshadow{animation:none} .pb-cflip{animation-duration:.01s} }
+/* Your last drive, play by play, at the top of the next card. */
+.pb-recap{margin:-2px 0 12px;padding:10px 12px;background:#0c0e11;border:2px solid #000;box-shadow:0 0 0 2px #2c3138;text-align:left}
+.pb-rh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+.pb-rh b{font-size:9px;color:#ffd84a} .pb-rh span{font-size:7px;color:#c9d1d9;text-align:right}
+.pb-rlist{margin:0;padding:0 0 0 18px;max-height:7.6em;overflow-y:auto;font:12px/1.35 'Public Sans',system-ui,sans-serif;color:#c9d1d9}
+.pb-rlist li:last-child{color:#fff}
 .pb-drive{text-align:center}
 .pb-dh{display:flex;align-items:center;justify-content:center;gap:8px}
 .pb-dh img{width:28px;height:28px;background:#fff;border-radius:50%;padding:2px}
@@ -1620,6 +1827,19 @@ body.pb-open{overflow:hidden}
 .pb-nohist{text-align:center}
 .pb-best{font-style:normal;color:#111;background:#ffd84a;padding:1px 3px;margin-right:5px;font-size:6px}
 .pb-menu2{flex-wrap:nowrap}
+.pb-ticker{display:grid;gap:3px;min-height:3.9em;margin:8px 0 2px;font:12px/1.3 'Public Sans',system-ui,sans-serif;color:#c9d1d9;text-align:left}
+.pb-ticker div:last-child{color:#fff}
+.pb-pbp{font:12px/1.3 'Public Sans',system-ui,sans-serif;color:#fff;text-shadow:0 1px 2px #000,0 0 6px #000;opacity:0;transition:opacity .3s;max-width:92vw;text-align:center}
+.pb-pbp.on{opacity:1}
+.pb-flag h2{color:#ffd84a} .pb-fl{font-size:11px;color:#ffd84a}
+.pb-form{display:flex;gap:4px;overflow-x:auto;margin-bottom:8px;scrollbar-width:none}
+.pb-form button{flex:none;padding:7px 9px;font-size:7px;background:#15181c;color:#c9d1d9;border:2px solid #000;box-shadow:0 0 0 2px #2c3138}
+.pb-form button[aria-pressed="true"]{background:#ffd84a;color:#111;box-shadow:0 0 0 2px #fff3b0}
+.pb-callopts{display:flex;align-items:center;gap:10px;margin:8px 0 2px}
+.pb-callopts span{font:11px/1.35 'Public Sans',system-ui,sans-serif;color:#9aa3ab}
+.pb-pa{flex:none;padding:8px 10px;font-size:8px;background:#15181c;color:#c9d1d9;border:2px solid #000;box-shadow:0 0 0 2px #2c3138}
+.pb-pa[aria-pressed="true"]{background:#7df9ff;color:#111}
+.pb-hot{margin-top:8px} .pb-hot summary{cursor:pointer;font-size:9px;color:#ffd84a;padding:6px 0}
 .pb-take{display:grid;gap:6px;background:#101215;color:#ffd84a !important;box-shadow:0 4px 0 #000,inset 0 0 0 2px #ffd84a}
 .pb-take small{font-size:7px;color:#c9d1d9;letter-spacing:.02em}
 .pb-chlist{display:grid;gap:10px;margin-top:6px}

@@ -50,6 +50,24 @@ const FX = {
   turnover(){ tone(220, .3, { vol: .25, slide: 110 }); noise(.9, { vol: .2, freq: 350, q: .5, at: .1 }); }
 };
 
+/* The crowd: a low bed of filtered noise whose level follows the moment (third down, the red zone, a close finish,
+   a score). */
+let crowdG = null;
+export function crowd(level){
+  if (!on || !ac){ if (crowdG) crowdG.gain.setTargetAtTime(0, ac.currentTime, .3); return; }
+  if (!crowdG){
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), f2 = ac.createBiquadFilter();
+    s.buffer = noiseBuf; s.loop = true; f.type = 'bandpass'; f.frequency.value = 650; f.Q.value = .5; f2.type = 'lowpass'; f2.frequency.value = 1800;
+    crowdG = ac.createGain(); crowdG.gain.value = 0; s.connect(f); f.connect(f2); f2.connect(crowdG); crowdG.connect(master); s.start();
+  }
+  crowdG.gain.setTargetAtTime(Math.max(0, Math.min(.5, level)), ac.currentTime, .6);
+}
+FX.band = () => {
+  // The band, after your touchdown: a fight-song phrase with a snare.
+  [392, 392, 523, 523, 659, 587, 523, 659, 784].forEach((f, i) => tone(f, .16, { vol: .18, at: .5 + i * .14 }));
+  [0, .28, .56, .84, 1.12].forEach(a => noise(.08, { vol: .25, freq: 2400, q: .8, at: .5 + a }));
+};
+
 export function sfx(name){
   if (!on || !ac) return;
   resume();

@@ -82,7 +82,16 @@ export const CONCEPTS = {
 /* In a game, the play called for this snap: null (random routes, the default), a concept above, 'custom' (one of
    your own plays, its routes in G.callRoutes), or 'run' (snap goes straight to
    the back; the receivers run short routes and turn into blockers). */
-export const RUN_CALL = { name: 'Inside Run', tip: 'Snap goes straight to the back', routes: { X: 'hitch', Z: 'hitch', SL: 'hitch', TE: 'hitch', RB: [[1, .5], [4, .8], [11, 1]] } };
+export const RUN_CALL = { name: 'Inside Zone', tip: 'Snap goes straight to the back', routes: { X: 'hitch', Z: 'hitch', SL: 'hitch', TE: 'hitch', RB: [[1, .5], [4, .8], [11, 1]] } };
+/* Run plays. path: which way the back heads before you steer (along, across toward the play side). */
+export const RUN_CALLS = {
+  run: { ...RUN_CALL, path: [1, 0] },
+  outside: { name: 'Outside Zone', tip: 'Stretch it to the edge, then cut up', routes: RUN_CALL.routes, path: [.5, .87] },
+  power: { name: 'Power', tip: 'Downhill off tackle, behind the line', routes: RUN_CALL.routes, path: [.95, .3] },
+  qbdraw: { name: 'QB Draw', tip: 'Show pass, then the quarterback runs', routes: { X: 'go', Z: 'go', SL: 'hitch', TE: 'hitch', RB: [[1, .5]] } },
+  option: { name: 'Read Option', tip: 'Read the end: he takes the back, keep it', routes: RUN_CALL.routes }
+};
+export const FORMATIONS = { gun: 'Shotgun', pistol: 'Pistol', under: 'Under center', trips: 'Trips', empty: 'Empty' };
 
 const POOL = {
   X: ['go', 'slant', 'post', 'corner', 'out', 'dig', 'curl', 'comeback', 'hitch', 'fade'],
@@ -101,20 +110,61 @@ function mk(role, team, x, y, spd, extra = {}){
     eng: null, down: false, skin: pick(SKIN), juke: 0, dive: 0, stumble: 0, jukeCD: 0, mode: null, ...extra };
 }
 
+/* ---------- coverages ---------- */
+export const COVERAGES = { c0: 'Cover 0', c1: 'Cover 1', c2: 'Cover 2', c3: 'Cover 3', c4: 'Cover 4', c2m: '2-Man' };
+/* What the defense calls, by situation: man and pressure on short yardage, deep zones on third and long, man in the
+   red zone, quarters to protect a lead late. Harder levels blitz more. */
+function pickCoverage(G, L){
+  const w = { c0: .03 + G.diff.blitz * .12, c1: .16 + G.diff.blitz * .4, c2: .2, c3: .3, c4: .15, c2m: .08 };
+  const long = G.down >= 2 && G.toGo >= 8, short = G.toGo <= 2;
+  if (long){ w.c3 += .12; w.c4 += .15; w.c0 *= .3; w.c1 *= .6; }
+  if (short){ w.c0 += .08; w.c1 += .15; w.c4 *= .4; }
+  if (L >= 80){ w.c1 += .1; w.c2m += .08; w.c3 *= .7; w.c4 *= .7; }
+  if (G.quarter >= 4 && G.clock < 150 && G.score[1] > G.score[0]){ w.c4 += .35; w.c3 += .1; w.c0 = 0; }
+  let u = Math.random() * Object.values(w).reduce((a, x) => a + x, 0);
+  for (const [k, v] of Object.entries(w)){ if ((u -= v) <= 0) return k; }
+  return 'c3';
+}
+/* Who covers whom (man) or what (zone: center across the field, half-width, depth past the line, deep or not). */
+function assignCoverage(cov, { lb, cb1, cb2, fs, ss }, o, L){
+  const Z = (cy, hw, depth, deep = false) => ({ cy, hw, depth, deep });
+  const flatL = Z(6, 7, 5), flatR = Z(FW - 6, 7, 5), curlL = Z(14, 6, 9), curlR = Z(FW - 14, 6, 9), hook = Z(MID, 6, 8), hookL = Z(MID - 7, 5, 8), hookR = Z(MID + 7, 5, 8);
+  const man = (d, r) => { if (r) d.man = r; else d.spy = true; };
+  const blitz = d => { d.blitz = true; d.x = L + 2; };
+  switch (cov){
+    case 'c0': man(cb1, o.x); man(cb2, o.z); man(ss, o.sl); man(lb[0], o.te); man(fs, o.rb); blitz(lb[1]); blitz(lb[2]); break;
+    case 'c1': man(cb1, o.x); man(cb2, o.z); man(ss, o.sl); man(lb[0], o.te); man(lb[1], o.rb); blitz(lb[2]); fs.zone = Z(MID, FW / 2, 15, true); break;
+    case 'c2': cb1.zone = flatL; cb2.zone = flatR; fs.zone = Z(FW * .25, FW / 4, 14, true); ss.zone = Z(FW * .75, FW / 4, 14, true);
+      lb[0].zone = curlL; lb[1].zone = hook; lb[2].zone = curlR; break;
+    case 'c3': cb1.zone = Z(FW / 6, FW / 6, 15, true); cb2.zone = Z(FW * 5 / 6, FW / 6, 15, true); fs.zone = Z(MID, FW / 6, 16, true);
+      lb[0].zone = curlL; lb[1].zone = hookL; lb[2].zone = hookR; ss.zone = curlR; break;
+    case 'c4': cb1.zone = Z(FW / 8, FW / 8, 13, true); fs.zone = Z(FW * 3 / 8, FW / 8, 13, true); ss.zone = Z(FW * 5 / 8, FW / 8, 13, true); cb2.zone = Z(FW * 7 / 8, FW / 8, 13, true);
+      lb[0].zone = curlL; lb[1].zone = hook; lb[2].zone = curlR; break;
+    default:   // 2-Man: man underneath, two deep halves over the top
+      man(cb1, o.x); man(cb2, o.z); man(lb[0], o.te); man(lb[2], o.sl); man(lb[1], o.rb);
+      fs.zone = Z(FW * .25, FW / 4, 15, true); ss.zone = Z(FW * .75, FW / 4, 15, true);
+  }
+  return cov;
+}
+
 /* Lines everyone up for the next snap and picks this play's routes and coverage (so they can be previewed). */
 export function setupPlay(G){
   const L = G.los, b = clamp(G.y, HASH[0], HASH[1]), D = G.diff;
   const oMul = 1 + rate(G.me.off) / 900, dMul = D.defSpd * (1 + rate(G.opp.def) / 900);
   const off = [], def = [];
   [-3.2, -1.6, 0, 1.6, 3.2].forEach((dy, i) => off.push(mk('OL', 'off', L - .7, b + dy, SPEED.OL, { n: i })));
-  const qb = mk('QB', 'off', L - 4.5, b, SPEED.QB * oMul);
-  // Offset shotgun: the back lines up beside the quarterback, toward the wide side of the field, so he's easy to
-  // see (and tap) apart from the QB.
-  const rb = mk('RB', 'off', L - 5, b + (b < MID ? 2.6 : -2.6), SPEED.RB * oMul);
+  // Formations. Shotgun (the default): the back offset beside the quarterback, toward the wide side, easy to tap
+  // apart from him. Pistol: the back right behind a short shotgun. Under center: the quarterback at the center with
+  // a deep back. Trips: three receivers to one side. Empty: the back split out wide (no handoff).
+  const F = G.practice ? 'gun' : (G.formation || 'gun'), wide = b < MID ? 1 : -1;
+  const qb = mk('QB', 'off', L - (F === 'under' ? 1.2 : F === 'pistol' ? 3.6 : 4.5), b, SPEED.QB * oMul);
+  const rb = mk('RB', 'off', F === 'empty' ? L - 1.1 : L - (F === 'under' ? 5.5 : F === 'pistol' ? 6.2 : 5),
+    F === 'empty' ? clamp(b - 12 * wide, 3, FW - 3) : F === 'pistol' || F === 'under' ? b : b + 2.6 * wide, SPEED.RB * oMul);
   const te = mk('TE', 'off', L - .9, b - 5, SPEED.TE * oMul);
   const x = mk('X', 'off', L - .9, Math.max(3, b - 19), SPEED.X * oMul);
   const z = mk('Z', 'off', L - .9, Math.min(FW - 3, b + 19), SPEED.Z * oMul);
-  const sl = mk('SL', 'off', L - 1.2, Math.min(b + 10.5, z.y - 5), SPEED.SL * oMul);
+  const sl = mk('SL', 'off', L - 1.2, F === 'trips' ? Math.min(b + 13.5, z.y - 4) : Math.min(b + 10.5, z.y - 5), SPEED.SL * oMul);
+  if (F === 'trips'){ te.y = Math.min(b + 6.5, sl.y - 4); te.x = L - 1.2; }
   // Practice: only the receivers you asked for line up (the back always does, to block or take a handoff).
   const PR = G.practice, out = p => PR && p.role !== 'RB' && !PR.roles.includes(p.role);
   off.push(qb, rb, ...[te, x, z, sl].filter(p => !out(p)));
@@ -126,10 +176,12 @@ export function setupPlay(G){
   const used = new Set();
   // Called plays (in a game) and picked routes (in practice) set the routes; anything unset is random.
   const plan = PR ? (PR.mode !== 'random' ? PR.routes : null)
-    : G.call === 'run' ? RUN_CALL.routes : G.call === 'custom' ? G.callRoutes || null : CONCEPTS[G.call]?.routes || null;
+    : RUN_CALLS[G.call] ? RUN_CALLS[G.call].routes : G.call === 'custom' ? G.callRoutes || null : CONCEPTS[G.call]?.routes || null;
   for (const p of rec){
     let r = plan?.[p.role];
     if (Array.isArray(r)) r = 'block';   // the back on a called run: he gets the ball at the snap
+    if (p.role === 'RB' && F === 'empty' && (!r || r === 'block')) r = pick(POOL.SL);   // split out wide, he's a receiver
+    if (p.role === 'RB' && G.pa && !PR) r = 'block';   // play action: he carries out the fake, then protects
     if (!r || !ROUTES[r]){ do { r = pick(POOL[p.role]); } while (used.has(r) && p.role !== 'RB' && Math.random() < .8); }
     used.add(r);
     // With a called play (or in practice) the back releases to his own side, matching the diagrams.
@@ -157,21 +209,22 @@ export function setupPlay(G){
   // Defense: four down linemen, three backers, two corners, two safeties.
   const deep = L > 88 ? Math.min(L + 9, 108) : L + 13, press = L > 88 ? L + 3 : L + 6;
   [-4.3, -1.3, 1.3, 4.3].forEach(dy => def.push(mk('DL', 'def', L + .9, b + dy, SPEED.DL * dMul)));
-  const blitz = !G.defDrill && Math.random() < D.blitz;   // drills keep the picture simple: no blitz
   const lb = [-4.5, 0, 4.5].map(dy => mk('LB', 'def', Math.min(L + 4.5, 109), b + dy, SPEED.LB * dMul));
   const cb1 = mk('CB', 'def', Math.min(press, 109), x.y + 1, SPEED.CB * dMul), cb2 = mk('CB', 'def', Math.min(press, 109), z.y - 1, SPEED.CB * dMul);
   const fs = mk('S', 'def', deep, clamp(b - 9, 6, FW - 6), SPEED.S * dMul), ss = mk('S', 'def', deep, clamp(b + 9, 6, FW - 6), SPEED.S * dMul);
   def.push(...lb, cb1, cb2, fs, ss);
-  cb1.man = x; cb2.man = z; lb[0].man = te; lb[2].man = sl; lb[1].man = rb.routeName === 'block' ? null : rb;
-  if (blitz){
-    // Cover 1: the strong safety takes the slot, a backer blitzes, the free safety plays the deep middle.
-    lb[2].man = null; lb[2].blitz = true; lb[2].x = L + 2; ss.man = sl; fs.zone = [0, FW]; fs.y = b;
-  } else { fs.zone = [0, b]; ss.zone = [b, FW]; }
-  if (!lb[1].man) lb[1].spy = true;
+  // The coverage for this snap. Everyone lines up in the same two-high look either way; the coverage only shows
+  // after the snap, when the zones drop and the safeties rotate.
+  const cov = G.defDrill ? 'c2m' : pickCoverage(G, L);
+  const backs = { x, z, sl, te, rb: rb.routeName === 'block' ? null : rb };
+  assignCoverage(cov, { lb, cb1, cb2, fs, ss }, backs, L);
+  const blitz = def.some(d => d.blitz);
+  lb.forEach((d, i) => { d.gap = [-2.2, 0, 2.2][i]; });   // run fits: each backer fills a different gap
 
   // Each lineman gets an opponent; one rusher wins first, the rest a beat later.
   const dl = def.filter(p => p.role === 'DL'), first = Math.floor(rnd(4));
   dl.forEach((p, i) => { p.ol = off[Math.min(4, i + (i >= 2 ? 1 : 0))]; p.shed = D.rush + rnd(-.4, 1.2) + (i === first ? 0 : rnd(.8, 2.2)); });
+  dl[0].edge = -1; dl[3].edge = 1;
 
   // You on defense (drills and key stops): their offense against your defense, one defender yours.
   if (G.defDrill?.kind === 'cover'){
@@ -192,7 +245,8 @@ export function setupPlay(G){
 
   G.play = { off, def, qb, rb, rec, all: [...off, ...def], t: 0, live: false, ball: { state: 'held', holder: qb, x: qb.x, y: qb.y, z: 1.6 },
     carrier: null, result: null, blitz, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [],
-    forceTarget: G.defDrill?.full ? x : null };
+    forceTarget: G.defDrill?.full ? x : null, coverage: COVERAGES[cov], formation: F, noHandoff: F === 'empty',
+    pa: !!G.pa && !RUN_CALLS[G.call], paBite: .25 + .25 * Math.min(1, (G.stats.rush ? G.stats.rushYds / G.stats.rush : 3) / 5) };
   for (const p of G.play.all) p.face = p.team === 'off' ? 1 : -1;
 }
 
@@ -244,13 +298,22 @@ export function step(G, dt, inp){
   for (const p of P.all){ if (p.down && p.stun > 0 && p.stun - dt <= 0) p.down = false; p.stun = Math.max(0, p.stun - dt); p.missCD = Math.max(0, p.missCD - dt); p.jukeCD = Math.max(0, p.jukeCD - dt); }
   const carrier = P.carrier, running = !!carrier, holder = ball.state === 'held' ? ball.holder : null;
 
+  // QB draw: after showing pass, the quarterback takes it himself. Read option: no give by the end of the mesh, keep.
+  if (!running && holder === qb && ((P.draw && P.t >= P.draw) || (P.option && P.t >= .65))){
+    P.handed = true; P.handT = P.t; becomeCarrier(P, qb);
+    // The keep: outside, where the end crashed from. If he took the back, he's optioned off.
+    if (P.option){ pop(P, qb.x, qb.y, 'KEEP!', '#ffd84a'); P.runPath = { x: .8, y: .6 * P.option.side }; if (P.option.crash && P.option.key) P.option.key.stun = .6; }
+    if (P.draw) P.runPath = { x: 1, y: 0 };
+    return;
+  }
+
   /* ----- offense ----- */
   for (const p of P.off){
     if (p === carrier) continue;
     if (p.role === 'OL' && p.blockOn){
       const f = p.blockOn;
       moveToward(p, f.x - .6, f.y, p.spd * 1.3, dt, 9);
-      if (!f.eng && dist(p, f) < 1 && f.stun <= 0){ f.eng = { by: p, until: P.t + rnd(.3, .9) }; p.blockOn = null; }
+      if (!f.eng && dist(p, f) < 1.2 && f.stun <= 0){ f.eng = { by: p, until: P.t + rnd(.7, 1.5) }; p.blockOn = null; }
     } else if (p.role === 'OL'){
       const foe = P.def.find(d => d.ol === p && !d.free);
       if (foe){
@@ -260,7 +323,8 @@ export function step(G, dt, inp){
     } else if (p === qb){
       if (holder === qb && inp.qbMove) moveToward(p, inp.qbMove.x, inp.qbMove.y, p.spd * .75, dt, 10);
       else if (holder === qb && inp.qbKeys) moveToward(p, p.x + inp.qbKeys.x * 3, p.y + inp.qbKeys.y * 3, p.spd * .7, dt, 10);
-      else if (P.t < .6 && holder === qb) moveToward(p, P.los - 6, p.y, 3, dt);   // the drop back
+      else if (P.pa && P.t < .7 && holder === qb) moveToward(p, p.x, p.y, 0, dt);   // play action: show the ball to the back
+      else if (!P.draw && P.t < (P.formation === 'under' ? 1 : .6) && holder === qb) moveToward(p, P.los - (P.formation === 'under' ? 7.5 : 6), p.y, P.formation === 'under' ? 6 : 3, dt);   // the drop back
       else moveToward(p, p.x, p.y, 0, dt);
     } else if (p.blockOn){
       const f = p.blockOn;
@@ -269,7 +333,9 @@ export function step(G, dt, inp){
     } else if (p.mode === 'ball'){
       moveToward(p, ball.tx, ball.ty, p.spd, dt);
     } else if (p.route){
-      if (p.routeName === 'block' && !running){
+      if (p === P.rb && !running && ((P.pa && P.t < .7) || (P.option && P.t < .65))){
+        moveToward(p, qb.x + .6, qb.y + (P.option ? P.option.side * .8 : 0), p.spd * .55, dt);   // the fake / the mesh
+      } else if (p.routeName === 'block' && !running){
         const threat = P.def.find(d => d.free || d.blitz) ;
         moveToward(p, threat ? (threat.x + qb.x) / 2 : qb.x + 1, threat ? (threat.y + qb.y) / 2 : qb.y + 1.5, p.spd * .6, dt);
         if (threat && dist(p, threat) < 1 && !threat.eng && P.t > .3){ threat.eng = { by: p, until: P.t + rnd(1, 1.8) }; }
@@ -295,6 +361,13 @@ export function step(G, dt, inp){
       else { const t = running ? carrier : qb; moveToward(d, t.x, t.y, d.spd * .22, dt); continue; }
     }
     let tx, ty, spd = d.spd;
+    // Play action: backers and underneath zones bite on the fake (longer if you've been running the ball well).
+    if (P.pa && !running && ball.state === 'held' && P.t < P.paBite && (d.role === 'LB' || d.zone && !d.zone.deep) && !d.blitz){
+      moveToward(d, Math.max(P.los + 1, d.x - 1.5), d.y, d.spd * .6, dt, 7); continue;
+    }
+    // Read option: the end left unblocked either crashes on the back or sits on the quarterback.
+    // (Crashing, he squeezes down the line inside, after the back; sitting, he stays wide on the quarterback.)
+    if (d.optKey && !running){ moveToward(d, P.los + .6, P.option.crash ? qb.y - P.option.side * 1.5 : qb.y + P.option.side * 3, d.spd, dt, 7); continue; }
     if (running){
       const l = lead(d, carrier); tx = l.x; ty = l.y;
       // Pursuit: a man chasing from behind runs flat out to make up ground (one coming downhill doesn't need to).
@@ -306,7 +379,7 @@ export function step(G, dt, inp){
       if (ahead && dist(d, carrier) < 3.2){ tx = carrier.x + carrier.vx * .12; ty = carrier.y + carrier.vy * .12; spd = d.spd * .9; }
       // Linebackers read the play for a beat before they come downhill: they scrape sideways with the ball first,
       // which is what lets a runner find a hole or cut back.
-      if (P.handed && d.role === 'LB' && P.t - P.handT < .6){ tx = d.x + .4; ty = carrier.y; spd = d.spd * .55; }
+      if (P.handed && d.role === 'LB' && P.t - P.handT < .6){ tx = d.x + .4; ty = carrier.y + (d.gap || 0); spd = d.spd * .55; }
       if (d.role === 'DL' && !d.free){
         // Run blocking: linemen hold their man until he sheds.
         if (P.t < d.shed * .45 + .5){ spd = d.spd * .25; } else d.free = true;
@@ -317,18 +390,31 @@ export function step(G, dt, inp){
       tx = qb.x; ty = qb.y; spd = d.spd * .4;
     } else if (d.role === 'DL'){
       if (!d.free && P.t >= d.shed) { d.free = true; }
-      if (d.free){ tx = qb.x; ty = qb.y; }
-      else { tx = qb.x; ty = qb.y; spd = .9; }
+      // Pass rush. The ends speed-rush: around the edge to a spot behind the quarterback, so stepping up in the pocket
+      // gets away from them. The tackles bull-rush: they drive their blocker back, and the pocket shrinks.
+      if (d.free){
+        if (d.edge && dist(d, qb) > 2.6){ tx = qb.x - 1.6; ty = qb.y + d.edge * 2.4; } else { tx = qb.x; ty = qb.y; }
+      } else { tx = qb.x; ty = qb.y; spd = d.edge ? .9 : 1.5; }
     } else if (d.blitz){
       tx = qb.x; ty = qb.y; spd = P.t < .35 ? 0 : d.spd * (P.t < 1.4 ? .55 : .9);
     } else if (d.man){
       const r = histAt(d.man, D.lag), cushion = P.t < .9 ? 2.4 : 1.1;
       tx = Math.min(r.x + cushion, 109.5); ty = r.y;
     } else if (d.zone){
-      const [lo, hi] = d.zone, mine = P.rec.filter(r => r.y >= lo && r.y <= hi && r.routeName !== 'block');
-      const deepest = mine.sort((a, b) => b.x - a.x)[0], c = (lo + hi) / 2;
-      tx = Math.min(Math.max(P.los + 12, deepest ? deepest.x + 6 : P.los + 13), 109.5);   // keep everything in front
-      ty = deepest ? c + (deepest.y - c) * .6 : c;
+      // Zone: drop to the landmark, then play whoever comes into it. Deep zones stay over the top of the deepest
+      // man in the area ("keep everything in front"); underneath zones sit at their depth and mirror the nearest
+      // threat, passing him on when he leaves the area.
+      const z = d.zone, near = r => Math.abs(r.y - z.cy) <= z.hw + 1.5 && r.routeName !== 'block' && !r.down;
+      const mine = P.rec.filter(near).map(r => histAt(r, D.lag));
+      if (z.deep){
+        const deepest = mine.sort((a, c) => c.x - a.x)[0];
+        tx = Math.min(Math.max(P.los + z.depth, deepest ? deepest.x + 5 : 0), 109.5);
+        ty = deepest ? z.cy + (deepest.y - z.cy) * .55 : z.cy;
+      } else {
+        const lm = P.los + z.depth, threat = mine.filter(r => r.x > P.los - 1).sort((a, c) => Math.hypot(a.x - lm, a.y - z.cy) - Math.hypot(c.x - lm, c.y - z.cy))[0];
+        tx = threat ? clamp(threat.x + 1.3, P.los + 3, lm + 4) : lm;
+        ty = threat ? z.cy + (threat.y - z.cy) * .92 : z.cy;
+      }
     } else if (d.spy){ tx = P.los + 5.5; ty = qb.y; }
     else { tx = d.x; ty = d.y; }
     moveToward(d, tx, ty, spd, dt, d.role === 'DL' ? 5 : 7);
@@ -345,7 +431,7 @@ export function step(G, dt, inp){
       // Sacks: a free rusher reaches the quarterback before the throw.
       for (const d of P.def){
         if ((d.free || d.blitz) && !d.eng && d.stun <= 0 && dist(d, qb) < .9){
-          if (Math.random() < .88){ return end(G, { type: 'sack', x: qb.x, y: qb.y, by: d }); }
+          if (Math.random() < .8){ return end(G, { type: 'sack', x: qb.x, y: qb.y, by: d }); }
           d.stun = .6; pop(P, qb.x, qb.y, 'SHED!', '#ffd84a');
         }
       }
@@ -370,14 +456,21 @@ function becomeCarrier(P, p){
   for (const d of P.def){ d.mode = null; if (d.role === 'DL' && !d.eng) d.free = d.free || false; }
   // On a handoff, receivers turn into blockers on the nearest defender in front of them; after a catch they just
   // ease up (downfield blocking on a pass play is the exception, not the rule).
+  // Run blocking (handoffs, draws, keeps): the defensive line is held by the front, so the center and guards climb to
+  // the linebackers (a pulling guard already has his man); the tight end and slot take the safeties or a backer
+  // left over; the wideouts take the corners.
+  if (P.handed){
+    const lbs = P.def.filter(d => d.role === 'LB' && !d.blitz).sort((a, b) => a.y - b.y);
+    const ol = P.off.filter(o => o.role === 'OL' && !o.blockOn).sort((a, b) => a.y - b.y).filter(o => o.n >= 1 && o.n <= 3);
+    for (const d of lbs){ const o = ol.sort((a, b) => dist(a, d) - dist(b, d)).shift(); if (o && !P.off.some(x => x.blockOn === d)) o.blockOn = d; }
+  }
   for (const o of P.off){
     if (o === p || o.role === 'OL' || o.role === 'QB') continue;
     o.mode = null; o.route = []; o.blockOn = null;
     if (!P.handed) continue;
-    // The tight end and the slot take linebackers; the outside receivers take the defensive backs.
-    const fits = d => o.role === 'TE' || o.role === 'SL' ? d.role === 'LB' : d.role === 'CB' || d.role === 'S';
+    const fits = d => o.role === 'TE' || o.role === 'SL' ? d.role === 'S' || d.role === 'LB' : d.role === 'CB' || d.role === 'S';
     const near = P.def.filter(d => fits(d) && !d.eng && !P.off.some(x => x.blockOn === d) && d.x > o.x - 2).sort((a, b) => dist(a, o) - dist(b, o))[0];
-    o.blockOn = near && dist(near, o) < 8 ? near : null;
+    o.blockOn = near && dist(near, o) < 10 ? near : null;
   }
 }
 
@@ -395,7 +488,7 @@ function runCarrier(G, dt, inp){
   // Blocks: a blocker who reaches his man ties him up for a moment.
   for (const o of P.off){
     const f = o.blockOn;
-    if (f && !f.eng && dist(o, f) < 1 && f.stun <= 0){ f.eng = { by: o, until: P.t + rnd(.8, 1.6) }; o.blockOn = null; }
+    if (f && !f.eng && dist(o, f) < 1.2 && f.stun <= 0){ f.eng = { by: o, until: P.t + rnd(.8, 1.6) }; o.blockOn = null; }
   }
   // Carrying the ball costs a little speed, so pursuers with good angles can run him down.
   const base = c.spd * .97, slow = c.stumble > 0 ? .55 : c.truck > 0 ? .85 : 1;
@@ -430,6 +523,7 @@ function runCarrier(G, dt, inp){
   const st = inp.carStick, m = st ? Math.hypot(st.x, st.y) : 0;
   if (c.juke > 0){ c.juke -= dt; tvx = dir.x * base * .55; tvy = c.jukeDir * base * 1.05; }
   else if (m > .05){ const push = Math.min(1, m); tvx = st.x / m * base * slow * push; tvy = st.y / m * base * slow * push; }
+  else if (P.runPath && P.t - P.carryT < .8){ tvx = P.runPath.x * base * slow; tvy = P.runPath.y * base * slow; }   // the called run's path
   else { tvx = (sp > 2 ? dir.x : 1) * base * slow; tvy = (sp > 2 ? dir.y : 0) * base * slow; }
   if (c.juke > 0){ c.vx += (tvx - c.vx) * Math.min(1, 14 * dt); c.vy += (tvy - c.vy) * Math.min(1, 14 * dt); }   // the cut itself is explosive
   else accelToward(c, tvx, tvy, dt, 10);
@@ -448,7 +542,7 @@ function runCarrier(G, dt, inp){
     const front = rx * fwd.x + ry * fwd.y, reach = front > -.3 ? 1.25 : 1.0;
     if (dd > reach) continue;
     const closing = Math.max(0, -((d.vx - c.vx) * rx + (d.vy - c.vy) * ry));
-    const help = P.def.some(o => o !== d && !o.down && o.stun <= 0 && !o.eng && dist(o, c) < 2.3);
+    const help = P.def.some(o => o !== d && !o.down && o.stun <= 0 && !o.eng && !(o.role === 'DL' && !o.free && o.ol) && dist(o, c) < 2.3);   // a blocked lineman can't help
     let p = D.tackle * (front > .35 ? .96 : front > -.35 ? .88 : .86);
     p += Math.min(.06, closing * .009);
     if (front <= .35) p -= Math.max(0, cs - 6.5) * .02;   // a runner at full speed is hard to grab from the side
@@ -460,7 +554,7 @@ function runCarrier(G, dt, inp){
     if (Math.random() < p){
       const big = closing > 6.5;
       if (Math.random() < .0025 + (big ? .01 : 0) + (front < -.35 ? .003 : 0)) return end(G, { type: 'fumble', x: c.x, y: c.y, by: d });
-      if (big){ pop(P, c.x, c.y, 'BIG HIT!', '#ff5a4e'); emit(G, 'shake', { a: 4 }); }
+      if (big){ pop(P, c.x, c.y, 'BIG HIT!', '#ff5a4e'); emit(G, 'shake', { a: 4 }); emit(G, 'hitstop', { s: .1 }); }
       // Forward progress: a runner hit from the side or behind falls forward; one stood up head on doesn't.
       const fall = front > .35 ? Math.max(0, cs * .07 - closing * .05) : rnd(.5, 1.5);
       return end(G, { type: 'tackle', x: c.x + Math.max(0, fwd.x) * fall + .2, y: c.y, by: d });
@@ -569,7 +663,7 @@ export function applyStop(G, r, k, how, { gain = 0, x = null } = {}){
 
 /* ---------- passing ---------- */
 export const canThrow = G => { const P = G.play; return P?.live && !P.result && P.ball.state === 'held' && P.ball.holder === P.qb && !P.carrier; };
-export const canHandoff = G => { const P = G.play; return canThrow(G) && !P.handed && P.t < 1.3; };
+export const canHandoff = G => { const P = G.play; return canThrow(G) && !P.handed && !P.noHandoff && P.t < (P.option ? .65 : 1.3); };
 
 /* The ball's flight to a spot: a bullet (flat and quick) unless a defender sits in the throwing lane or it's a deep
    ball, then it's lofted over him (slower, higher). Shared with the aim arc so what you see is what's thrown. */
@@ -607,6 +701,7 @@ export function throwTo(G, tx, ty){
   const P = G.play, qb = P.qb, ball = P.ball, D = G.diff;
   const fl = trajectory(G, tx, ty);
   Object.assign(ball, { state: 'air', fx: qb.x + .3, fy: qb.y, tx, ty, t: 0, T: fl.T, h: fl.h });
+  P.airYds = tx - P.los;
   P.thrown = true; G.stats.att++;
   emit(G, 'sfx', { name: 'throw' });
   // The intended receiver works back to the ball; nearby defenders break on it after a beat.
@@ -680,12 +775,26 @@ export function throwToReceiver(G, num){
   throwTo(G, r.x + r.vx * T + g() * e, r.y + r.vy * T + g() * e);
   return true;
 }
+/* Starts a called run at the snap: the handoff (with that run's blocking), or sets up a QB draw or a read option. */
+export function startRun(G, call){
+  const P = G.play, side = P.b < MID ? 1 : -1, R = RUN_CALLS[call]; if (!R) return;
+  P.runCall = call; P.side = side;
+  if (call === 'qbdraw'){ P.draw = .55; return; }
+  if (call === 'option'){
+    // The end on the back's side is left unblocked: he's the read.
+    const os = Math.sign(P.rb.y - P.qb.y) || side, key = P.def.filter(d => d.role === 'DL' && d.edge === os)[0];
+    if (key){ key.optKey = true; key.free = true; key.ol = null; }
+    P.option = { side: os, crash: Math.random() < .5, key };
+    return;
+  }
+  handoff(G);
+  P.runPath = { x: R.path[0], y: R.path[1] * side };
+}
 export function handoff(G){
   const P = G.play; if (!canHandoff(G)) return false;
   P.handed = true; P.handT = P.t; becomeCarrier(P, P.rb);
-  // The center climbs to the middle linebacker.
-  const mike = P.def.filter(d => d.role === 'LB' && !d.blitz).sort((a, b) => Math.abs(a.y - P.b) - Math.abs(b.y - P.b))[0];
-  if (mike) P.off.find(o => o.role === 'OL' && o.n === 2).blockOn = mike;
+  // The give: inside, away from the read. If the end sat on the quarterback, he's optioned off: out of the play.
+  if (P.option){ P.runPath = { x: .92, y: -.4 * P.option.side }; if (!P.option.crash && P.option.key) P.option.key.stun = .55; }
   emit(G, 'sfx', { name: 'catch' });
   return true;
 }
@@ -705,23 +814,25 @@ function resolvePass(G){
     if (u < .18 + .42 * q) return end(G, { type: 'int', x: jd.x, y: jd.y, by: jd });
     if (u < .55 + .4 * q) return end(G, { type: 'inc', why: 'Swatted away', by: jd });
   }
+  // Deep balls are harder: a defender can contest from further away, and the catch itself is tougher.
+  const air = Math.max(0, land.x - P.los), CR = 1.7 + Math.min(1.2, air / 25);
   if (rd <= 1.6){
-    let contest = dd < 1.7 ? (1.7 - dd) / 1.7 : 0;
-    // Leverage: a defender between the ball and the receiver (undercutting) is the danger; one trailing the
-    // receiver is shielded by him.
+    let contest = dd < CR ? (CR - dd) / CR : 0;
+    // Leverage, judged along the receiver's run: a defender trailing behind him is shielded out of the play; one on
+    // top of him (over a go route, in front of a crosser) is in position to make it.
     if (contest && d && r){
-      const L = Math.hypot(land.x - b.fx, land.y - b.fy) || 1, ux = (b.fx - land.x) / L, uy = (b.fy - land.y) / L;
-      const sd = (d.x - land.x) * ux + (d.y - land.y) * uy, sr = (r.x - land.x) * ux + (r.y - land.y) * uy;
-      contest *= sd < sr - .4 ? .65 : sd > sr + .3 ? 1.25 : 1;
+      const v = Math.hypot(r.vx, r.vy) || 1, along = ((d.x - r.x) * r.vx + (d.y - r.y) * r.vy) / v;
+      contest *= along < -.5 ? .65 : along > .4 ? 1.25 : 1;
     }
-    const pCatch = clamp(.96 - rd * .07 - contest * .6 * (.6 + .4 * D.intMul) + rate(G.me.off) / 400, .1, .98);
+    const pCatch = clamp(.96 - rd * .07 - air * .004 - contest * .6 * (.6 + .4 * D.intMul) + rate(G.me.off) / 400, .1, .98);
     const pInt = contest && dd < rd ? .3 * D.intMul * contest : 0;
     if (u < pCatch){
       G.stats.comp++;
       r.x = land.x; r.y = land.y; r.mode = null;
       // Catching the ball costs a receiver his momentum (more in traffic): he has to secure it and turn upfield.
       const keep = contest > .2 ? .2 : .35; r.vx *= keep; r.vy *= keep;
-      emit(G, 'sfx', { name: 'catch' }); pop(P, r.x, r.y, contest > .3 ? 'GREAT CATCH!' : 'CAUGHT', contest > .3 ? '#ffd84a' : '#fff');
+      const who = G.me.names?.[r.role];
+      emit(G, 'sfx', { name: 'catch' }); pop(P, r.x, r.y, contest > .3 ? 'GREAT CATCH!' : who ? who.toUpperCase() : 'CAUGHT', contest > .3 ? '#ffd84a' : '#fff');
       if (r.x >= 100) return end(G, { type: 'td', x: r.x, y: r.y, pass: true });
       becomeCarrier(P, r); P.catchX = r.x;
       return;
@@ -748,11 +859,17 @@ function end(G, r){
   if (['tackle', 'sack', 'dive', 'fumble'].includes(r.type)){
     const who = r.type === 'sack' ? P.qb : c; if (who){ who.down = true; who.vx = who.vy = 0; }
     if (r.by){ r.by.down = Math.random() < .5; }
+    // The pile: defenders arriving pile on.
+    for (const d of P.def) if (d !== r.by && !d.down && Math.hypot(d.x - r.x, d.y - r.y) < 2.6 && Math.random() < .6){ d.down = true; d.x += (r.x - d.x) * .5; d.y += (r.y - d.y) * .5; }
     burst(P, r.x, r.y, ['#8a6a3c', '#5b8f3a', '#cfe8b0'], 12);
     emit(G, 'sfx', { name: 'tackle' }); emit(G, 'shake', { a: r.type === 'sack' ? 3 : 2 });
   }
   for (const p of P.all){ if (!p.down){ p.vx *= .3; p.vy *= .3; } }
-  if (r.type === 'td'){ burst(P, r.x, r.y, [G.me.color, G.me.alt || '#fff', '#ffd84a', '#fff'], 40, 2); }
+  if (r.type === 'td'){
+    burst(P, r.x, r.y, [G.me.color, G.me.alt || '#fff', '#ffd84a', '#fff'], 40, 2);
+    // The celebration: the scorer and teammates nearby jump around (drawn with a bounce).
+    for (const o of P.off) if (Math.hypot(o.x - r.x, o.y - r.y) < 9) o.celebrate = true;
+  }
 }
 
 /* Applies a finished play to the game: score, downs, clock, stats. Returns what happens next:
@@ -821,6 +938,40 @@ export function tickRunoff(G, dt){
   const d = Math.min(G.runoff, dt * 9);
   G.runoff -= d;
   return useClock(G, d);
+}
+
+/* ---------- penalties ---------- */
+/* After one of your plays, maybe a flag: holding on a gain (it comes back, touchdowns too), pass interference on a
+   contested deep incompletion (first down at the spot, 15 yards at most, as in college), a face mask on a tackle
+   (15 more), offside on the defense (5 yards, or a free play that wipes out a turnover; on a bigger gain you
+   choose). Rare enough to feel like real football. */
+export function callPenalty(G){
+  const P = G.play, r = P.result; if (!r || G.practice || G.youDefend || G.twoPt || G.ot >= 3) return null;
+  const gain = Math.round((r.x ?? P.los) - P.los), u = Math.random();
+  if (r.type === 'tackle' && gain >= 0 && Math.random() < .006) return { kind: 'fm', name: 'FACE MASK, DEFENSE', desc: '15 more yards, first down' };
+  if (['tackle', 'oob', 'td', 'dive'].includes(r.type) && gain > 3 && u < .025)
+    return { kind: 'hold', name: 'HOLDING, OFFENSE', desc: r.type === 'td' ? 'Touchdown wiped out · 10 yards, replay the down' : '10 yards, replay the down' };
+  if (r.type === 'inc' && P.thrown && (P.airYds || 0) >= 12 && r.by && u < .14)
+    return { kind: 'dpi', name: 'PASS INTERFERENCE', desc: 'Automatic first down at the spot' };
+  if (u > .988){
+    const turnover = ['int', 'fumble'].includes(r.type);
+    return { kind: 'offside', name: 'OFFSIDE, DEFENSE', desc: turnover ? 'Free play: the turnover doesn\'t count · 5 yards' : '5 yards, replay the down',
+      choice: !turnover && !['inc', 'sack'].includes(r.type) && gain > 5 && r.type !== 'td' };
+  }
+  return null;
+}
+/* Enforces a flag in place of the play (except the face mask, added after it). Returns what applyResult would. */
+export function enforcePenalty(G, pen){
+  const P = G.play, L = P.los; G.runoff = 0;
+  const firstDown = () => { G.down = 1; G.toGo = Math.min(10, Math.round(100 - G.los)); };
+  if (pen.kind === 'hold'){ G.los = Math.max(1, L - 10); G.toGo = Math.min(Math.round(100 - G.los), G.toGo + Math.round(L - G.los)); return 'next'; }
+  if (pen.kind === 'dpi'){ G.los = Math.min(99, Math.max(L + 1, Math.min(L + 15, P.ball.tx))); G.y = clamp(P.ball.ty, HASH[0], HASH[1]); firstDown(); return 'next'; }
+  if (pen.kind === 'offside'){ G.los = Math.min(99, L + 5); if (G.toGo <= 5) firstDown(); else G.toGo -= 5; return 'next'; }
+  if (pen.kind === 'fm'){
+    const out = applyResult(G); if (out !== 'next') return out;
+    G.los = Math.min(99, G.los + 15); firstDown(); G.runoff = 0; return 'next';
+  }
+  return 'next';
 }
 
 /* ---------- special plays ---------- */
