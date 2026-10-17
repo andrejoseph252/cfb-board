@@ -153,10 +153,14 @@ export function view(g){
   const p = s.plays[i], clock = clockAt(s.plays, i, R) ?? p.c ?? 0;
   const done = g.state === 'post' && i === s.plays.length - 1;
   let wp = null; for (let k = i; k >= 0 && wp == null; k--) wp = s.probs.get(s.plays[k].id) ?? null;
-  const side = p.poss && String(p.poss) === String(g.home.id) ? 'home' : p.poss && String(p.poss) === String(g.away.id) ? 'away' : null;
+  // Possession from the latest play that names it (a timeout or the end of a quarter doesn't); none at halftime.
+  let pos = null, yz = null;
+  for (let k = i; k >= 0 && pos == null; k--) if (s.plays[k].poss){ pos = s.plays[k].poss; yz = s.plays[k].ytez; }
+  if (/Half/i.test(detailOf(p, clock))) pos = null;
+  const side = pos && String(pos) === String(g.home.id) ? 'home' : pos && String(pos) === String(g.away.id) ? 'away' : null;
   return { ...g, state: done ? 'post' : 'in', completed: done, detail: done ? g.detail : detailOf(p, clock), period: p.q, clock: Math.floor(clock),
     home: { ...g.home, score: String(p.home), winner: done && g.home.winner }, away: { ...g.away, score: String(p.away), winner: done && g.away.winner },
-    sit: done ? null : p.sit, liveWp: done ? g.liveWp : wp ?? null, poss: side ? g[side].id : null, redZone: p.ytez != null && p.ytez <= 20,
+    sit: done ? null : p.sit, liveWp: done ? g.liveWp : wp ?? null, poss: side ? g[side].id : null, redZone: yz != null && yz <= 20,
     syncDelay: s.delay, syncAt: R };
 }
 /* For the drawer: the real time your stream is at, so its play-by-play can be cut there. */

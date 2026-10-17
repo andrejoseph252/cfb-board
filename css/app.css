@@ -501,17 +501,35 @@ main > .chips:first-child{margin-bottom:18px}
 .rbtn.ghost{border-color:var(--line);font-weight:600;color:var(--muted)}
 
 
-/* Possession: a warm "ball" light behind the row, strongest at the team's color stripe. Red inside the 20. */
+/* Possession: a soft wash of warm "ball" light behind the row of the team with the ball, a halo on its stripe, and a
+   small football after its name. Inside the 20 the light turns red and slowly breathes. */
 .game{--ball:#E8B64C}
-.game .row.has-ball{--glow:var(--ball);position:relative;margin:0 -10px;padding:2px 10px;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 20%,transparent) 0,color-mix(in srgb,var(--glow) 7%,transparent) 45%,transparent 80%)}
-.game .row.has-ball .stripe{box-shadow:0 0 8px 1px var(--glow),inset 0 0 0 1px rgba(127,127,127,.25)}
+.game .row.has-ball{--glow:var(--ball);position:relative;isolation:isolate}
+.game .row.has-ball::before{content:"";position:absolute;inset:-3px -6px;z-index:-1;border-radius:8px;pointer-events:none;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--glow) 22%,transparent) 0,color-mix(in srgb,var(--glow) 9%,transparent) 38%,transparent 78%);
+  box-shadow:inset 1px 0 0 color-mix(in srgb,var(--glow) 35%,transparent)}
+.game .row.has-ball .stripe{box-shadow:0 0 0 1px color-mix(in srgb,var(--glow) 30%,transparent),0 0 10px color-mix(in srgb,var(--glow) 55%,transparent)}
 .game .row.has-ball.rz{--glow:var(--live)}
-.game .row.has-ball.rz .stripe{animation:rzglow 1.6s ease-in-out infinite}
-@keyframes rzglow{50%{box-shadow:0 0 14px 3px var(--live)}}
-@media (prefers-reduced-motion:reduce){.game .row.has-ball.rz .stripe{animation:none}}
-.gname.has-ball{--glow:#E8B64C;text-shadow:0 0 14px color-mix(in srgb,var(--glow) 80%,transparent);border-bottom:2px solid var(--glow);padding-bottom:1px}
-.gname.has-ball.rz{--glow:var(--live)}
+.game .row.has-ball.rz::before{animation:rzbreathe 2s ease-in-out infinite}
+.game .row.has-ball.rz .stripe{animation:rzhalo 2s ease-in-out infinite}
+@keyframes rzbreathe{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes rzhalo{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--live) 25%,transparent),0 0 6px color-mix(in srgb,var(--live) 35%,transparent)}
+  50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--live) 45%,transparent),0 0 14px color-mix(in srgb,var(--live) 75%,transparent)}}
+@media (prefers-reduced-motion:reduce){.game .row.has-ball.rz::before,.game .row.has-ball.rz .stripe{animation:none}}
+.mh-name.has-ball{text-shadow:0 0 18px color-mix(in srgb,#E8B64C 55%,transparent),0 2px 10px rgba(0,0,0,.3)}
+.mh-name.has-ball.rz{text-shadow:0 0 18px color-mix(in srgb,#FF5A4E 65%,transparent),0 2px 10px rgba(0,0,0,.3)}
+/* The football: in the text color, red inside the 20. */
+.poss{display:inline-flex;align-items:center;margin-left:7px;vertical-align:1px;color:var(--ink);flex:none}
+.poss svg{width:15px;height:9px;display:block;overflow:visible}
+.poss svg path{fill:currentColor}
+.poss svg .lace{fill:none;stroke:var(--surface);stroke-width:1.1;stroke-linecap:round}
+.poss.rz{color:var(--live)}
+.game .row.has-ball .poss{color:color-mix(in srgb,var(--ball) 70%,var(--ink))}
+.game .row.has-ball.rz .poss{color:var(--live)}
+.mh-name .poss{margin-left:10px;vertical-align:.12em;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
+.mh-name .poss svg{width:22px;height:13px}
+.mh-name .poss svg .lace{stroke:rgba(0,0,0,.55)}
+.mh-name .poss.rz{color:#ff6b61}
 
 /* Card footer: one line; status, info that truncates, pin on the right */
 .foot{flex-wrap:nowrap;min-width:0}
@@ -576,7 +594,6 @@ main > .chips:first-child{margin-bottom:18px}
 .mh-status{font:700 11.5px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;background:#fff;color:#111;border-radius:999px;padding:5px 10px}
 .mh-status.live{background:var(--live);color:#fff}
 .mh-status.live::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px;animation:pulse 1.6s ease-in-out infinite}
-.mh-name.has-ball{border:0;text-shadow:0 0 16px var(--glow),0 2px 10px rgba(0,0,0,.3)}
 .mh-strip{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px;margin:0 -16px 14px;padding:9px 16px;
   background:var(--surface);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);text-align:center}
 .mh-strip b{color:var(--ink);font:800 15px/1 var(--display);letter-spacing:.03em;text-transform:uppercase}

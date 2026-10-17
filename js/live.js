@@ -64,6 +64,10 @@ export function fire(g, side, kind = 'td'){   // also used by the localhost prev
   setTimeout(() => invalidate('main'), LENGTH[kind] + 50);   // take the graphic down
 }
 
+/* After a touchdown or field goal ESPN keeps the scoring team "in possession" (at the 3 for the extra point, then
+   kicking off): the board shows no possession until the ball changes hands. game id -> scoring team id. */
+const afterScore = new Map();
+
 /* After each change to the board as shown: note scores, extend each live game's history, fill a missing win %. */
 export function track(prev, games){
   for (const g of games){
@@ -73,7 +77,15 @@ export function track(prev, games){
       for (const side of ['away', 'home']){
         const d = Number(g[side].score) - Number(p[side].score);
         if (d >= 6) fire(g, side, 'td'); else if (d === 3) fire(g, side, 'fg'); else if (d === 2 && p.state === 'in') fire(g, side, 'safety');
+        if (d >= 3) afterScore.set(g.id, String(g[side].id));
       }
+    }
+    // ESPN drops possession during timeouts, reviews and quarter breaks: keep the team that had it (not over halftime).
+    if (!g.poss && p?.poss && p.state === 'in' && !/half/i.test(g.detail || '')){ g.poss = p.poss; g.redZone = p.redZone; }
+    const scorer = afterScore.get(g.id);
+    if (scorer){
+      if (g.poss && String(g.poss) !== scorer) afterScore.delete(g.id);   // kicked off: the other team has it
+      else { g.poss = null; g.redZone = false; }
     }
     // The scoreboard only attaches a win % to some plays: keep the last one rather than going blank, and for a game
     // that hasn't had one since the page opened, take it from the per-play feed (cut at the moment being shown).

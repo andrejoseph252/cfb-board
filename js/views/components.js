@@ -43,21 +43,22 @@ const PIN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><pa
 
 const fpiTag = id => { const f = state.fpi?.byTeam[id]; return f?.rank ? `<span class="fpi" title="ESPN FPI rank">FPI ${f.rank}</span>` : ''; };
 
-/* The team with the ball in a live game glows (red inside the 20). */
+/* The team with the ball in a live game: a small football after its name, like a TV scorebug (red inside the 20). */
 export function ballClass(g, t){
   if (g.state !== 'in' || !g.poss || String(g.poss) !== String(t.id)) return '';
   return g.redZone ? ' has-ball rz' : ' has-ball';
 }
+export const ballIcon = (g, t) => !ballClass(g, t) ? '' : `<span class="poss${g.redZone ? ' rz' : ''}" title="${esc(t.name)} ball${g.redZone ? ', in the red zone' : ''}"><svg viewBox="0 0 20 12" aria-hidden="true"><path d="M1.2 6C4.4 .6 15.6 .6 18.8 6 15.6 11.4 4.4 11.4 1.2 6Z"/><path class="lace" d="M6.6 6h6.8M8.4 4.7v2.6M10 4.7v2.6M11.6 4.7v2.6"/></svg><span class="sr"> has the ball${g.redZone ? ', red zone' : ''}</span></span>`;
 
 function teamRow(g, side, fx){
   const t = g[side], opp = g[side === 'home' ? 'away' : 'home'];
   const lose = g.state === 'post' && g.completed && !t.winner && opp.winner;
   const pk = picks[g.id], mine = pk && pk.side === side;
   const ball = ballClass(g, t);
-  return `<div class="row${lose ? ' loser' : ''}${ball}"${ball ? ` title="${esc(t.name)} ball${g.redZone ? ', red zone' : ''}"` : ''}>
+  return `<div class="row${lose ? ' loser' : ''}${ball}">
     <span class="stripe" style="background:${esc(t.color)}"></span>
     ${t.id ? `<a href="${teamHref(t.id)}" tabindex="-1" aria-hidden="true">${logo(t.logo)}</a>` : logo(t.logo)}
-    <span class="tname"><span class="tn">${teamLink(t)}</span>${ball ? '<span class="sr"> has the ball</span>' : ''}<span class="rec">${esc(t.record || '')}</span>${fpiTag(t.id)}</span>
+    <span class="tname"><span class="tn">${teamLink(t)}</span>${ballIcon(g, t)}<span class="rec">${esc(t.record || '')}</span>${fpiTag(t.id)}</span>
     ${mine ? `<span class="mypick ${pk.result || ''}">${pk.result === 'W' ? 'Pick hit' : pk.result === 'L' ? 'Pick missed' : 'Your pick'}</span>` : '<span></span>'}
     <span class="score${fx?.side === side ? ' bump' : ''}"${fx?.side === side ? ` style="--d:-${Math.round(fx.elapsed)}ms"` : ''}>${g.state === 'pre' ? '' : g.syncing ? '–' : esc(t.score ?? '')}</span></div>`;
 }

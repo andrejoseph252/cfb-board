@@ -9,7 +9,7 @@ import { lineFor } from '../lines.js';
 import { excitement } from '../excitement.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
 import { useData } from '../resource.js';
-import { logo, panel, barColors, ballClass, stepPath, teamHref, gameHref } from './components.js';
+import { logo, panel, barColors, ballClass, ballIcon, stepPath, teamHref, gameHref } from './components.js';
 
 /* Black or white text, whichever reads better on a team color. */
 export function inkOn(hex){
@@ -39,7 +39,7 @@ export function banner(g, s){
     const disc = `<span class="mh-disc">${logo(t.logo, 'mh-logo')}</span>`;
     return `<div class="mh-side ${k}${lost ? ' lost' : ''}">
       ${t.id ? `<a href="${teamHref(t.id)}" tabindex="-1" aria-hidden="true">${disc}</a>` : disc}
-      <div class="mh-name${ballClass(g, t)}">${ap ? `<span class="mh-rank">#${ap}</span>` : ''}${t.id ? `<a class="tlink" href="${teamHref(t.id)}">${esc(t.name)}</a>` : esc(t.name)}</div>
+      <div class="mh-name${ballClass(g, t)}">${ap ? `<span class="mh-rank">#${ap}</span>` : ''}${t.id ? `<a class="tlink" href="${teamHref(t.id)}">${esc(t.name)}</a>` : esc(t.name)}${ballIcon(g, t)}</div>
       <div class="mh-rec">${esc(rec)}</div></div>`;
   };
   const mid = g.state === 'pre' ? `<div class="mh-vs">${g.neutral ? 'vs' : 'at'}</div>`
