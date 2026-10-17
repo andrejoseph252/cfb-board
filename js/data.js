@@ -1,6 +1,6 @@
 /* Loaders: fetch through api.js (cached), normalize, store on state, request a render. */
 import * as api from './api.js';
-import { parseEvent, parseStandings, parseFpi, parsePredictor, parseRankings } from './models.js';
+import { parseEvent, parseStandings, parseFpi, parsePredictor, parseRankings, parseProbabilities } from './models.js';
 import { state, invalidate } from './state.js';
 import { loadMarkets } from './markets.js';
 import { loadLines } from './lines.js';
@@ -33,8 +33,10 @@ export async function loadBoard({ silent = false, fresh = false } = {}){
     state.cal = j.leagues?.[0]?.calendar || state.cal;
     state.season = j.season?.year ?? state.season;
     if (follow){ state.week = String(j.week?.number); state.st = String(j.season?.type); state.current = `${state.st}-${state.week}`; }
+    const prev = state.byId;
     state.games = (j.events || []).map(parseEvent).sort((a, b) => new Date(a.date) - new Date(b.date));
     state.byId = Object.fromEntries(state.games.map(g => [g.id, g]));
+    keepLiveWp(prev);
     resolvePicks(state.games);
     state.updated = new Date(fetchedAt || Date.now()); state.err = null;
   } else state.err = err?.message || 'Could not load games';
@@ -52,6 +54,25 @@ export async function loadBoard({ silent = false, fresh = false } = {}){
 }
 
 export const anyLive = () => state.games.some(g => g.state === 'in');
+
+/* Live win %: the scoreboard only carries it on the latest play, and some plays (a kickoff, a timeout, the end of a
+   quarter) come without one, so a card would blank out until the next play. Keep the last value instead; a live
+   game that hasn't had one since the page opened gets it from the per-play feed the game drawer uses (the same
+   cached request, at most once a minute per game). */
+const wpTried = new Map();
+function keepLiveWp(prev){
+  for (const g of state.games){
+    if (g.state !== 'in' || g.liveWp != null) continue;
+    const before = prev[g.id]?.liveWp;
+    if (before != null){ g.liveWp = before; continue; }
+    if (Date.now() - (wpTried.get(g.id) || 0) < 60e3) continue;
+    wpTried.set(g.id, Date.now());
+    api.probabilities(g.id, true).then(j => {
+      const last = parseProbabilities(j).at(-1)?.home, cur = state.byId[g.id];
+      if (last != null && cur?.state === 'in' && cur.liveWp == null){ cur.liveWp = last; invalidate('main'); }
+    }).catch(() => {});
+  }
+}
 
 let timer;
 function schedulePoll(){
