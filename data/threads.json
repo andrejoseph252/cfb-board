@@ -1,6 +1,127 @@
 {
- "updated": "2026-10-17T16:47:57+00:00",
+ "updated": "2026-10-17T18:54:32+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] North Carolina @ Duke (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hijq/game_thread_north_carolina_duke_330_pm_et/",
+   "published": "2026-10-17T18:30:19+00:00",
+   "gameId": null,
+   "teams": [
+    "North Carolina",
+    "Duke"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Georgia Tech @ Virginia Tech (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hij4/game_thread_georgia_tech_virginia_tech_330_pm_et/",
+   "published": "2026-10-17T18:30:18+00:00",
+   "gameId": null,
+   "teams": [
+    "Georgia Tech",
+    "Virginia Tech"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Penn State @ Michigan (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hiij/game_thread_penn_state_michigan_330_pm_et/",
+   "published": "2026-10-17T18:30:17+00:00",
+   "gameId": null,
+   "teams": [
+    "Penn State",
+    "Michigan"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Arizona State @ Texas Tech (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hii1/game_thread_arizona_state_texas_tech_330_pm_et/",
+   "published": "2026-10-17T18:30:15+00:00",
+   "gameId": null,
+   "teams": [
+    "Arizona State",
+    "Texas Tech"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Alabama @ Tennessee (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hih7/game_thread_alabama_tennessee_330_pm_et/",
+   "published": "2026-10-17T18:30:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Alabama",
+    "Tennessee"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Missouri @ Ole Miss (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8higc/game_thread_missouri_ole_miss_330_pm_et/",
+   "published": "2026-10-17T18:30:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Missouri",
+    "Ole Miss"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Auburn @ Georgia (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hifo/game_thread_auburn_georgia_330_pm_et/",
+   "published": "2026-10-17T18:30:11+00:00",
+   "gameId": null,
+   "teams": [
+    "Auburn",
+    "Georgia"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] UNLV @ Air Force (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hiez/game_thread_unlv_air_force_330_pm_et/",
+   "published": "2026-10-17T18:30:10+00:00",
+   "gameId": null,
+   "teams": [
+    "UNLV",
+    "Air Force"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Northern Illinois @ Wyoming (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hiea/game_thread_northern_illinois_wyoming_330_pm_et/",
+   "published": "2026-10-17T18:30:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Northern Illinois",
+    "Wyoming"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Akron @ Miami (OH) (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hidc/game_thread_akron_miami_oh_330_pm_et/",
+   "published": "2026-10-17T18:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Akron",
+    "Miami (OH)"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Toledo @ Eastern Michigan (3:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8hicr/game_thread_toledo_eastern_michigan_330_pm_et/",
+   "published": "2026-10-17T18:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Toledo",
+    "Eastern Michigan"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Western Michigan @ Central Michigan (1:30 PM ET)",
