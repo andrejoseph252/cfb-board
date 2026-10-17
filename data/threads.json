@@ -1,6 +1,50 @@
 {
- "updated": "2026-10-17T00:51:13+00:00",
+ "updated": "2026-10-17T05:06:51+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Columbia Defeats Penn 28-27",
+   "url": "https://www.reddit.com/r/CFB/comments/1x80s3q/postgame_thread_columbia_defeats_penn_2827/",
+   "published": "2026-10-17T04:14:40+00:00",
+   "gameId": "401867821",
+   "teams": [
+    "Columbia",
+    "Penn"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Washington Defeats Purdue 38-26",
+   "url": "https://www.reddit.com/r/CFB/comments/1x806am/postgame_thread_washington_defeats_purdue_3826/",
+   "published": "2026-10-17T03:41:17+00:00",
+   "gameId": "401858493",
+   "teams": [
+    "Washington",
+    "Purdue"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Appalachian State Defeats Coastal Carolina 35-32",
+   "url": "https://www.reddit.com/r/CFB/comments/1x7zww7/postgame_thread_appalachian_state_defeats_coastal/",
+   "published": "2026-10-17T03:26:23+00:00",
+   "gameId": "401869844",
+   "teams": [
+    "Appalachian State",
+    "Coastal Carolina"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Tulane Defeats Memphis 31-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1x7znbc/postgame_thread_tulane_defeats_memphis_3117/",
+   "published": "2026-10-17T03:11:25+00:00",
+   "gameId": "401862801",
+   "teams": [
+    "Tulane",
+    "Memphis"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Appalachian State @ Coastal Carolina (8:00 PM ET)",
@@ -1626,17 +1670,6 @@
    "teams": [
     "Jacksonville State",
     "Kennesaw State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Troy Defeats Southern Miss 55-34",
-   "url": "https://www.reddit.com/r/CFB/comments/1wzmkml/postgame_thread_troy_defeats_southern_miss_5534/",
-   "published": "2026-10-07T03:42:35+00:00",
-   "gameId": "401871090",
-   "teams": [
-    "Troy",
-    "Southern Miss"
    ]
   }
  ],
