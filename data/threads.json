@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-18T01:29:44+00:00",
+ "updated": "2026-10-18T01:40:35+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Wake Forest @ California (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8qrep/game_thread_wake_forest_california_1030_pm_et/",
+   "published": "2026-10-18T01:30:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Wake Forest",
+    "California"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] New Mexico @ Hawai'i (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8qre3/game_thread_new_mexico_hawaii_1030_pm_et/",
+   "published": "2026-10-18T01:30:09+00:00",
+   "gameId": null,
+   "teams": [
+    "New Mexico",
+    "Hawai'i"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Fresno State @ San Diego State (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8qrdj/game_thread_fresno_state_san_diego_state_1030_pm/",
+   "published": "2026-10-18T01:30:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Fresno State",
+    "San Diego State"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Utah @ Colorado (10:15 PM ET)",
