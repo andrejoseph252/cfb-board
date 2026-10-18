@@ -1,6 +1,61 @@
 {
- "updated": "2026-10-17T23:32:35+00:00",
+ "updated": "2026-10-18T01:29:44+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Utah @ Colorado (10:15 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8qh52/game_thread_utah_colorado_1015_pm_et/",
+   "published": "2026-10-18T01:15:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Utah",
+    "Colorado"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Ohio @ Sacramento State (10:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8q6ee/game_thread_ohio_sacramento_state_1000_pm_et/",
+   "published": "2026-10-18T01:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Ohio",
+    "Sacramento State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisiana Defeats Troy 33-6",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8p6ky/postgame_thread_louisiana_defeats_troy_336/",
+   "published": "2026-10-18T00:09:09+00:00",
+   "gameId": "401869966",
+   "teams": [
+    "Louisiana",
+    "Troy"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] San Jos\u00e9 State @ UTEP (9:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8ozd1/game_thread_san_jos\u00e9_state_utep_900_pm_et/",
+   "published": "2026-10-18T00:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "San Jos\u00e9 State",
+    "UTEP"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Tulsa Defeats Rice 38-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8omej/postgame_thread_tulsa_defeats_rice_3817/",
+   "published": "2026-10-17T23:42:17+00:00",
+   "gameId": "401862805",
+   "teams": [
+    "Tulsa",
+    "Rice"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Tennessee Defeats Alabama 26-10",
