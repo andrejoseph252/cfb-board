@@ -1,6 +1,72 @@
 {
- "updated": "2026-10-18T03:50:17+00:00",
+ "updated": "2026-10-18T06:40:35+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Utah Defeats Colorado 27-24",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8vvsw/postgame_thread_utah_defeats_colorado_2724/",
+   "published": "2026-10-18T06:17:06+00:00",
+   "gameId": "401856833",
+   "teams": [
+    "Utah",
+    "Colorado"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] New Mexico Defeats Hawai'i 21-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8vtk7/postgame_thread_new_mexico_defeats_hawaii_2110/",
+   "published": "2026-10-18T06:13:18+00:00",
+   "gameId": "401864521",
+   "teams": [
+    "New Mexico",
+    "Hawai'i"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Wake Forest Defeats California 41-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8vouu/postgame_thread_wake_forest_defeats_california_417/",
+   "published": "2026-10-18T06:05:43+00:00",
+   "gameId": "401858269",
+   "teams": [
+    "Wake Forest",
+    "California"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] San Diego State Defeats Fresno State 26-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8vfxh/postgame_thread_san_diego_state_defeats_fresno/",
+   "published": "2026-10-18T05:51:24+00:00",
+   "gameId": "401860904",
+   "teams": [
+    "San Diego State",
+    "Fresno State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Ohio Defeats Sacramento State 48-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8uykt/postgame_thread_ohio_defeats_sacramento_state_487/",
+   "published": "2026-10-18T05:22:31+00:00",
+   "gameId": "401866445",
+   "teams": [
+    "Ohio",
+    "Sacramento State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] San Jos\u00e9 State Defeats UTEP 24-11",
+   "url": "https://www.reddit.com/r/CFB/comments/1x8tysr/postgame_thread_san_jos\u00e9_state_defeats_utep_2411/",
+   "published": "2026-10-18T04:24:50+00:00",
+   "gameId": "401864523",
+   "teams": [
+    "San Jos\u00e9 State",
+    "UTEP"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] UTSA Defeats Navy 38-34",
