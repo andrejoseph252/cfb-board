@@ -33,6 +33,10 @@ export function newGame(me, opp, diffKey, lenKey){
 }
 const emit = (G, type, data = {}) => G.events.push({ type, ...data });
 
+/* Season mode's game plan, practice and freshness (scout.js builds them); plain games have none. */
+export const MD = { spd: 1, rec: 1, runBlock: 1, passPro: 1, latePro: 1, acc: 1, catchR: 0, paBite: 0, tempo: 1, cov: null, blitz: 1, fade: 1, cb: 1,
+  drive: { q: 0, td: 1, fg: 1, to: 1, time: 1 } };
+const mods = G => G.mods || MD;
 /* Team strength from ESPN's FPI efficiencies (0-100, ~50 average), as a small multiplier around 1. */
 const rate = v => (Number.isFinite(v) ? v : 50) - 50;
 
@@ -121,6 +125,9 @@ function pickCoverage(G, L){
   if (short){ w.c0 += .08; w.c1 += .15; w.c4 *= .4; }
   if (L >= 80){ w.c1 += .1; w.c2m += .08; w.c3 *= .7; w.c4 *= .7; }
   if (G.quarter >= 4 && G.clock < 150 && G.score[1] > G.score[0]){ w.c4 += .35; w.c3 += .1; w.c0 = 0; }
+  // Season mode: their scheme (what this defense is known for) and how much they blitz.
+  const M = mods(G);
+  if (M.cov) for (const k in w) w[k] *= (M.cov[k] ?? 1) * (k === 'c0' || k === 'c1' ? M.blitz : 1);
   let u = Math.random() * Object.values(w).reduce((a, x) => a + x, 0);
   for (const [k, v] of Object.entries(w)){ if ((u -= v) <= 0) return k; }
   return 'c3';
@@ -150,7 +157,8 @@ function assignCoverage(cov, { lb, cb1, cb2, fs, ss }, o, L){
 /* Lines everyone up for the next snap and picks this play's routes and coverage (so they can be previewed). */
 export function setupPlay(G){
   const L = G.los, b = clamp(G.y, HASH[0], HASH[1]), D = G.diff;
-  const oMul = 1 + rate(G.me.off) / 900, dMul = D.defSpd * (1 + rate(G.opp.def) / 900);
+  const M = mods(G), fade = G.quarter >= 3 ? M.fade : (1 + M.fade) / 2;
+  const oMul = (1 + rate(G.me.off) / 900) * M.spd * fade, dMul = D.defSpd * (1 + rate(G.opp.def) / 900);
   const off = [], def = [];
   [-3.2, -1.6, 0, 1.6, 3.2].forEach((dy, i) => off.push(mk('OL', 'off', L - .7, b + dy, SPEED.OL, { n: i })));
   // Formations. Shotgun (the default): the back offset beside the quarterback, toward the wide side, easy to tap
@@ -160,10 +168,10 @@ export function setupPlay(G){
   const qb = mk('QB', 'off', L - (F === 'under' ? 1.2 : F === 'pistol' ? 3.6 : 4.5), b, SPEED.QB * oMul);
   const rb = mk('RB', 'off', F === 'empty' ? L - 1.1 : L - (F === 'under' ? 5.5 : F === 'pistol' ? 6.2 : 5),
     F === 'empty' ? clamp(b - 12 * wide, 3, FW - 3) : F === 'pistol' || F === 'under' ? b : b + 2.6 * wide, SPEED.RB * oMul);
-  const te = mk('TE', 'off', L - .9, b - 5, SPEED.TE * oMul);
-  const x = mk('X', 'off', L - .9, Math.max(3, b - 19), SPEED.X * oMul);
-  const z = mk('Z', 'off', L - .9, Math.min(FW - 3, b + 19), SPEED.Z * oMul);
-  const sl = mk('SL', 'off', L - 1.2, F === 'trips' ? Math.min(b + 13.5, z.y - 4) : Math.min(b + 10.5, z.y - 5), SPEED.SL * oMul);
+  const te = mk('TE', 'off', L - .9, b - 5, SPEED.TE * oMul * M.rec);
+  const x = mk('X', 'off', L - .9, Math.max(3, b - 19), SPEED.X * oMul * M.rec);
+  const z = mk('Z', 'off', L - .9, Math.min(FW - 3, b + 19), SPEED.Z * oMul * M.rec);
+  const sl = mk('SL', 'off', L - 1.2, F === 'trips' ? Math.min(b + 13.5, z.y - 4) : Math.min(b + 10.5, z.y - 5), SPEED.SL * oMul * M.rec);
   if (F === 'trips'){ te.y = Math.min(b + 6.5, sl.y - 4); te.x = L - 1.2; }
   // Practice: only the receivers you asked for line up (the back always does, to block or take a handoff).
   const PR = G.practice, out = p => PR && p.role !== 'RB' && !PR.roles.includes(p.role);
@@ -235,7 +243,7 @@ export function setupPlay(G){
       off.length = 0; off.push(...keep); rec.length = 0; rec.push(x); x.num = 1;
       def.length = 0; def.push(cb1);
     }
-    Object.assign(cb1, { user: true, spd: 8.6, man: x });
+    Object.assign(cb1, { user: true, spd: 8.6 * M.cb, man: x });
   } else if (G.defDrill?.kind === 'rush'){
     // You're the edge rusher; the rest of the line stays blocked, so the rush is all on you.
     const me = dl[3];
@@ -246,7 +254,7 @@ export function setupPlay(G){
   G.play = { off, def, qb, rb, rec, all: [...off, ...def], t: 0, live: false, ball: { state: 'held', holder: qb, x: qb.x, y: qb.y, z: 1.6 },
     carrier: null, result: null, blitz, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [],
     forceTarget: G.defDrill?.full ? x : null, coverage: COVERAGES[cov], formation: F, noHandoff: F === 'empty',
-    pa: !!G.pa && !RUN_CALLS[G.call], paBite: .25 + .25 * Math.min(1, (G.stats.rush ? G.stats.rushYds / G.stats.rush : 3) / 5) };
+    pa: !!G.pa && !RUN_CALLS[G.call], paBite: .25 + M.paBite + .25 * Math.min(1, (G.stats.rush ? G.stats.rushYds / G.stats.rush : 3) / 5) };
   for (const p of G.play.all) p.face = p.team === 'off' ? 1 : -1;
 }
 
@@ -382,14 +390,14 @@ export function step(G, dt, inp){
       if (P.handed && d.role === 'LB' && P.t - P.handT < .6){ tx = d.x + .4; ty = carrier.y + (d.gap || 0); spd = d.spd * .55; }
       if (d.role === 'DL' && !d.free){
         // Run blocking: linemen hold their man until he sheds.
-        if (P.t < d.shed * .45 + .5){ spd = d.spd * .25; } else d.free = true;
+        if (P.t < d.shed * .45 * mods(G).runBlock + .5){ spd = d.spd * .25; } else d.free = true;
       }
     } else if (ball.state === 'air' && d.mode === 'ball'){
       tx = ball.tx; ty = ball.ty;
     } else if (ball.state === 'air' && (d.role === 'DL' || d.blitz)){
       tx = qb.x; ty = qb.y; spd = d.spd * .4;
     } else if (d.role === 'DL'){
-      if (!d.free && P.t >= d.shed) { d.free = true; }
+      if (!d.free && P.t >= d.shed * mods(G).passPro * (G.quarter >= 3 ? mods(G).latePro : 1)) { d.free = true; }
       // Pass rush. The ends speed-rush: around the edge to a spot behind the quarterback, so stepping up in the pocket
       // gets away from them. The tackles bull-rush: they drive their blocker back, and the pocket shrinks.
       if (d.free){
@@ -607,6 +615,61 @@ function cpuRun(G, c){
   const n = Math.hypot(1, steer * .6);
   return { carStick: { x: 1 / n, y: steer * .6 / n }, juke: 0, truck: false };
 }
+/* ---------- coach mode (season): your players run the call ---------- */
+/* The input for a snap you're coaching rather than playing: the quarterback reads it out and throws (or throws it
+   away), the option is read off the end, and the ball carrier picks his lane. */
+const COACH_QB = { hold: [1.6, 2.5], err: 2.7, react: .4 };
+export function coachInput(G){
+  const P = G.play, none = { steer: 0, targetY: null, juke: 0, dive: false, truck: false, qbMove: null, qbKeys: null, carStick: null };
+  if (!P?.live || P.result) return none;
+  if (P.carrier) return { ...none, ...autoRun(G, P.carrier) };
+  if (P.option && !P.handed){ if (!P.option.crash && P.t > .38) handoff(G); return none; }   // he sat on the quarterback: give
+  if (P.draw || P.runCall) return none;
+  if (canThrow(G)) autoQB(G);
+  return none;
+}
+function autoQB(G){
+  const P = G.play, qb = P.qb, Q = COACH_QB;
+  if (P.qbAt == null) P.qbAt = rnd(...Q.hold) + (P.pa ? .35 : 0);
+  const heat = Math.min(99, ...P.def.filter(d => (d.free || d.blitz) && !d.eng && d.stun <= 0).map(d => dist(d, qb)));
+  if (heat < 3.5 && P.pressureAt == null){ P.pressured = true; P.pressureAt = P.t; }
+  const bail = P.pressureAt != null && P.t - P.pressureAt >= Q.react;
+  // About to be hit: some of the time he feels it and gets rid of it; the rest, he's sacked.
+  if (heat < 1.8 && P.feel == null) P.feel = Math.random() < .55;
+  const danger = heat < 1.8 && P.feel;
+  if (P.t < .8 || P.t < P.qbAt && !bail && !danger) return;
+  // His read: usually the most open man, sometimes his second look (he's good, not perfect).
+  const reads = P.rec.filter(r => r.routeName !== 'block' && !r.down).map(r => {
+    const g = ghostAt(r, .5); return { r, sc: Math.min(12, ...P.def.filter(d => d.role !== 'DL').map(d => dist(d, g))) + (r.x - P.los) * .04 };
+  }).sort((a, b) => b.sc - a.sc);
+  if (!reads.length) return;
+  const pickd = reads[1] && Math.random() < .3 ? reads[1] : reads[0], best = pickd.r, bs = pickd.sc;
+  // Nobody open: hang in a beat longer, then throw it away rather than force it into coverage.
+  if (bs < 1.7 && P.t < P.qbAt + .9 && !bail && !danger) return;
+  if (bs < 1.1 || danger && reads[0].sc < 2.4 && Math.random() < .7){ P.throwAway = true; P.aimedAt = null; return throwTo(G, P.los + 3, qb.y < MID ? -3 : FW + 3); }
+  let T = .6, g;
+  for (let i = 0; i < 5; i++){ g = ghostAt(best, T); T = trajectory(G, g.x, g.y).T; }
+  const e = Q.err * (P.pressured ? 1.9 : 1) * mods(G).acc * (1 - rate(G.me.off) / 200), wob = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15 * e;
+  P.aimedAt = best;
+  throwTo(G, g.x + wob(), g.y + wob());
+}
+/* The ball carrier: four yards ahead, the lane farthest from anyone free (and off the sideline), following the
+   called run's design for its first steps, with a juke as a man closes in. */
+function autoRun(G, c){
+  // A lineman still held by his blocker isn't a threat (that's the hole).
+  const P = G.play, free = P.def.filter(d => d.x > c.x - 1 && !d.down && d.stun <= 0 && !d.eng && !(d.role === 'DL' && !d.free && d.ol));
+  let best = 0, bs = -1e9;
+  for (let dy = -6; dy <= 6; dy += 1.5){
+    const px = c.x + 4, py = clamp(c.y + dy, 2, FW - 2);
+    const sc = Math.min(12, ...free.map(d => Math.hypot(d.x - px, d.y - py))) - Math.abs(dy) * .25 - (py < 4 || py > FW - 4 ? 2.5 : 0);
+    if (sc > bs){ bs = sc; best = dy; }
+  }
+  if (P.runPath && P.t - P.carryT < (P.runCall === 'outside' || c.role === 'QB' ? .8 : .45)) return { carStick: null };   // let the design develop (the stretch longer)
+  const lat = clamp(best / 4, -1, 1), n = Math.hypot(1, lat * .7);
+  const ahead = free.sort((a, b) => dist(a, c) - dist(b, c))[0], dd = ahead ? dist(ahead, c) : 99;
+  return { carStick: { x: 1 / n, y: lat * .7 / n }, steer: lat, juke: dd < 2.5 && dd > 1.6 && (c.jukeCD || 0) <= 0 && Math.random() < .35 ? (Math.sign(lat) || 1) : 0 };
+}
+
 /* How close your defender has to be to where the ball comes down for a jump to get a hand on it (yards). */
 export const JUMP_R = 2.2;
 /* Your defender: runs the way you push the stick (a drag from where your finger went down) or the arrow keys
@@ -665,13 +728,19 @@ export function applyStop(G, r, k, how, { gain = 0, x = null } = {}){
 export const canThrow = G => { const P = G.play; return P?.live && !P.result && P.ball.state === 'held' && P.ball.holder === P.qb && !P.carrier; };
 export const canHandoff = G => { const P = G.play; return canThrow(G) && !P.handed && !P.noHandoff && P.t < (P.option ? .65 : 1.3); };
 
-/* The ball's flight to a spot, set by how far it goes (so by how far you pull back): a bullet (flat and quick) on
-   short and intermediate throws, lofted (slower, higher, dropping in over the top) on deep ones. Shared with the aim
-   arc so what you see is what's thrown. */
-export const LOFT_AT = 26;
+/* The ball's flight to a spot, set by how far it goes (so by how far you pull back), in three kinds of throw:
+   a bullet (flat and quick) up to 22 yards, a touch throw (over the linebackers, under the safeties) to 36, and a
+   deep ball (real air under it) beyond. Each picks up where the one before leaves off, so a slightly longer pull is
+   only ever a slightly longer flight. Shared with the aim arc so what you see is what's thrown. */
+export const TOUCH_AT = 22, DEEP_AT = 36;
+const bullet = d => ({ T: .22 + d / 28, h: Math.max(.4, d * .085) });
 export function trajectory(G, tx, ty){
-  const qb = G.play.qb, d = Math.hypot(tx - qb.x, ty - qb.y) || 1, loft = d > LOFT_AT;
-  return loft ? { T: .4 + d / 21, h: Math.max(.8, d * .24), loft } : { T: .22 + d / 28, h: Math.max(.4, d * .085), loft };
+  const qb = G.play.qb, d = Math.hypot(tx - qb.x, ty - qb.y) || 1;
+  if (d <= TOUCH_AT) return { ...bullet(d), tier: 'bullet', loft: false };
+  const b = bullet(TOUCH_AT);
+  if (d <= DEEP_AT) return { T: b.T + (d - TOUCH_AT) / 19, h: b.h + (d - TOUCH_AT) * .23, tier: 'touch', loft: true };
+  const T = b.T + (DEEP_AT - TOUCH_AT) / 19, h = b.h + (DEEP_AT - TOUCH_AT) * .23;
+  return { T: T + (d - DEEP_AT) / 17, h: h + (d - DEEP_AT) * .3, tier: 'deep', loft: true };
 }
 /* How far your throw can stray from where you aimed (yards, about one standard deviation): more on longer throws,
    under pressure, on the run and backpedaling; less on easier levels and for better offenses. */
@@ -685,7 +754,7 @@ export function throwSpread(G, tx, ty){
   s *= ({ rookie: .55, pro: .75, allpro: 1, legend: 1.1 })[G.diffKey] ?? 1;
   s *= 1 - rate(G.me.off) / 300;
   if (G.practice) s *= .5;
-  return s;
+  return s * mods(G).acc;
 }
 const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
 /* Your slingshot throw: lands near where you aimed, by the spread above. */
@@ -797,6 +866,7 @@ export function handoff(G){
 
 function resolvePass(G){
   const P = G.play, b = P.ball, land = { x: b.tx, y: b.ty }, D = G.diff;
+  if (P.throwAway) return end(G, { type: 'inc', why: 'Thrown away' });
   if (b.ty < 0 || b.ty > FW || b.tx > 110 || b.tx < -10) return end(G, { type: 'inc', why: 'Out of bounds' });
   const recs = P.rec.filter(r => !r.down).sort((a, c) => dist(a, land) - dist(c, land));
   const defs = P.def.filter(d => d.role !== 'DL' && d.stun <= 0).sort((a, c) => dist(a, land) - dist(c, land));
@@ -812,7 +882,7 @@ function resolvePass(G){
   }
   // Deep balls are harder: a defender can contest from further away, and the catch itself is tougher.
   const air = Math.max(0, land.x - P.los), CR = 1.7 + Math.min(1.2, air / 25);
-  if (rd <= (D.catchR || 1.6)){
+  if (rd <= (D.catchR || 1.6) + mods(G).catchR){
     let contest = dd < CR ? (CR - dd) / CR : 0;
     // Leverage, judged along the receiver's run: a defender trailing behind him is shielded out of the play; one on
     // top of him (over a go route, in front of a crosser) is in position to make it.
@@ -829,7 +899,7 @@ function resolvePass(G){
       const keep = contest > .2 ? .2 : .35; r.vx *= keep; r.vy *= keep;
       const who = G.me.names?.[r.role];
       emit(G, 'sfx', { name: 'catch' }); pop(P, r.x, r.y, contest > .3 ? 'GREAT CATCH!' : who ? who.toUpperCase() : 'CAUGHT', contest > .3 ? '#ffd84a' : '#fff');
-      if (r.x >= 100) return end(G, { type: 'td', x: r.x, y: r.y, pass: true });
+      if (r.x >= 100) return end(G, { type: 'td', x: r.x, y: r.y, pass: true, rec: r });
       becomeCarrier(P, r); P.catchX = r.x;
       return;
     }
@@ -870,6 +940,7 @@ function end(G, r){
 
 /* Applies a finished play to the game: score, downs, clock, stats. Returns what happens next:
    'next' (another snap), 'td', 'turnover' (other team's ball at G.turnoverX), 'safety', 'downs'. */
+const byRole = (G, role) => (G.stats.by ||= {})[role] ||= { rec: 0, yds: 0, td: 0, car: 0, ryds: 0, rtd: 0 };
 export function applyResult(G){
   const P = G.play, r = P.result, S = G.stats, L = P.los;
   S.plays++;
@@ -881,6 +952,8 @@ export function applyResult(G){
     case 'td':
       if (rushing) { S.rush++; S.rushYds += Math.round(100 - L); S.rushTD++; }
       else { S.passYds += Math.round(100 - L); S.passTD++; }
+      { const who = r.rec?.role || P.carrier?.role, b = who && byRole(G, who);
+        if (b && rushing){ b.car++; b.ryds += Math.round(100 - L); b.rtd++; } else if (b){ b.rec++; b.yds += Math.round(100 - L); b.td++; } }
       S.longest = Math.max(S.longest, Math.round(100 - L));
       G.lastPlay.text = `${Math.round(100 - L)}-yard ${rushing ? 'run' : 'pass'}`;
       out = 'td'; break;
@@ -900,6 +973,7 @@ export function applyResult(G){
     default: {   // tackle, dive, out of bounds
       if (spot <= 0){ out = 'safety'; break; }
       if (rushing){ S.rush++; S.rushYds += gain; } else { S.passYds += gain; }
+      if (P.carrier){ const b = byRole(G, P.carrier.role); if (rushing){ b.car++; b.ryds += gain; } else { b.rec++; b.yds += gain; } }
       if (gain > S.longest) S.longest = gain;
       G.lastPlay.text = `${rushing ? 'Run' : 'Catch'} for ${gain} yard${Math.abs(gain) === 1 ? '' : 's'}${r.type === 'oob' ? ', out of bounds' : ''}`;
       clockRuns = r.type !== 'oob';
@@ -908,7 +982,7 @@ export function applyResult(G){
   }
   if (out === 'next' && clockRuns){
     // The clock keeps running until the next snap (see tickRunoff); in the last two minutes first downs stop it briefly.
-    G.runoff = lateInHalf(G) && G.down === 1 ? 6 : 26;
+    G.runoff = lateInHalf(G) && G.down === 1 ? 6 : Math.round(26 * mods(G).tempo);
   } else G.runoff = 0;
   return out;
 }
@@ -1024,12 +1098,14 @@ export function stepKick(G, dt){
 /* Simulates a drive by the opponent starting `ytg` yards from your goal line. Returns what happened and where you
    get the ball back (x from your goal line), plus the yard-line path for the drive-summary animation. */
 /* `behind`: the drive picks up after a stop (an incompletion or a sack), so it's less likely to finish. */
-export function simDrive(G, ytg, { needed = null, behind = false } = {}){
+export function simDrive(G, ytg, { needed = null, behind = false, dm = null } = {}){
   ytg = Math.round(clamp(ytg, 1, 99));
-  const D = G.diff, q = clamp(D.opp + (rate(G.opp.off) - rate(G.me.def)) / 300, .12, .78);
-  let pTD = clamp(q * .82 + (70 - ytg) * .006, .05, .88);
-  let pFG = clamp(.17 + (ytg < 50 ? .08 : 0), 0, 1 - pTD);
-  const pTO = .11 * (1.25 - q), pMiss = .04;
+  // Season mode: your defensive game plan (M.drive) and this drive's call (dm) shade how it goes.
+  const W = mods(G).drive, C = dm || { q: 0, td: 1, fg: 1, to: 1, time: 1 };
+  const D = G.diff, q = clamp(D.opp + (rate(G.opp.off) - rate(G.me.def)) / 300 + W.q + C.q, .1, .8);
+  let pTD = clamp((q * .82 + (70 - ytg) * .006) * W.td * C.td, .04, .9);
+  let pFG = clamp((.17 + (ytg < 50 ? .08 : 0)) * W.fg * C.fg, 0, 1 - pTD);
+  const pTO = .11 * (1.25 - q) * W.to * C.to, pMiss = .04;
   // Overtime: if a field goal won't do, they go for it.
   if (needed === 'td'){ pTD = clamp(pTD + pFG * .4, 0, .9); pFG = 0; }
   if (behind){ pTD *= .7; pFG *= .85; }
@@ -1045,7 +1121,7 @@ export function simDrive(G, ytg, { needed = null, behind = false } = {}){
   if (G.ot && kind === 'punt') kind = 'downs';
   const yards = ytg - endAt, plays = Math.max(1, Math.round(yards / rnd(5, 8)) + Math.floor(rnd(0, 3)) + (kind === 'punt' ? 3 : 0));
   // A bit quicker than real life so you get the ball back more often (arcade pacing).
-  let time = Math.round(plays * rnd(17, 24) * (G.quarter === 4 && G.score[1] > G.score[0] ? 1.35 : 1));
+  let time = Math.round(plays * rnd(17, 24) * (G.quarter === 4 && G.score[1] > G.score[0] ? 1.35 : 1) * W.time * C.time);
   // Running out of time: the drive stops where it was, with a last-second field goal try if in range.
   let half = false;
   if (!G.ot){

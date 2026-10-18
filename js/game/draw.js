@@ -256,13 +256,14 @@ export function createRenderer(canvas){
     }
   }
   function aimArc(G, aim){
-    // The real flight (lofted on a deep throw, a bullet otherwise) and, around the spot, how far the throw can
-    // stray right now: the ring grows under pressure and on the run.
-    const P = G.play, q = P.qb, { h, loft } = trajectory(G, aim.x, aim.y), sd = throwSpread(G, aim.x, aim.y), pts = [];
+    // The real flight (white: a bullet; blue: a touch throw over the linebackers; gold: a deep ball) and, around the
+    // spot, how far the throw can stray right now: the ring grows under pressure and on the run.
+    const P = G.play, q = P.qb, { h, tier } = trajectory(G, aim.x, aim.y), sd = throwSpread(G, aim.x, aim.y), pts = [];
     for (let i = 0; i <= 24; i++){ const s = i / 24; pts.push(toScreen(q.x + (aim.x - q.x) * s, q.y + (aim.y - q.y) * s, 1.8 - .6 * s + 4 * h * s * (1 - s))); }
-    dotted(pts, loft ? '#ffd84a' : '#ffffff', 2);
+    const col = { bullet: [255, 255, 255], touch: [125, 216, 255], deep: [255, 216, 74] }[tier];
+    dotted(pts, `rgb(${col})`, 2);
     const [tx, ty] = toScreen(aim.x, aim.y), seg = 24;
-    ctx.fillStyle = loft ? 'rgba(255,216,74,.85)' : 'rgba(255,255,255,.85)';
+    ctx.fillStyle = `rgba(${col},.85)`;
     for (let a = 0; a < seg; a++){ const th = a / seg * Math.PI * 2, [x, y] = toScreen(aim.x + Math.cos(th) * sd * 1.6, aim.y + Math.sin(th) * sd * 1.6); ctx.fillRect(x, y, 1, 1); }
     ctx.fillStyle = '#fff'; ctx.fillRect(tx - 1, ty, 3, 1); ctx.fillRect(tx, ty - 1, 1, 3);
   }

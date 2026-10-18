@@ -57,5 +57,6 @@ export const lines = () => getJSON(`data/lines.json?t=${Math.floor(Date.now() / 
 export const spreads = () => getJSON(`data/spreads.json?t=${Math.floor(Date.now() / 600e3)}`, 10 * MIN);
 export const news = team => getJSON(`${SITE}/news?limit=${team ? 12 : 30}${team ? `&team=${encodeURIComponent(team)}` : ''}`, 10 * MIN);
 // Every FBS team with its colors (for the game); changes about never, so it's kept for a day.
+export const teamStats = id => getJSON(`${SITE}/teams/${id}/statistics`, 60 * MIN);
 export const teams = () => getJSON(`${SITE}/teams?groups=80&limit=300`, 24 * 60 * MIN);
 export const predictor = id => getJSON(`${CORE}/events/${id}/competitions/${id}/predictor`, 60 * MIN);
