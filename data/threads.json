@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-19T07:13:44+00:00",
+ "updated": "2026-10-19T15:02:56+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2721,17 +2721,6 @@
    "published": "2026-10-09T17:33:49+00:00",
    "gameId": null,
    "teams": null
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Florida A&M @ Alabama State (12:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x1nmfu/game_thread_florida_am_alabama_state_1200_pm_et/",
-   "published": "2026-10-09T15:00:06+00:00",
-   "gameId": null,
-   "teams": [
-    "Florida A&M",
-    "Alabama State"
-   ]
   }
  ],
  "errors": []
