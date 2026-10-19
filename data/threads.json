@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-19T15:02:56+00:00",
+ "updated": "2026-10-19T20:45:28+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2702,25 +2702,6 @@
     "Florida State",
     "Louisville"
    ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Florida A&M Defeats Alabama State 28-27",
-   "url": "https://www.reddit.com/r/CFB/comments/1x1ufje/postgame_thread_florida_am_defeats_alabama_state/",
-   "published": "2026-10-09T19:22:54+00:00",
-   "gameId": "401868329",
-   "teams": [
-    "Florida A&M",
-    "Alabama State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Non-D1 Games \u2014 Friday, October 9",
-   "url": "https://www.reddit.com/r/CFB/comments/1x1rlmx/game_thread_nond1_games_friday_october_9/",
-   "published": "2026-10-09T17:33:49+00:00",
-   "gameId": null,
-   "teams": null
   }
  ],
  "errors": []
