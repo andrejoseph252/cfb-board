@@ -47,27 +47,29 @@ function outlookPanel(o, color){
   const sum = from => o.dist.reduce((s, q, k) => s + (o.w + k >= from ? q : 0), 0);
   const exp = o.w + o.rest.reduce((s, r) => s + (r.p ?? .5), 0);
   const winning = Math.floor(o.total / 2) + 1;
-  const done = (need, v) => o.w >= need ? 'Clinched' : o.w + o.n < need ? 'Out' : v;
-  const cell = (v, k, sub) => `<div><b>${v}</b><span>${k}</span><small>${sub}</small></div>`;
-  const strip = cell(`${Math.round(exp)}–${o.total - Math.round(exp)}`, 'Projected', `${exp.toFixed(1)} expected wins`) +
-    cell(done(6, chance(sum(6))), 'Bowl eligible', '6+ wins') +
-    cell(done(winning, chance(sum(winning))), 'Winning record', `${winning}+ wins`) +
-    cell(chance(o.dist[o.n]), 'Win out', `${o.n} left`);
+  // Each milestone as a compact row: its chance with a thin bar (full or empty once it's settled).
+  const row = (need, p, label) => {
+    const done = need != null && o.w >= need, out = need != null && o.w + o.n < need, v = done ? 1 : out ? 0 : p;
+    return `<div class="ol-m" title="${esc(label)}: ${done ? 'clinched' : out ? 'out of reach' : chance(p)}"><span>${label}</span><b>${done ? '✓' : out ? '–' : chance(p)}</b><i><em style="width:${(v * 100).toFixed(1)}%"></em></i></div>`;
+  };
+  const top = `<div class="ol-top"><div class="ol-proj"><small>Projected</small><b>${Math.round(exp)}–${o.total - Math.round(exp)}</b><span>${exp.toFixed(1)} exp. wins · ${o.n} left</span></div>
+    <div class="ol-ms">${row(6, sum(6), 'Bowl eligible')}${row(winning, sum(winning), `Winning record`)}${row(null, o.dist[o.n], `Win out (${o.n}–0)`)}</div></div>`;
 
-  // One bar per possible final record, in the team's color; the three likeliest carry their chance.
-  const max = Math.max(...o.dist), top = [...o.dist.keys()].sort((a, b) => o.dist[b] - o.dist[a]).slice(0, 3);
+  // One bar per possible final record: bowl-eligible finishes in the team's color, the rest muted, the likeliest
+  // strongest; the three likeliest carry their chance.
+  const max = Math.max(...o.dist), best = o.dist.indexOf(max), lab = [...o.dist.keys()].sort((a, b) => o.dist[b] - o.dist[a]).slice(0, 3);
   const bars = o.dist.map((q, k) => {
-    const r = `${o.w + k}–${o.l + o.n - k}`;
-    return `<div class="dist-col${o.w + k === 6 && o.w < 6 ? ' bowl-line' : ''}" tabindex="0" aria-label="${r}: ${chance(q)}">
-      <span class="dist-lab">${top.includes(k) && q >= .005 ? chance(q) : ''}</span>
-      <span class="dist-bar" style="height:${Math.max(2, q / max * 100).toFixed(1)}%"></span>
+    const r = `${o.w + k}–${o.l + o.n - k}`, bowl = o.w + k >= 6;
+    return `<div class="dist-col${bowl ? ' bowl' : ''}${k === best ? ' best' : ''}" tabindex="0" aria-label="${r}: ${chance(q)}">
+      <span class="dist-lab">${lab.includes(k) && q >= .005 ? chance(q) : ''}</span>
+      <span class="dist-bar" style="height:${Math.max(3, q / max * 100).toFixed(1)}%"></span>
       <span class="dist-x">${r}</span><span class="dist-tip">Finish <b>${r}</b>: ${chance(q)}</span></div>`;
   }).join('');
-  const bowlKey = o.w < 6 && o.w + o.n >= 6 ? '<span class="dist-key"><i></i>bowl eligible</span>' : '';
-  return panel('Season outlook', `<div class="ol-strip">${strip}</div>
-    <div class="dist-head"><span>Chance of each final record</span>${bowlKey}</div>
-    <div class="dist" role="img" aria-label="Chance of each final record" style="--c:${esc(color)}">${bars}</div>
-    <p class="tt-note">From ESPN's FPI win chance for each remaining game (live win probability during games)${o.unknown ? `; ${o.unknown} without one count as 50/50` : ''}.</p>`, ' data-tt="outlook"');
+  const firstBowl = o.dist.findIndex((_, k) => o.w + k >= 6), nb = firstBowl < 0 ? 0 : o.dist.length - firstBowl;
+  const bracket = firstBowl > 0 ? `<div class="ol-bracket" style="--from:${firstBowl};--n:${o.dist.length}"><span>Bowl eligible</span></div>` : '';
+  return panel('Season outlook', `${top}
+    <div class="dist" role="img" aria-label="Chance of each final record" style="--c:${esc(color)}">${bars}</div>${nb && firstBowl > 0 ? bracket : ''}
+    <p class="tt-note">Chance of each final record, from ESPN FPI${o.unknown ? ` (${o.unknown} game${o.unknown === 1 ? '' : 's'} as 50/50)` : ''}.</p>`, ' data-tt="outlook"');
 }
 
 /* Win chance as a small pill, tinted from likely loss (red) through a gray toss-up to likely win (green). */
@@ -80,6 +82,7 @@ function chancePill(p, suffix = ''){
 
 /* ---------- the season, one row per game ---------- */
 function timeline(games, id){
+  const firstUp = games.find(g => g.state !== 'post');
   const rows = games.map(g => {
     const s = side(g, id), me = g[s], o = g[other(s)], rk = o.rank || apRank(o.id);
     const opp = `<span class="tl-o">${logo(o.logo, 'logo sm')}<span class="muted">${g.neutral ? 'vs' : s === 'home' ? 'vs' : 'at'}</span> ${rk ? `<span class="rank">${rk}</span>` : ''}${esc(o.name)}</span>`;
@@ -98,7 +101,7 @@ function timeline(games, id){
       res = `<span class="tl-r muted">${g.tbd ? 'TBD' : `${d.toLocaleDateString(undefined, {weekday:'short'})} ${fmtTime(d)}`}</span><span class="tl-m none"></span>
         <span class="tl-p">${chancePill(p == null ? null : s === 'home' ? p : 1 - p)}</span>`;
     }
-    return `<a class="tl-row" href="${gameHref(g.id)}"><span class="tl-d">${esc(dateShort(g.date))}</span>${opp}${res}</a>`;
+    return `<a class="tl-row${g === firstUp ? ' next' : ''}" href="${gameHref(g.id)}"><span class="tl-d">${esc(dateShort(g.date))}</span>${opp}${res}</a>`;
   }).join('');
   return panel('Season', `<div class="tl">${rows}</div>`, ' data-tt="season"');
 }
@@ -159,17 +162,51 @@ function profile(id){
     <p class="tt-note">Rank among ${n} FBS teams; the bar shows where that is, longer is better. Schedule strength: #1 is the hardest.</p>`, ' data-tt="profile"');
 }
 
-/* ---------- header ---------- */
-function header(t, color){
+/* ---------- hero: the team in its colors, its record, and the whole season at a glance ---------- */
+/* One tile per game: a win or a loss (green, red), the live game, or an upcoming one with its win chance. */
+function strip(games, id){
+  const firstUp = games.find(g => g.state !== 'post');
+  return `<div class="th-strip" style="--n:${games.length}">${games.map(g => {
+    const s = side(g, id), me = g[s], o = g[other(s)], when = `${dateShort(g.date)} ${g.neutral ? 'vs' : s === 'home' ? 'vs' : 'at'} ${o.name}`;
+    let cls, mark, tip;
+    if (g.state === 'post' && g.completed){ const won = winnerSide(g) === s; cls = won ? 'W' : 'L'; mark = won ? 'W' : 'L'; tip = `${won ? 'W' : 'L'} ${me.score}–${o.score}`; }
+    else if (g.state === 'in'){ cls = 'live'; mark = `${me.score}-${o.score}`; tip = 'Live'; }
+    else { const p = pHome(g), q = p == null ? null : s === 'home' ? p : 1 - p; cls = 'up' + (g === firstUp ? ' next' : ''); mark = q == null ? '–' : pct(q); tip = q == null ? 'Upcoming' : `${chance(q)} to win`; }
+    return `<a class="ts ${cls}" href="${gameHref(g.id)}" title="${esc(when)} · ${esc(tip)}" aria-label="${esc(when)}: ${esc(tip)}">${logo(o.logo, 'logo')}<i>${esc(mark)}</i></a>`;
+  }).join('')}</div>`;
+}
+function header(t, color, games){
   const ap = apRank(t.id), r = state.rankings?.ranks.find(x => String(x.id) === String(t.id));
   const move = r?.prev ? r.prev - r.rank : 0, f = state.fpi?.byTeam[t.id], st = state.standings?.byTeam[t.id];
-  const facts = [t.record && `<b>${esc(t.record)}</b>`, st?.confRec && `${rec(st.confRec)} ${esc(CONF[st.conf] || 'conf')}`,
+  const pills = [t.record && `<b>${esc(t.record)}</b>`, st?.confRec && `<b>${rec(st.confRec)}</b> ${esc(CONF[st.conf] || 'Conf')}`,
     ap && `AP <b>#${ap}</b>${move ? ` <span class="tt-move">${move > 0 ? '▲' : '▼'}${Math.abs(move)}</span>` : ''}`,
     f?.rank && `FPI <b>#${f.rank}</b>`].filter(Boolean);
-  return `<header class="tt-head" style="--mt:${esc(color)};--mt-ink:${inkOn(color)}">
-    <span class="mt-disc tt-disc">${logo(t.logo, 'logo')}</span>
-    <div class="tt-main"><h2 title="${esc(t.full || t.name)}">${STAR}${esc(t.name || t.full)}</h2><div class="tt-facts">${facts.map(x => `<span>${x}</span>`).join('')}</div></div>
-    <button class="tt-change" type="button" data-teamchange>Change team</button></header>`;
+  return `<header class="th" style="--mt:${esc(color)};--mt-ink:${inkOn(color)}">
+    <span class="th-wm" aria-hidden="true">${logo(t.logo, 'logo lg')}</span>
+    <div class="th-top"><span>${esc(CONF[st?.conf] || '')}${state.season ? ` · ${esc(state.season)} season` : ''}</span><button class="th-change" type="button" data-teamchange>Change team</button></div>
+    <div class="th-id"><span class="th-disc">${logo(t.logo, 'logo lg')}</span>
+      <div class="th-main"><h2 title="${esc(t.full || t.name)}">${esc(t.name || t.full)}${STAR}</h2><div class="th-pills">${pills.map(x => `<span>${x}</span>`).join('')}</div></div></div>
+    ${strip(games, t.id)}</header>`;
+}
+
+/* ---------- up next: the next game, front and center (this week's game card while it's on the board) ---------- */
+function upNext(team, color){
+  const board = state.games.find(mySide);
+  if (board) return panel('This week', card(board), ' data-tt="week"');
+  const next = myNextGame(), bye = state.pickedWeek ? 'No game in the week you picked' : 'Bye this week';
+  if (!next) return panel('This week', `<p class="tt-bye">${bye}</p>`, ' data-tt="week"');
+  const s = side(next, team.id), o = next[other(s)], me = next[s], d = new Date(next.date);
+  const p = pHome(next), q = p == null ? null : s === 'home' ? p : 1 - p, rk = o.rank || apRank(o.id);
+  const when = next.tbd ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : `${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${fmtTime(d)}`;
+  // The schedule feed has no colors for opponents; the board's teams (or a neutral) do.
+  const oc = state.games.flatMap(x => [x.home, x.away]).find(x => String(x.id) === String(o.id))?.color;
+  const ocol = oc && oc !== '#8a948e' ? oc : o.color && o.color !== '#8a948e' ? o.color : 'var(--line)';
+  return `<a class="panel nx" data-tt="week" href="${gameHref(next.id)}" style="--a:${esc(color)};--b:${esc(ocol)}">
+    <div class="nx-k"><span class="nx-tag">Up next</span><span>${esc(when)}</span><span class="nx-bye">${bye}</span></div>
+    <div class="nx-vs"><span class="nx-t">${logo(me.logo || team.logo, 'logo lg')}<b>${esc(team.name || me.name)}</b></span>
+      <span class="nx-at">${next.neutral ? 'vs' : s === 'home' ? 'vs' : 'at'}</span>
+      <span class="nx-t">${logo(o.logo, 'logo lg')}<b>${rk ? `<i>${rk}</i>` : ''}${esc(o.name)}</b>${o.record ? `<small>${esc(o.record)}</small>` : ''}</span></div>
+    ${q == null ? '' : `<div class="nx-wp"><div><span><b>${chance(q)}</b> win chance</span><span>${esc(o.abbr || o.name)} <b>${chance(1 - q)}</b></span></div><i style="--p:${(q * 100).toFixed(1)}%"></i></div>`}</a>`;
 }
 
 /* ---------- team picker: search, or open one of the Power 4 or everyone else, then tap a team ---------- */
@@ -234,12 +271,11 @@ export function viewMyTeam(){
   const games = all.filter(g => g.st == null || String(g.st) === '2' || g.state !== 'post');   // outlook: regular season
   loadPredictions(all);
   const color = myColor(), c = color.startsWith('#') ? color : s.team.color || '#555';
-  const board = state.games.find(mySide), next = !board && myNextGame();
-  const nextLine = next ? ` · Next: <a class="dlink" href="${gameHref(next.id)}">${esc(dateShort(next.date))} ${String(next.home.id) === String(s.team.id) ? 'vs' : 'at'} ${esc(next[String(next.home.id) === String(s.team.id) ? 'away' : 'home'].name)}</a>` : '';
-  const week = panel('This week', board ? card(board) : `<p class="tt-bye">${state.pickedWeek ? 'No game in the week you picked' : 'Bye this week'}${nextLine}</p>`, ' data-tt="week"');
+  const tc = s.team.color && s.team.color !== '#8a948e' ? s.team.color : c;   // the hero and Up next wear the team's own color
+  const week = upNext(s.team, tc);
   // Wide screens: this week, profile and race on the left; outlook and season on the right. Phones: one column,
   // most-used first (order set in CSS).
-  return `<div class="tt" style="--mine:${esc(color)}">${header(s.team, c)}<div class="tt-grid">
+  return `<div class="tt" style="--mine:${esc(color)}">${header(s.team, tc, all)}<div class="tt-grid">
     <div class="tt-col">${week}${profile(s.team.id)}${race(s.team.id)}${newsPanel(s.team)}</div>
     <div class="tt-col">${outlookPanel(outlook(games, s.team.id), color)}${timeline(all, s.team.id)}</div></div></div>`;
 }

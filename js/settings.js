@@ -3,15 +3,18 @@ import { invalidate } from './state.js';
 import { myTeam, setMyTeam, STAR } from './myteam.js';
 
 const MODES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+const TABPOS = [['top', 'Top'], ['bottom', 'Bottom']];
 export const PALETTES = [['field', 'Field', '#1F6F43'], ['stadium', 'Stadium', '#C44E14'], ['paper', 'Paper', '#8A4B1C'], ['mono', 'Mono', '#111111']];
 
 // Defaults are dark Mono; the pre-paint script in index.html and demo.html uses the same defaults.
-const settings = { mode: 'dark', palette: 'mono', ...store.get('settings', {}) };
+const settings = { mode: 'dark', palette: 'mono', tabs: 'top', ...store.get('settings', {}) };
 
 function apply(){
   const root = document.documentElement;
   if (settings.mode === 'system') delete root.dataset.theme; else root.dataset.theme = settings.mode;
   if (settings.palette === 'field') delete root.dataset.palette; else root.dataset.palette = settings.palette;
+  // Phones: tabs along the top (the original) or as a bar at the bottom.
+  if (settings.tabs === 'bottom') root.dataset.tabs = 'bottom'; else delete root.dataset.tabs;
   // Match the phone's browser bar to the page background of whatever theme is showing.
   const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
   if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
@@ -26,6 +29,7 @@ function panelHTML(){
   return `<h3>Settings</h3>
     <div class="setgrp"><span>Appearance</span>${seg('mode', MODES)}</div>
     <div class="setgrp"><span>Theme</span>${seg('palette', PALETTES)}</div>
+    <div class="setgrp"><span>Tabs on phones</span>${seg('tabs', TABPOS)}</div>
     <div class="setgrp"><span>My team</span>${myTeam
       ? `<div class="mine-set"><b>${STAR}${esc(myTeam.name)}</b><button type="button" data-clearmine>Clear</button></div>`
       : '<p class="mine-hint">Open any team and tap <b>Make my team</b>. Its game is always pinned, with a ring in its color.</p>'}</div>

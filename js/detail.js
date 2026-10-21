@@ -34,13 +34,16 @@ let lastKey = null, lastHtml = '', restoreFocus = null;
 export function renderDetail(){
   const r = route(), el = $('#drawer'), body = $('#drawerBody');
   if (!r){
-    if (!el.hidden){
-      el.hidden = true; document.body.classList.remove('drawer-open');
+    if (!el.hidden && !el.classList.contains('closing')){
+      // Slide out, then hide (reopened in the meantime: it stays).
+      el.classList.add('closing'); document.body.classList.remove('drawer-open');
+      setTimeout(() => { if (!route()){ el.hidden = true; } el.classList.remove('closing'); }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 280);
       restoreFocus?.isConnected && restoreFocus.focus({ preventScroll: true });
     }
     lastKey = null; lastHtml = ''; return;
   }
   const key = r.type + ':' + r.id;
+  el.classList.remove('closing');
   if (el.hidden){ restoreFocus = document.activeElement; el.hidden = false; document.body.classList.add('drawer-open'); }
   // Typing a clock time into the stream sync panel: hold refreshes until they're done, so the boxes keep what they typed.
   if (key === lastKey && document.activeElement?.matches?.('#drawerBody .syncp input')) return;

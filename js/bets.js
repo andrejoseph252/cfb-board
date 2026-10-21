@@ -63,6 +63,15 @@ export function grade(pk, id){
   return { ...base, state: 'settled', result, net: result === 'W' ? toWin : result === 'L' ? -amt : 0, toWin, line, by: Math.abs(d) };
 }
 
+/* How a finished pick did as a bet: 'W' | 'L' | 'P' (push), or null before it's final. A spread pick wins or loses
+   against the spread, not on the score, so the pick's straight-up result (pk.result) only decides a moneyline pick.
+   Everything that shows a pick's result (cards, the recap, My picks) goes through this. */
+export function outcome(pk, id){
+  if (pk?.result !== 'W' && pk?.result !== 'L') return null;
+  const b = grade(pk, id);
+  return b.state === 'settled' ? b.result : pk.result;
+}
+
 /* The pick's spread as text, e.g. "−7.5" / "+3" / "PK". */
 export const fmtSpread = l => l === 0 ? 'PK' : (l < 0 ? '−' : '+') + String(Math.abs(l)).replace(/\.0$/, '');
 /* "Moneyline at 63¢" (short: "ML 63¢") / "OSU −3.5" for a graded bet. */

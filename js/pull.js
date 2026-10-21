@@ -5,6 +5,7 @@
 
    The indicator is a football: it lies on its side and stands up on the tee as you pull, spirals while the
    refresh runs, and turns into goalposts when it's done. */
+import { sheetMode } from './sheet.js';
 import * as api from './api.js';
 import { invalidate } from './state.js';
 import { loadBoard } from './data.js';
@@ -33,7 +34,7 @@ let start = null, dist = 0, busy = false;
 function scrollerFor(t){
   if (location.hash === '#play' || t.closest(SKIP)) return null;
   const sheet = t.closest('#drawerScroll');
-  if (sheet) return sheet;
+  if (sheet) return sheetMode() ? null : sheet;   // phones: pulling the sheet down closes it (sheet.js)
   return route() ? null : document.scrollingElement;   // drawer open: only its own content pulls
 }
 function show(d, state){

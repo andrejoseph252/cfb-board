@@ -1,5 +1,6 @@
 /* The "Week N in review" banner: one line of headlines, tap to open the full recap cards. */
 import { esc, pct, store } from '../util.js';
+import { signed } from '../bets.js';
 import { recap, showRecap } from '../recap.js';
 import { upsetWhy, BOLT } from '../upset.js';
 import { weekLabel } from '../picks.js';
@@ -42,8 +43,8 @@ function cards(r){
   }
   if (r.pk){
     const edge = r.pk.w - r.pk.exp;
-    out.push(`<div class="rc-card"><span class="rc-kick">Your picks</span><div class="rc-big">${r.pk.w}–${r.pk.n - r.pk.w}</div>
-      <p>${edge >= 0 ? '+' : '−'}${Math.abs(edge).toFixed(1)} wins vs. what the market expected.</p><button class="chipbtn" data-tab="picks">All picks</button></div>`);
+    out.push(`<div class="rc-card"><span class="rc-kick">Your picks</span><div class="rc-big">${r.pk.w}–${r.pk.l}${r.pk.push ? `–${r.pk.push}` : ''}</div>
+      <p>${r.pk.money ? `<b class="${r.pk.net > 0 ? 'pos' : r.pk.net < 0 ? 'neg' : ''}">${signed(r.pk.net)}</b> on the week · ` : ''}${edge >= 0 ? '+' : '−'}${Math.abs(edge).toFixed(1)} wins vs. what the market expected.</p><button class="chipbtn" data-tab="picks">All picks</button></div>`);
   }
   return out.join('');
 }
@@ -53,7 +54,7 @@ function headlines(r){
   if (r.upsets[0]){ const u = r.upsets[0]; h.push(`${u.g[u.ws].abbr} over ${rk(u.g[u.ls])}${u.g[u.ls].abbr}${u.p != null ? ` (${pct(u.p)}%)` : ''}`); }
   if (r.fallen.length) h.push(`${r.fallen.length} ranked team${r.fallen.length === 1 ? '' : 's'} fell`);
   if (r.classic) h.push(`${r.classic.label}: ${r.classic.g.away.abbr}-${r.classic.g.home.abbr}`);
-  if (r.pk) h.push(`Picks ${r.pk.w}–${r.pk.n - r.pk.w}`);
+  if (r.pk) h.push(`Picks ${r.pk.w}–${r.pk.l}${r.pk.push ? `–${r.pk.push}` : ''}`);
   return h.slice(0, 3);
 }
 

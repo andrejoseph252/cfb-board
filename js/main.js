@@ -7,9 +7,9 @@ import { picks, weekLabel, togglePin, setPick, setBet, removePick } from './pick
 import './pull.js';
 import { fire } from './live.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
-import { openXc } from './views/components.js';
+import { openXc, logoUrl } from './views/components.js';
 import { isMine, setMyTeam, myTeam } from './myteam.js';
-import { viewWeek, weekList, viewTop25 } from './views/slate.js';
+import { viewWeek, weekList } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
 import { viewPicks } from './views/picks.js';
@@ -18,26 +18,51 @@ import { viewMyTeam, picking, pickList } from './views/teamtab.js';
 import { news, hasUnseen, setNewsFilter, markRead, toggleStory } from './news.js';
 
 const TABS = [
-  ['week', 'This week', viewWeek, true], ['top25', 'Top 25', viewTop25, true], ['conf', 'Conferences', viewConferences, false],
+  ['week', 'This week', viewWeek, true], ['conf', 'Conferences', viewConferences, false],
   ['rankings', 'Rankings', viewRankings, false],
   ['team', 'My team', viewMyTeam, false], ['picks', 'My picks', viewPicks, false]
 ];
 if (state.tab === 'standings') state.tab = 'conf';
 if (state.tab === 'power') state.tab = 'rankings';
+// The Top 25 tab became This week's Ranked filter.
+if (state.tab === 'top25'){ state.tab = 'week'; state.tier = 'ranked'; store.set('tab', 'week'); store.set('tier', 'ranked'); }
 if (!TABS.some(([k]) => k === state.tab)) state.tab = 'week';
 
+/* Bottom tab bar icons (24px, 1.8 stroke, round joins). */
+const svgI = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const BT_ICON = {
+  week: svgI('M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4M8 14h3M8 17h6'),
+  conf: svgI('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'),
+  rankings: svgI('M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4'),
+  team: svgI('M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z'),
+  picks: svgI('M4 8a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2zM14 5v14')
+};
+
 /* ---------- rendering ---------- */
-let lastTabs = '', lastMain = '', firstPaint = false;
+let lastTabs = '', lastMain = '', firstPaint = false, entering = false;
 function renderHeader(){
   $('#wkTitle').textContent = state.week ? weekLabel(state.st, state.week) : 'This week';
   const gs = state.games, live = gs.filter(g => g.state === 'in').length, rr = gs.filter(g => g.home.rank && g.away.rank).length;
   $('#wkSub').textContent = state.loading && !gs.length ? 'Loading the slate…' :
     `${gs.length} FBS games · ${rr} ranked matchup${rr === 1 ? '' : 's'}${live ? ` · ${live} live` : ''}${state.updated ? ` · Updated ${fmtTime(state.updated)}` : ''}`;
-  const counts = { week: gs.length, top25: gs.filter(g => g.home.rank || g.away.rank).length, picks: Object.values(picks).filter(p => !p.result).length || null };
+  const counts = { week: gs.length, picks: Object.values(picks).filter(p => !p.result).length || null };
   // The My team tab is labeled with the team once one is picked.
   const label = (k, l) => k === 'team' && myTeam ? esc(myTeam.name) : l;
   const tabs = TABS.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${label(k, l)}${counts[k] ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('');
-  if (tabs !== lastTabs){ $('#tabs').innerHTML = tabs; lastTabs = tabs; }
+  const tkey = tabs + (myTeam?.logo || '') + (state.standings ? 1 : 0);
+  if (tkey !== lastTabs){
+    $('#tabs').innerHTML = tabs; lastTabs = tkey;
+    // Phones: the same tabs as a bar along the bottom, icon over a short label.
+    const mineAbbr = myTeam && (state.standings?.byTeam[myTeam.id]?.abbr || myTeam.name);
+    const short = { week: 'Week', conf: 'Conf', rankings: 'Rankings', team: myTeam ? esc(mineAbbr) : 'My team', picks: 'Picks' };
+    // One highlight slides between tabs (--i); on your team's tab it takes the team's own color.
+    const bt = $('#btabs'), i = TABS.findIndex(([k]) => k === state.tab);
+    bt.style.setProperty('--i', i); bt.style.setProperty('--n', TABS.length);
+    bt.classList.toggle('on-team', state.tab === 'team' && !!myTeam?.color);
+    if (myTeam?.color) bt.style.setProperty('--team', myTeam.color);
+    bt.innerHTML = TABS.map(([k]) => `<button class="btab" type="button" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">
+      <span class="bt-i">${k === 'team' && myTeam?.logo ? `<img src="${esc(logoUrl(myTeam.logo, 72))}" alt="">` : BT_ICON[k]}${k === 'picks' && counts.picks ? `<em>${counts.picks}</em>` : ''}</span><span class="bt-l">${short[k]}</span></button>`).join('');
+  }
   renderWeekPicker();
   renderStale();
   news();   // keeps the league feed fresh for the news button's dot
@@ -78,6 +103,8 @@ function renderMain(){
   if (html === lastMain) return;
   const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq';
   v.innerHTML = html; lastMain = html;
+  // A new tab eases in (a refresh of the same tab never does).
+  if (entering){ entering = false; v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); }
   if (!firstPaint && state.games.length){ firstPaint = true; settle(); }
   const box = keep ? $('#' + fid) : null;
   if (box){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
@@ -88,6 +115,7 @@ onRender({ header: renderHeader, main: () => { renderHeader(); renderMain(); }, 
 
 /* ---------- events ---------- */
 function setTab(k){
+  if (k !== state.tab) entering = true;
   state.tab = k; store.set('tab', k);
   invalidate('main'); window.scrollTo({ top: 0 });
 }

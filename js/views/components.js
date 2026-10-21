@@ -2,6 +2,7 @@ import { esc, pct, fmtTime, fmtDay, plural } from '../util.js';
 import { state } from '../state.js';
 import { marketsFor, sourceLabel } from '../markets.js';
 import { pins, picks } from '../picks.js';
+import { outcome } from '../bets.js';
 import { excitement, isHot, realizedExcitement } from '../excitement.js';
 import { lineFor } from '../lines.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
@@ -59,7 +60,7 @@ function teamRow(g, side, fx){
     <span class="stripe" style="background:${esc(t.color)}"></span>
     ${t.id ? `<a href="${teamHref(t.id)}" tabindex="-1" aria-hidden="true">${logo(t.logo)}</a>` : logo(t.logo)}
     <span class="tname"><span class="tn">${teamLink(t)}</span>${ballIcon(g, t)}<span class="rec">${esc(t.record || '')}</span>${fpiTag(t.id)}</span>
-    ${mine ? `<span class="mypick ${pk.result || ''}">${pk.result === 'W' ? 'Pick hit' : pk.result === 'L' ? 'Pick missed' : 'Your pick'}</span>` : '<span></span>'}
+    ${mine ? (o => `<span class="mypick ${o || ''}">${o === 'W' ? 'Pick hit' : o === 'L' ? 'Pick missed' : o === 'P' ? 'Push' : 'Your pick'}</span>`)(outcome(pk, g.id)) : '<span></span>'}
     <span class="score${fx?.side === side ? ' bump' : ''}"${fx?.side === side ? ` style="--d:-${Math.round(fx.elapsed)}ms"` : ''}>${g.state === 'pre' ? '' : g.syncing ? '–' : esc(t.score ?? '')}</span></div>`;
 }
 

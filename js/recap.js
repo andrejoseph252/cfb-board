@@ -1,5 +1,6 @@
 /* Last week in review: upsets (by closing price), ranked teams that lost, the most dramatic game (by win-probability
    swing), poll movers and your picks. Shown all week at the top of This week, below any live games. */
+import { outcome, grade } from './bets.js';
 import * as api from './api.js';
 import { state, invalidate, CONF } from './state.js';
 import { parseEvent, parseProbabilities } from './models.js';
@@ -87,9 +88,14 @@ export function recap(){
     debut: r.ranks.filter(t => !t.prev)
   } : null;
 
-  const mine = Object.entries(picks).filter(([, p]) => String(p.week) === String(w.week) && String(p.st) === String(w.st) && (p.result === 'W' || p.result === 'L'));
-  const pk = mine.length ? { w: mine.filter(([, p]) => p.result === 'W').length, n: mine.length,
-    exp: mine.reduce((s, [, p]) => s + (p.pClose ?? p.p ?? .5), 0) } : null;
+  // Graded as bets (a spread pick on the loser that covered is a win), the same as My picks.
+  const mine = Object.entries(picks).filter(([, p]) => String(p.week) === String(w.week) && String(p.st) === String(w.st) && (p.result === 'W' || p.result === 'L'))
+    .map(([id, p]) => ({ p, o: outcome(p, id), b: grade(p, id) }));
+  const decided = mine.filter(x => x.o !== 'P');
+  const pk = mine.length ? { w: mine.filter(x => x.o === 'W').length, l: mine.filter(x => x.o === 'L').length, push: mine.length - decided.length,
+    // What the market expected: a moneyline pick's closing chance; a spread pick is a coin flip by design.
+    exp: decided.reduce((s, x) => s + (x.b.type === 'ats' ? .5 : (x.p.pClose ?? x.p.p ?? .5)), 0),
+    net: mine.reduce((s, x) => s + (x.b.state === 'settled' ? x.b.net : 0), 0), money: mine.some(x => x.b.state === 'settled') } : null;
 
   return { w, finals, upsets, fallen, classic, classicLoading: !classic && swings.size === 0, poll, pk };
 }

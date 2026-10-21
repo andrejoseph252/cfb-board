@@ -16,8 +16,14 @@ const when = d => `${d.toLocaleDateString(undefined, {weekday:'short', month:'sh
 const vsName = (g, side) => { const o = g[side === 'home' ? 'away' : 'home'], r = o.rank || apRank(o.id);
   return `${g.neutral ? 'vs' : side === 'home' ? 'vs' : 'at'} ${r ? `#${r} ` : ''}${o.name}`; };
 
+/* No team yet: a slim sketched line in the bar's spot (same size and spacing) that opens the team picker. */
+const SHIELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2.6 2.4" stroke-linejoin="round"/><path d="M12 9v5M9.5 11.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+function pickHint(){
+  return `<button class="mt-hint" type="button" data-tab="team"><span class="mt-hint-i">${SHIELD}</span>
+    <span class="mt-hint-t"><b>Pick your team</b><small>Pin its game here every week</small></span>${CHEV}</button>`;
+}
 export function myTeamBar(){
-  if (!myTeam) return '';
+  if (!myTeam) return pickHint();
   const g = state.games.find(mySide), side = g && mySide(g), t = g?.[side];
   // Same rule as the card ring: the alternate color when the main one would vanish against the page (Iowa's black on
   // dark Mono becomes gold). If neither shows, keep the main color; the bar's edge still outlines it.
