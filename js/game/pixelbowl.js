@@ -15,7 +15,7 @@ import { attachNames } from './names.js';
 import { weekChallenges, challengeById } from '../challenges.js';
 import { createRenderer } from './drawhd.js';
 import * as hdUI from './hdui.js';
-import { initAudio, setSound, soundOn, sfx, resume, crowd } from './sfx.js';
+import { initAudio, setSound, soundOn, sfx, resume, crowd, bindTeams } from './sfx.js';
 import * as SV from './seasonview.js';
 import * as SC from './scout.js';
 
@@ -169,6 +169,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
   canvas = $('.pb-cv'); R = createRenderer(canvas); R.resize();
+  bindTeams(() => ({ me: (keyCtx?.main || G)?.me }));   // the home band plays for your team (and its chant)
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
   if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
   canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
@@ -369,7 +370,7 @@ function pixelCoin(face, cls){
   return `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true">${rects}</svg>`;
 }
 function afterToss(){
-  closeModal();
+  closeModal(); sfx('kickoff');
   if (G.firstHalfReceiver === 'me') kickoffToMe(); else oppDrive(kickoffYtg());
 }
 const kickoffYtg = () => Math.random() < .8 ? 75 : Math.round(60 + Math.random() * 20);
@@ -538,7 +539,7 @@ function applyOutcome(out){
   driveLog(line, true);
   switch (out){
     case 'next':
-      if (lp.first){ sfx('first'); banner('FIRST DOWN', '', '#ffd84a', 900); }
+      if (lp.first){ sfx(lp.gain >= 20 ? 'charge' : 'first'); banner('FIRST DOWN', '', '#ffd84a', 900); }
       return presnap();
     case 'td': G.score[0] += 6; endDrive('TOUCHDOWN', 100); return extraPoint();
     case 'turnover':
@@ -931,7 +932,7 @@ function startKeyDef(){
   G = S.newGame(main.opp, main.me, main.diffKey, main.lenKey);
   Object.assign(G, { youDefend: true, defDrill: { kind: kp.kind, full: kp.kind === 'cover' } });
   if (main.mods) G.mods = { ...S.MD, cb: main.mods.cb };
-  showHud(true); defRep(true, 100 - kp.r.path[kp.k], kp.toGo); G.down = kp.down;
+  showHud(true); defRep(true, 100 - kp.r.path[kp.k], kp.toGo); G.down = kp.down; sfx('defense');
 }
 /* Back to the real game with the rep's result applied to their drive. */
 function keyDone(g){
@@ -999,6 +1000,7 @@ function startChallenge(c){
 function challengeFinal(){
   phase = 'final'; showHud(true);
   const c = G.challenge, won = G.score[0] > G.score[1];
+  if (won) sfx('win');
   const rec = saved.challenges = saved.challenges || {}, r = rec[c.id] || { won: false, tries: 0 };
   if (!G.recorded){ G.recorded = true; r.tries++; if (won) r.won = true; rec[c.id] = r; save(); }
   sfx(won ? 'td' : 'boo'); if (won) G.cheer = 6;
@@ -1395,6 +1397,7 @@ function final(){
   }
   phase = 'final'; showHud(true);
   const won = G.score[0] > G.score[1], st = G.stats;
+  if (won) sfx('win');
   // Only a game played to the end counts, and only once.
   const rec = saved.results[G.diffKey] || { w: 0, l: 0 };
   const complete = (G.ot > 0 || G.quarter >= 4 && G.clock <= 0) && G.score[0] !== G.score[1];

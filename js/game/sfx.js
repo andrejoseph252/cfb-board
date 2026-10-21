@@ -259,14 +259,16 @@ const FX = {
     [392, 330, 262].forEach((f, i) => tone(f, .24, { type: 'triangle', vol: .09, at: i * .15, lp: 2000, vib: i === 2 ? 6 : 0 }));
     voices(1.1, { n: 7, lo: 140, hi: 260, glide: .82, vowel: 'oh', vol: .07, at: .1, att: .15 });
   },
+  // First down: the band's "da-da-DAH!" with a cymbal and a cheer.
   first(){
-    tone(784, .25, { type: 'sine', vol: .13 }); tone(1568, .12, { type: 'sine', vol: .025 });
-    tone(1175, .4, { type: 'sine', vol: .13, at: .08, verb: .2 }); tone(2350, .16, { type: 'sine', vol: .025, at: .08 });
+    [[0, .09], [.13, .09], [.26, .5]].forEach(([at, d], i) => { const top = i === 2; horn(mtof(top ? 77 : 72), d, { vol: .04, at, bright: 6 }); horn(mtof(top ? 72 : 69), d, { vol: .03, at, pan: .25 }); tuba(mtof(top ? 41 : 48), d, { vol: .045, at }); });
+    cymbal(.26, .03, .9); bassDrum(.26, .14);
+    cheer(1.2, .5);
   },
   td(){
-    [523, 659, 784, 1047, 784, 1047].forEach((f, i) => { const last = i === 5, d = last ? .6 : .14; brass(f, d, { vol: .045, at: i * .1 }); brass(f / 2, d, { vol: .03, at: i * .1 }); });
-    brass(659, .6, { vol: .04, at: .5 }); brass(784, .6, { vol: .035, at: .5 });
-    thump(90, 50, .25, { vol: .15, at: .5, verb: .3 });
+    [523, 659, 784, 1047, 784, 1047].forEach((f, i) => { const last = i === 5, d = last ? .7 : .13; horn(f, d, { vol: .045, at: i * .1, bright: 6 }); horn(f / 2, d, { vol: .03, at: i * .1, pan: .2 }); });
+    horn(659, .7, { vol: .035, at: .5 }); horn(784, .7, { vol: .03, at: .5 }); tuba(131, .7, { at: .5 });
+    bassDrum(.5, .2); cymbal(.5, .06, 1.8); roll(0, .45, .04);
     cheer(2.6, 1);
   },
   boo(){
@@ -279,24 +281,120 @@ const FX = {
   }
 };
 
-// The band, after your touchdown: a fight-song phrase on brass, snare on the off-beats, bass drum on the downbeats.
-FX.band = () => {
-  [392, 392, 523, 523, 659, 587, 523, 659, 784].forEach((f, i) => { const d = i === 8 ? .45 : .13; brass(f, d, { vol: .038, at: .5 + i * .14 }); brass(f * .75, d, { vol: .021, at: .5 + i * .14, pan: .3 }); });
-  [0, .28, .56, .84, 1.12].forEach(a => snare(.5 + a + .14, .07));
-  [0, .56, 1.12].forEach(a => thump(95, 52, .22, { vol: .2, at: .5 + a, verb: .25 }));
-};
-
-/* A drum cadence for Florida State moments: two bars of four on a deep tom, the first beat of each bar the loudest. */
-function cadence(start){
-  for (let i = 0; i < 8; i++){
-    const at = start + i * .42, acc = i % 4 === 0, f = acc ? 118 : 96;
-    thump(f * 1.7, f, .42, { vol: acc ? .26 : .17, at, drop: .035, verb: .3 });
-    tone(f * 1.59, .14, { type: 'sine', vol: acc ? .045 : .03, at, a: .002, verb: .1 });
-    noise(.03, { vol: acc ? .07 : .045, type: 'lowpass', freq: 1400, at, a: .001 });
+/* ---------- the band ----------
+   A marching band in synthesis: a brass section (a few players on each note, slightly apart in tune, the filter opening
+   with the breath, vibrato settling in), sousaphones, a glockenspiel, and a drumline (snares, quads, bass drum,
+   cymbals). Tunes are lists of [MIDI note or null for a rest, beats]. */
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function horn(f, dur, { vol = .04, at = 0, pan = 0, verb = .32, bright = 5, n = 3 } = {}){
+  const t = now() + at, g = ac.createGain(), lp = filt('lowpass', f * 1.2, 1.3);
+  lp.frequency.setValueAtTime(f * 1.1, t); lp.frequency.exponentialRampToValueAtTime(Math.min(6000, f * bright), t + .05);
+  lp.frequency.exponentialRampToValueAtTime(Math.min(3600, f * bright * .55), t + Math.max(.09, dur));
+  for (let i = 0; i < n; i++){
+    const o = ac.createOscillator(), l = ac.createOscillator(), lg = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = (i - (n - 1) / 2) * 8 + rnd(-3, 3);
+    l.frequency.value = rnd(4.8, 5.8); lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * .005, t + Math.min(.3, dur));
+    l.connect(lg); lg.connect(o.frequency); o.connect(lp);
+    o.start(t); l.start(t); o.stop(t + dur + .1); l.stop(t + dur + .1);
   }
+  shape(g.gain, t, vol, dur + .06, .022, dur * .7);
+  lp.connect(g); route(g, { pan, verb });
 }
-FX.drums = () => cadence(0);
-FX.drumsLate = () => cadence(2.3);   // after the touchdown fanfare
+const tuba = (f, dur, o = {}) => horn(f, dur, { vol: .05, bright: 2.6, n: 2, verb: .18, ...o });
+function glock(f, dur, { vol = .035, at = 0, pan = .3 } = {}){
+  tone(f, Math.min(1.2, dur + .6), { type: 'sine', vol, at, a: .002, verb: .35, pan });
+  tone(f * 4.07, .25, { type: 'sine', vol: vol * .25, at, a: .001, verb: .2, pan });
+}
+function bassDrum(at, vol = .26){ thump(88, 46, .38, { vol, at, drop: .05, verb: .3 }); noise(.05, { vol: vol * .2, type: 'lowpass', freq: 600, at, a: .001 }); }
+function cymbal(at, vol = .05, dur = 1.4){ noise(dur, { vol, at, type: 'highpass', freq: 5200, q: .4, a: .003, verb: .35 }); noise(dur * .5, { vol: vol * .6, at, freq: 3600, q: .7, a: .003 }); }
+function quad(f, at, vol = .12){ thump(f * 1.6, f, .2, { vol, at, drop: .03, verb: .22 }); }
+function roll(at, dur, vol = .05){ for (let k = 0; k < dur / .045; k++) snare(at + k * .045, vol * (.55 + .45 * k / (dur / .045))); }
+/* Plays a tune: fn(frequency, seconds, start) for each note. Returns its length in seconds. */
+function play(tune, bpm, at, fn){
+  const b = 60 / bpm; let x = at;
+  for (const [m, beats] of tune){ if (m != null) fn(mtof(m), beats * b * .92, x); x += beats * b; }
+  return x - at;
+}
+/* A crowd singing a tune on a vowel: many voices on each note, a little ragged. */
+function chant(tune, bpm, at, { vowel = 'oh', vol = .09, n = 9 } = {}){
+  return play(tune, bpm, at, (f, d, x) => voices(d + .08, { n, lo: f * .985, hi: f * 1.015, vowel, vol, at: x, att: .05, breath: .35, lp: 2600, verb: .5, spread: .9 }));
+}
+
+/* An original fight-song strain (the generic home band): melody on trumpets, an octave down on trombones,
+   sousaphones on the roots, snare on 2 and 4, bass drum on 1 and 3, a crash at the top and the end. */
+const FIGHT = [[65, 1], [65, .5], [67, .5], [69, 1], [65, 1], [70, 1.5], [69, .5], [67, 2], [65, 1], [67, .5], [69, .5], [70, 1], [72, 1], [74, 1], [72, 1], [70, 2]];
+const FIGHT_BASS = [[46, 2], [41, 2], [51, 2], [46, 2], [46, 2], [41, 2], [46, 2], [46, 2]];
+function fightSong(at = 0, vol = 1){
+  const bpm = 150, b = 60 / bpm;
+  play(FIGHT, bpm, at, (f, d, x) => { horn(f, d, { vol: .042 * vol, at: x, pan: -.15 }); horn(f / 2, d, { vol: .03 * vol, at: x, pan: .2, bright: 3.5 }); });
+  play(FIGHT_BASS, bpm, at, (f, d, x) => tuba(f, d * .5, { vol: .05 * vol, at: x }));
+  for (let k = 0; k < 16; k++){ if (k % 2 === 1) snare(at + k * b, .07 * vol); if (k % 2 === 0) bassDrum(at + k * b, .2 * vol); }
+  roll(at + 14 * b, 2 * b, .06 * vol);
+  cymbal(at, .045 * vol); cymbal(at + 16 * b, .06 * vol, 2);
+  horn(mtof(70), 1.1, { vol: .045 * vol, at: at + 16 * b }); horn(mtof(65), 1.1, { vol: .035 * vol, at: at + 16 * b }); tuba(mtof(46), 1.1, { vol: .05 * vol, at: at + 16 * b });
+  glock(mtof(82), .3, { vol: .03 * vol, at: at + 16 * b });
+  return 17 * b;
+}
+
+/* Florida State's War Chant: the low "oh-oh-oh-oh-oh-oh" from the whole stadium on a minor tune, the Marching Chiefs'
+   horns on the line with it and a deep tom on every beat. */
+const WAR = [[64, 1], [64, .5], [64, .5], [64, .5], [64, .5], [62, .5], [64, .5]];
+const WAR_HI = [[67, 1], [67, .5], [67, .5], [67, .5], [67, .5], [64, .5], [67, .5]];
+function warChant(at = 0, { phrases = 4, vol = 1, horns = true } = {}){
+  const bpm = 118, b = 60 / bpm, tune = [];
+  for (let k = 0; k < phrases; k++) tune.push(...(k % 4 === 2 ? WAR_HI : WAR));
+  chant(tune.map(([m, d]) => [m - 12, d]), bpm, at, { vowel: 'oh', vol: .11 * vol, n: 12 });
+  if (horns) play(tune, bpm, at, (f, d, x) => { horn(f / 2, d, { vol: .03 * vol, at: x, bright: 3.2 }); horn(f, d, { vol: .018 * vol, at: x, pan: .25, bright: 3.5 }); });
+  for (let k = 0; k < phrases * 4; k++){ const acc = k % 4 === 0; quad(acc ? 92 : 80, at + k * b, (acc ? .2 : .13) * vol); if (acc) bassDrum(at + k * b, .12 * vol); }
+  return phrases * 4 * b;
+}
+
+/* "Charge!": the bugle call every stadium knows, and the crowd shouting it back. */
+function charge(at = 0){
+  [[67, .14], [72, .14], [76, .14], [79, .38], [76, .14], [79, .8]].reduce((x, [m, d]) => { horn(mtof(m), d, { vol: .045, at: x, bright: 7 }); horn(mtof(m - 12), d, { vol: .025, at: x, bright: 4 }); return x + d + .03; }, at);
+  bassDrum(at + .5, .16); cymbal(at + 1.12, .045);
+  voices(.55, { n: 12, lo: 170, hi: 300, glide: 1.08, vowel: 'ah', vol: .14, at: at + 1.75, att: .03, verb: .55 });
+  applause(1.6, { vol: .12, at: at + 1.8, att: .1 });
+}
+
+/* The stadium's "Seven Nation Army" chant on a defensive stand, over the bass drum. */
+const SNA = [[52, 1.5], [52, .5], [55, .75], [52, .75], [50, .5], [48, 2], [47, 2]];
+function sevenNation(at = 0){
+  const bpm = 124, b = 60 / bpm, len = chant(SNA, bpm, at, { vowel: 'oh', vol: .1, n: 12 });
+  for (let k = 0; k < 8; k++) bassDrum(at + k * b, k % 2 ? .1 : .16);
+  return len;
+}
+
+/* The drumline between plays: two bars of a street-beat cadence, heard from across the stadium. */
+function drumline(at = 0){
+  const b = 60 / 112, S = '1.1.1.11.1.1.1.11'.split(''), Q = [0, null, 1, null, 2, null, 1, 0, null, 2, null, 1, 2, 1, 0, null];
+  for (let bar = 0; bar < 2; bar++) for (let k = 0; k < 16; k++){
+    const x = at + (bar * 16 + k) * b / 4;
+    if (S[k] === '1') snare(x, k % 4 === 0 ? .05 : .03);
+    if (Q[k] != null) quad([150, 124, 104][Q[k]], x, .06);
+    if (k % 8 === 0) bassDrum(x, .09);
+  }
+  roll(at + 7.5 * b, b * .5, .04); cymbal(at + 8 * b, .025, .8);
+}
+
+/* Whose game it is, for the home band and Florida State's chant (pixelbowl.js binds it). */
+let teams = () => null;
+export function bindTeams(fn){ teams = fn; }
+const fsuHome = () => String(teams()?.me?.id) === '52';
+
+// After your touchdown: the fight song (Florida State's comes from the War Chant after the fanfare: drumsLate).
+FX.band = () => { if (!fsuHome()) fightSong(1.3, .9); };
+// Florida State moments: the spear at midfield gets a drum cadence; a Florida State score, the War Chant.
+FX.drums = () => { for (let k = 0; k < 8; k++){ const acc = k % 4 === 0; quad(acc ? 96 : 82, k * .42, acc ? .24 : .15); if (acc) bassDrum(k * .42, .14); } };
+FX.drumsLate = () => warChant(2.1, { phrases: 4 });
+// The opening kickoff: the home crowd's War Chant at Doak, a drum roll and a crash everywhere else.
+FX.kickoff = () => { if (fsuHome()) warChant(.2, { phrases: 4, vol: .85 }); else { roll(0, 1.2, .05); cymbal(1.2, .05); bassDrum(1.2, .2); cheer(1.8, .6); } };
+// Your key defensive stand: the War Chant if you're Florida State, the stadium chant otherwise.
+FX.defense = () => { if (fsuHome()) warChant(.1, { phrases: 4, vol: .9, horns: false }); else sevenNation(.1); };
+// A big gain: "Charge!".
+FX.charge = () => charge(.15);
+// A win: the fight song (or the War Chant) and a long ovation.
+FX.win = () => { if (fsuHome()) warChant(.3, { phrases: 8 }); else fightSong(.3); cheer(3.5, .9); };
 
 export function sfx(name){
   if (!on || !ac) return;
@@ -309,7 +407,7 @@ export function sfx(name){
    in menus). The stadium is a warm low rumble, two drifting walls of murmur (left and right) that rise and fall on
    their own, a brighter roar that only opens up on big moments, and now and then a distant clapper or a shout.
    At 0 it fades out completely and the graph is stopped. */
-let C = null, cl = 0, lastT = 0, nextEvt = 0, lastCall = 0, watchdog = 0;
+let C = null, cl = 0, lastT = 0, nextEvt = 0, lastCall = 0, watchdog = 0, nextDrums = 0;
 const smooth = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
 function setp(p, v, t){
   if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t); else { p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); }
@@ -385,7 +483,7 @@ export function crowd(level){
   cl += (target - cl) * (1 - Math.exp(-dt / tau));
   if (target === 0 && cl < .002) return stopCrowd(.06);
   const x = Math.min(1, cl / .42);
-  const A = .47 * Math.pow(cl, .75);      // overall loudness: rises with the level, but gently
+  const A = .36 * Math.pow(cl, .75);      // overall loudness: rises with the level, but gently (the band carries the moments)
   setp(C.out.gain, A, t); setp(C.wet.gain, A, t);
   setp(C.bed.gain, .55 + .25 * x, t);
   for (const s of C.sides){              // each side drifts on its own between 0.65 and 1.25
@@ -396,4 +494,6 @@ export function crowd(level){
   setp(C.roar.gain, 1.8 * smooth(.3, .95, x), t);
   setp(C.rf.frequency, 650 + 950 * x, t);
   if (target > 0 && t >= nextEvt){ crowdEvent(x); nextEvt = t + rnd(2.2, 6) * (1 - .45 * x); }
+  // Now and then between plays the drumline plays a cadence across the stadium.
+  if (target > 0 && x < .45 && t >= nextDrums){ if (nextDrums) drumline(.1); nextDrums = t + rnd(28, 46); }
 }
