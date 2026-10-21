@@ -1,6 +1,6 @@
-/* HD UI (beta): what every piece of the HD interface shares. The look is the CFB Board's own (frosted dark glass,
+/* The game's interface: what every piece of it shares. The look is the CFB Board's own (frosted dark glass,
    rounded, Big Shoulders Display for numbers and headlines, Public Sans for words), with a Saturday-broadcast score
-   bug, big moments and yellow primary buttons. Everything is scoped under `.pb.hd`, so the classic game is untouched.
+   bug, big moments and yellow primary buttons. Its rules are scoped under `.pb.hd` (the game root), over pixelbowl.js's base styles.
    Team colors drive the look; teamPaint() keeps any two teams apart and their text readable. */
 import { inkOn } from '../views/preview.js';
 

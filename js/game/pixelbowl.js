@@ -13,7 +13,8 @@ import { inkOn } from '../views/preview.js';
 import * as S from './sim.js';
 import { attachNames } from './names.js';
 import { weekChallenges, challengeById } from '../challenges.js';
-import { createRenderer } from './draw.js';
+import { createRenderer } from './drawhd.js';
+import * as hdUI from './hdui.js';
 import { initAudio, setSound, soundOn, sfx, resume, crowd } from './sfx.js';
 import * as SV from './seasonview.js';
 import * as SC from './scout.js';
@@ -21,9 +22,9 @@ import * as SC from './scout.js';
 const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
 const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...store.get('pixelbowl', {}) };
-delete saved.record; saved.results ||= {};
+delete saved.record; delete saved.hd; saved.results ||= {};   // (hd: the old HD switch; HD is the only look now)
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
-   the route preview, and HD graphics, are the only choices kept). */
+   the route preview are the only choices kept). */
 const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, session: 'quick', target: 'on', side: 'offense', ddrill: 'cover' };
 /* A practice session is a set number of throws (handoffs don't count); finished sessions are saved to history. */
 const SESSIONS = { quick: { name: 'Quick', n: 5 }, normal: { name: 'Normal', n: 10 }, long: { name: 'Long', n: 20 } };
@@ -156,9 +157,9 @@ export function open({ prefill = null, exit = () => {} } = {}){
     const l = Object.assign(document.createElement('link'), { id: 'pb-font', rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Big+Shoulders+Display:wght@700;800;900&display=swap' });
     document.head.append(l);
   }
-  if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS }));
+  if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS + hdUI.CSS }));
   root = document.createElement('div');
-  root.className = 'pb'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
+  root.className = 'pb hd'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
   root.innerHTML = `<canvas class="pb-cv"></canvas>
     <div class="pb-hud" hidden><div class="pb-bug"></div><div class="pb-dd"></div><div class="pb-pbp" aria-live="polite"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
@@ -168,7 +169,6 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
   canvas = $('.pb-cv'); R = createRenderer(canvas); R.resize();
-  if (saved.hd) useHD(true);
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
   if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
   canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
@@ -204,21 +204,6 @@ export function close(){
 }
 export const isOpen = () => !!root;
 
-/* HD graphics (beta): a second renderer with the same interface (drawhd.js) and its interface (hdui.js: the `hd`
-   class on the game restyles it, and the templates ask hdUI for the pieces that differ), loaded only once it's
-   switched on and swapped in on the spot, mid-game included. */
-let hdMod = null, hdUI = null;
-const hdOn = () => !!(root?.classList.contains('hd') && hdUI);
-async function useHD(on){
-  if (on && !hdMod){ try{ [hdMod, hdUI] = await Promise.all([import('./drawhd.js'), import('./hdui.js')]); }catch{ return; } }
-  if (!root) return;
-  if (hdUI && !document.getElementById('pb-hd-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-hd-css', textContent: hdUI.CSS }));
-  root.classList.toggle('hd', on && !!hdMod);
-  lastHud = '';   // redraw the HUD in the new style
-  if (!!R?.hd === (on && !!hdMod)) return;
-  R = (on ? hdMod.createRenderer : createRenderer)(canvas); R.resize();
-  if (G) R.snapCamera(G);
-}
 
 /* Local testing only: lets a script advance the game without animation frames (which background tabs don't get). */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__pb = {
@@ -294,7 +279,7 @@ function setup(){
   // The menu sits over a live picture of the matchup.
   G = S.newGame(me, opp, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G);
   showHud(false);
-  const hp = hdOn() ? hdUI.cards.pair(me, opp) : null;   // HD: the two cards' colors kept apart
+  const hp = hdUI.cards.pair(me, opp);   // the two cards' colors kept apart
   const rec = saved.results[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" data-tid="${esc(t.id)}" style="${hp ? hp[t === me ? 0 : 1] : `--c:${esc(t.color)};--k:${inkOn(t.color)}`}">
       ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.name)}</b><small>${who}</small>
       <span class="pb-rt">${Number.isFinite(t.off) ? `OFF ${Math.round(t.off)} · DEF ${Math.round(t.def)}` : 'Tap to change'}</span></button>`;
@@ -307,7 +292,7 @@ function setup(){
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label>
-      <label><input type="checkbox" data-pb-opt="hd"${saved.hd ? ' checked' : ''}> HD graphics (beta)</label></div>
+</div>
     ${SV.menuCard()}
     <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
     <button class="pb-go pb-take" type="button" data-pb="challenges"><span>TAKE OVER</span><small>Replay this week's real late-game moments</small></button>
@@ -315,20 +300,6 @@ function setup(){
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
   </div>`);
-  if (saved.hd && !hdOn()) waitHD();
-}
-/* HD's look arrives a moment after the menu first draws: redraw the menu once it's in, where it was scrolled to. */
-let hdWait = 0;
-function waitHD(){
-  if (hdWait) return;
-  let n = 0;
-  hdWait = setInterval(() => { if (hdOn() || ++n > 50 || !root){ clearInterval(hdWait); hdWait = 0; if (hdOn()) hdRepaint(); } }, 100);
-}
-function hdRepaint(){
-  if (!root || phase !== 'setup' || !$('.pb-match')) return;
-  const y = $('.pb-setup')?.scrollTop || 0;
-  setup();
-  const el = $('.pb-setup'); if (el){ el.style.animation = 'none'; el.scrollTop = y; }
 }
 
 function teamPicker(which){
@@ -541,8 +512,7 @@ function crowdLevel(){
 let pbpTimer = 0;
 function pbp(text){
   const el = $('.pb-pbp'); if (!el || !text) return;
-  if (hdOn()){ el.innerHTML = hdUI.hud.pbp(text, G?.lastPlay?.first && !G.twoPt && !/touchdown/.test(text) ? '1st down' : ''); el.setAttribute('style', hdUI.hud.pbpVars(G.me)); }
-  else el.textContent = text;
+  el.innerHTML = hdUI.hud.pbp(text, G?.lastPlay?.first && !G.twoPt && !/touchdown/.test(text) ? '1st down' : ''); el.setAttribute('style', hdUI.hud.pbpVars(G.me));
   el.classList.add('on'); clearTimeout(pbpTimer); pbpTimer = setTimeout(() => el.classList.remove('on'), 3200);
 }
 function playLine(){
@@ -1033,7 +1003,7 @@ function challengeFinal(){
   const rec = saved.challenges = saved.challenges || {}, r = rec[c.id] || { won: false, tries: 0 };
   if (!G.recorded){ G.recorded = true; r.tries++; if (won) r.won = true; rec[c.id] = r; save(); }
   sfx(won ? 'td' : 'boo'); if (won) G.cheer = 6;
-  const noles = won && hdOn() && hdUI.cards.isFSU(G.me);
+  const noles = won && hdUI.cards.isFSU(G.me);
   modal(`<div class="pb-card pb-final${won ? ' won' : ''}${noles ? ' pb-fsu' : ''}">${noles ? hdUI.cards.fsuWin() : ''}<h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'CHALLENGE BEATEN!' : 'NOT THIS TIME'}</h2>${scoreLine(true)}
     <p>${won ? `You did what ${esc(c.me.name)} couldn't.` : `Same story as real life: ${esc(c.real)}.`}</p>
     <p class="pb-rec">${r.won ? 'Beaten' : 'Not beaten yet'} · ${r.tries} ${r.tries === 1 ? 'try' : 'tries'}</p>
@@ -1432,7 +1402,7 @@ function final(){
   if (complete && !G.recorded){ G.recorded = true; won ? rec.w++ : rec.l++; saved.results[G.diffKey] = rec; save(); }
   sfx(won ? 'td' : 'boo');
   if (won) G.cheer = 6;
-  const noles = won && hdOn() && hdUI.cards.isFSU(G.me);   // HD: Florida State's own final card
+  const noles = won && hdUI.cards.isFSU(G.me);   // HD: Florida State's own final card
   modal(`<div class="pb-card pb-final${won ? ' won' : ''}${noles ? ' pb-fsu' : ''}">${noles ? hdUI.cards.fsuWin() : ''}<h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'VICTORY!' : 'FINAL'}</h2>${scoreLine(true)}${driveRecap()}
     <table class="pb-tbl"><tr><td>Passing</td><td>${st.comp}/${st.att}, ${st.passYds} yds, ${st.passTD} TD, ${st.int} INT</td></tr>
     <tr><td>Rushing</td><td>${st.rush} for ${st.rushYds} yds, ${st.rushTD} TD</td></tr>
@@ -1442,7 +1412,7 @@ function final(){
     <div class="pb-btns"><button class="pb-go" type="button" data-pb="rematch">REMATCH</button><button class="pb-go alt" type="button" data-pb="menu">NEW GAME</button><button class="pb-go alt" type="button" data-pb="exit">EXIT</button></div></div>`);
 }
 function scoreLine(big){
-  const hp = hdOn() ? hdUI.cards.pair(G.me, G.opp) : null;
+  const hp = hdUI.cards.pair(G.me, G.opp);
   const t = (x, s) => `<div class="pb-sl" data-tid="${esc(x.id)}" style="${hp ? hp[x === G.me ? 0 : 1] : `--c:${esc(x.color)};--k:${inkOn(x.color)}`}">${x.logo ? `<img src="${esc(logoUrl(x.logo, 72))}" alt="">` : ''}<b>${esc(x.abbr)}</b><span>${s}</span></div>`;
   return `<div class="pb-score${big ? ' big' : ''}">${t(G.me, G.score[0])}${t(G.opp, G.score[1])}</div>`;
 }
@@ -1476,29 +1446,23 @@ function hud(){
   const late = S.lateInHalf(G), live = phase === 'presnap';
   const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || 'Random')) + (G.pa ? ' · PA' : '') + (G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation]}` : '');
   const sheetUp = $('.pb-modal').classList.contains('on');
-  const H = hdOn() && hdUI.hud;   // HD: the broadcast bug and glass buttons (hdui-hud.js)
+  const H = hdUI.hud;   // the broadcast bug and glass buttons (hdui-hud.js)
   const btns = !live || paused ? '' : [
-    sheetUp ? '' : H ? H.callBtn(callName.toUpperCase()) : `<button type="button" data-pb="call" class="pb-call">PLAY: ${esc(callName.toUpperCase())} ▾</button>`,
-    G.coach && !sheetUp ? (H ? H.chip('snap', 'SNAP ▶', '', 'go') : '<button type="button" data-pb="snap" class="pb-snapbtn">SNAP ▶</button>') : '',
-    G.runoff > 0 && G.timeouts > 0 && !G.ot ? (H ? H.chip('timeout', 'TIMEOUT', `${G.timeouts} LEFT`) : `<button type="button" data-pb="timeout">TIMEOUT (${G.timeouts})</button>`) : '',
-    late && G.runoff > 0 && G.down < 4 && !G.twoPt ? (H ? H.chip('spike', 'SPIKE') : '<button type="button" data-pb="spike">SPIKE</button>') : '',
-    late && G.score[0] > G.score[1] && !G.twoPt && G.quarter === 4 ? (H ? H.chip('kneel', 'KNEEL') : '<button type="button" data-pb="kneel">KNEEL</button>') : '',
-    S.inFgRange(G) && G.down < 4 && !G.twoPt && (late || G.ot) ? (H ? H.chip('fg', 'FG', `${S.fgDistance(G)} YDS`) : `<button type="button" data-pb="fg">FG · ${S.fgDistance(G)}</button>`) : ''
+    sheetUp ? '' : H.callBtn(callName.toUpperCase()),
+    G.coach && !sheetUp ? H.chip('snap', 'SNAP ▶', '', 'go') : '',
+    G.runoff > 0 && G.timeouts > 0 && !G.ot ? H.chip('timeout', 'TIMEOUT', `${G.timeouts} LEFT`) : '',
+    late && G.runoff > 0 && G.down < 4 && !G.twoPt ? H.chip('spike', 'SPIKE') : '',
+    late && G.score[0] > G.score[1] && !G.twoPt && G.quarter === 4 ? H.chip('kneel', 'KNEEL') : '',
+    S.inFgRange(G) && G.down < 4 && !G.twoPt && (late || G.ot) ? H.chip('fg', 'FG', `${S.fgDistance(G)} YDS`) : ''
   ].join('');
   const hint = hintText();
-  // HD: who has the ball (yours on your snaps and kicks, theirs while their drive plays out).
-  const poss = !H ? '' : ['presnap', 'live', 'dead', 'kick', 'replay'].includes(phase) ? 'me' : $('.pb-modal .pb-drive') ? 'opp' : '';
-  const key = [G.score, q, Math.ceil(G.clock), dd, G.los, G.timeouts, btns, hint, G.runoff > 0, live && G.tellOn ? filmTell() : '', poss, H ? phase : ''].join('|');
+  // Who has the ball (yours on your snaps and kicks, theirs while their drive plays out).
+  const poss = ['presnap', 'live', 'dead', 'kick', 'replay'].includes(phase) ? 'me' : $('.pb-modal .pb-drive') ? 'opp' : '';
+  const key = [G.score, q, Math.ceil(G.clock), dd, G.los, G.timeouts, btns, hint, G.runoff > 0, live && G.tellOn ? filmTell() : '', poss, phase].join('|');
   if (key === lastHud) return; lastHud = key;
-  if (H) return hudHD(H, dd, poss, live && G.tellOn && G.play ? filmTell() : '', btns, hint);
-  const tm = (t, s) => `<div class="pb-tm" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.abbr)}</b><span>${s}</span></div>`;
-  $('.pb-bug').innerHTML = `${tm(G.me, G.score[0])}<div class="pb-mid"><span>${q}</span><b class="${G.runoff > 0 ? 'run' : ''}">${G.ot ? '--' : mmss(G.clock)}</b></div>${tm(G.opp, G.score[1])}`;
-  const tell = live && G.tellOn && G.play ? filmTell() : '';
-  $('.pb-dd').innerHTML = phase === 'kick' || !G.play && !G.kick ? '' : `<span>${dd}</span><span>${yardLine(G.los)}</span><span class="pb-to">${'●'.repeat(G.timeouts)}${'○'.repeat(3 - G.timeouts)}</span>${tell ? `<span class="pb-tell">${tell}</span>` : ''}`;
-  $('.pb-bar').innerHTML = btns;
-  $('.pb-hint').textContent = hint;
+  hudHD(H, dd, poss, live && G.tellOn && G.play ? filmTell() : '', btns, hint);
 }
-/* HD: the bug is redrawn only when the score, the quarter, the timeouts or the ball change (so its slide-ins and the
+/* The bug is redrawn only when the score, the quarter, the timeouts or the ball change (so its slide-ins and the
    score flash play once); the clock ticks in place; the down & distance tab slides out again on each new spot. */
 let hdScore = null;
 function hudHD(H, dd, poss, tell, btns, hint){
@@ -1550,12 +1514,10 @@ let bannerTimer = 0;
 function banner(text, sub, color = '#fff', ms = 1200){
   const b = $('.pb-banner'); if (!b) return;
   if (typeof color === 'number'){ ms = color; color = sub; sub = ''; }   // banner(word, color, ms)
-  if (hdOn()){
-    // HD: the big ones (a touchdown, two points, a pick six) wipe in in the scoring team's colors; the rest are slabs.
-    const team = !G ? null : /^PICK SIX/.test(text) || color !== G.me.color ? G.opp : G.me;
-    const h = hdUI.hud.banner(text, sub, color, team);
-    b.className = `pb-banner ${h.cls}`; b.innerHTML = h.html;
-  } else { b.className = 'pb-banner'; b.innerHTML = `<b style="--bc:${esc(color)}">${esc(text)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}`; }
+  // The big ones (a touchdown, two points, a pick six) wipe in in the scoring team's colors; the rest are slabs.
+  const team = !G ? null : /^PICK SIX/.test(text) || color !== G.me.color ? G.opp : G.me;
+  const h = hdUI.hud.banner(text, sub, color, team);
+  b.className = `pb-banner ${h.cls}`; b.innerHTML = h.html;
   b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
   clearTimeout(bannerTimer); bannerTimer = setTimeout(() => b.classList.remove('on'), ms);
 }
@@ -1570,7 +1532,7 @@ function modal(html, light = false, kind = ''){
   m.innerHTML = html; m.classList.add('on'); m.classList.toggle('light', light); m.dataset.kind = kind;
   m.classList.toggle('stay', !!same);
   if (scrolls) [...m.querySelectorAll('*')].forEach((el, i) => { const s = scrolls[i]; if (s && (s[0] || s[1])){ el.scrollTop = s[0]; el.scrollLeft = s[1]; } });
-  m.classList.toggle('fsu', hdOn() && hdUI.cards.isFSU(keyCtx ? keyCtx.main.me : G?.youDefend ? G.opp : G?.me));   // HD: garnet and gold when Florida State is yours
+  m.classList.toggle('fsu', hdUI.cards.isFSU(keyCtx ? keyCtx.main.me : G?.youDefend ? G.opp : G?.me));   // garnet and gold when Florida State is yours
 }
 function closeModal(kind){
   const m = $('.pb-modal'); if (!m) return;
@@ -1677,7 +1639,6 @@ function onInput(e){
   if (e.target.matches('[data-pb-opt]')){
     const k = e.target.dataset.pbOpt; saved[k] = e.target.checked; save();
     if (k === 'sound') setSound(saved.sound);
-    if (k === 'hd') useHD(saved.hd).then(hdRepaint);
   }
   if (e.target.matches('[data-pb-name]') && editing){ editing.name = e.target.value; $('.pb-ename-err')?.remove(); }
   if (e.target.matches('[data-pb-q]')){

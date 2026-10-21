@@ -1,4 +1,4 @@
-/* Coach Andre's Bowl in HD (beta): the art for drawhd.js. A late-afternoon game at 10 pixels per yard: warm sun, a
+/* Coach Andre's Bowl's art, for drawhd.js. A late-afternoon game at 10 pixels per yard: warm sun, a
    cool stadium shadow along the near sideline, mowed and worn grass, and players rasterised from small shape lists,
    then shaded (light from the top left), selectively outlined and dressed in any team's colors. Everything is
    procedural and built once (the field per matchup, each sprite the first time it's needed). */

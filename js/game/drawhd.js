@@ -1,19 +1,18 @@
-/* Coach Andre's Bowl in HD (beta): the same renderer interface as draw.js, drawn in hdart.js's late-afternoon style,
-   with a camera that zooms: in close before the snap and with the ball carrier, out wide while the quarterback can
+/* Coach Andre's Bowl's renderer, in hdart.js's late-afternoon style, with a camera that zooms: in close before the snap and with the ball carrier, out wide while the quarterback can
    throw (and for kicks).
 
    Two layers. The field, players and shadows are pixel art at 10 logical pixels per yard in an offscreen buffer,
    scaled onto the screen canvas (at the device's full resolution) with crisp pixels; how many yards the buffer holds
-   is the zoom. Markers, labels, meters and text go on top in "UI pixels", the size of draw.js's pixels, so
-   everything the page measures feels the same at any zoom: R.W / R.H, toScreen, toWorld and dragToWorld all work in
+   is the zoom. Markers, labels, meters and text go on top in "UI pixels" (about 290 on the screen's short side, the
+   game's original resolution), so everything the page measures feels the same at any zoom: R.W / R.H, toScreen, toWorld and dragToWorld all work in
    UI pixels, and a drag is worth as many yards as it always was. */
 import { FW, MID, GOAL_HALF, BAR, canThrow, clamp, trajectory, throwSpread } from './sim.js';
 import * as A from './hdart.js';
 import { sfx } from './sfx.js';
 
 const { S } = A;
-const UI = 290;   // UI pixels on the screen's short side: draw.js's logical resolution
-const OLD = 5;    // draw.js's pixels per yard
+const UI = 290;   // UI pixels on the screen's short side: the game's original resolution
+const OLD = 5;    // UI pixels per yard for drags (the original scale, so a throw's pull feels as it always has)
 /* Yards across the screen's short side. */
 const CLOSE = 32, CARRY = 36, THROW = 48, COVER = 46, WIDE = 58;
 const KX = .95, KY = .38;   // the cast shadows' lean: low sun from the top left
@@ -129,9 +128,9 @@ export function createRenderer(canvas){
     const cx = Math.round(cam.x * S), cy = Math.round(cam.y * S), hw = Wb >> 1, hh = Hb >> 1;
     return portrait ? { x: (cx + hh - py) / S, y: (cy + px - hw) / S } : { x: (cx + px - hw) / S, y: (cy + py - hh) / S };
   };
-  /* A screen-space drag (UI px) as a field vector in yards, at draw.js's scale whatever the zoom. */
+  /* A screen-space drag (UI px) as a field vector in yards, at the original scale whatever the zoom. */
   const dragToWorld = (dx, dy) => portrait ? { x: -dy / OLD, y: dx / OLD } : { x: dx / OLD, y: dy / OLD };
-  /* Buffer px to UI px, and how far above a player's feet his head is on screen (draw.js's sprites stood ~10 px). */
+  /* Buffer px to UI px, and how far above a player's feet his head is on screen (the original sprites stood ~10 px). */
   const f2u = () => bs / k;
   const lift = () => Math.round(28 * f2u()) - 10;
   /* Places the world texture (pixel (i, j) = world (x0 + i/S, y0 + j/S)) on a context, turned for portrait. */

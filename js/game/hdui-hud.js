@@ -1,9 +1,8 @@
-/* HD UI (beta): the score bug, the down & distance tab, the play-by-play ticker, the buttons on the field (play call,
+/* The game's interface: the score bug, the down & distance tab, the play-by-play ticker, the buttons on the field (play call,
    timeout, pause, sound, JUKE / TRUCK, JUMP, replay) and the big moments (TOUCHDOWN and the other banners).
    The bug and the big moments are Saturday broadcast (a team-colored bug with logos and timeout pips, a down & distance
    tab that slides out from under it, a skewed TOUCHDOWN wipe in the scorer's colors); the buttons are the Board's
-   frosted glass, with the primary action in broadcast yellow. pixelbowl.js asks this module for markup only when HD
-   is on (hdOn()), so the classic game never sees any of it. */
+   frosted glass, with the primary action in broadcast yellow. pixelbowl.js asks this module for the markup. */
 import { esc } from '../util.js';
 import { logoUrl as boardLogo } from '../views/components.js';
 import { teamTone, teamPaint, inkOn, vars, YELLOW } from './hdkit.js';
@@ -54,7 +53,7 @@ export const pbpVars = team => { const t = teamTone(team); return `--a2:${t.acce
 export const pbp = (text, extra = '') => `<strong>LAST PLAY</strong><em>${esc(text)}${extra ? ` <u>· ${esc(extra)}</u>` : ''}</em>`;
 
 /* ---------- the big moments ---------- */
-/* The classic palette mapped to the HD one; anything else is a team color. */
+/* The game's older palette (still passed in by its banner calls) mapped to this one; anything else is a team color. */
 const TONES = { '#ffd84a': YELLOW, '#ff5a4e': '#ff4d4f', '#4cff7a': '#3ddc84', '#7df9ff': '#6fe3ff', '#fff': '#ffffff', '#c9d1d9': '#e9edf1', '#ff9f43': '#ffb020' };
 const BIG = /^(TOUCHDOWN|TWO POINTS|PICK SIX)/;
 /* Returns { html, cls } for .pb-banner. team: the scoring team when it's a big one. */

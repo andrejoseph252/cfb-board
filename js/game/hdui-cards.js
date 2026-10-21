@@ -1,4 +1,4 @@
-/* HD UI (beta): every card as a bottom sheet (coin toss, 4th down, drives, the defensive call, the flag, halftime, the
+/* The game's interface: every card as a bottom sheet (coin toss, 4th down, drives, the defensive call, the flag, halftime, the
    final, practice summaries, challenge intros), the play-call sheet, and the menus (setup, practice, playbook), plus
    season mode's screens. Board-native: frosted dark glass sheets with a grabber, big thumb buttons, Big Shoulders
    Display for headlines and numbers, Public Sans for words. The primary button is the broadcast's yellow.
@@ -36,7 +36,7 @@ export const CSS = `
   padding:var(--pb-top) calc(env(safe-area-inset-right,0px) + 8px) calc(env(safe-area-inset-bottom,0px) + 8px) calc(env(safe-area-inset-left,0px) + 8px)}
 .pb.hd .pb-modal.on{display:flex;flex-direction:column}
 .pb.hd .pb-modal > *{margin:auto auto 0;flex:none}
-/* Light sheets (4th down, the play call) stop above the bottom bar, so a timeout stays in reach, as in the classic look. */
+/* Light sheets (4th down, the play call) stop above the bottom bar, so a timeout stays in reach. */
 .pb.hd .pb-modal.light{background:linear-gradient(to bottom,transparent 55%,rgba(0,0,0,.35));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 80px)}
 .pb.hd.pb-tools-on .pb-modal{padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
 .pb.hd :is(.pb-card,.pb-setup){position:relative;width:100%;max-width:460px;padding:26px 18px 18px;gap:14px;text-align:left;color:var(--hd-ink);
