@@ -103,6 +103,7 @@ document.addEventListener('click', e => {
   if (d.tier){ state.tier = d.tier; store.set('tier', d.tier); return invalidate('main'); }
   if (d.rk){ state.rk = d.rk; store.set('rk', d.rk); return invalidate('main'); }
   if (d.rkconf){ state.rkConf = d.rkconf; return invalidate('main'); }
+  if (d.bweek){ state.bWeek = Number(d.bweek); return invalidate('detail'); }   // AP ballots drawer: another week
   if (d.unpick) return removePick(d.unpick);
   // Stream sync, in a live game's drawer (game.js).
   if (['syncopen', 'syncclose', 'syncstop', 'syncnudge', 'syncgo', 'syncq', 'syncmark', 'syncremark', 'synctoggle'].some(k => k in d) && t.closest('[data-gid]')){ syncAction(d, t.closest('[data-gid]').dataset.gid); return invalidate('detail'); }

@@ -3,6 +3,8 @@ import { state, CONF, CONF_ORDER, apRank, teamConf } from '../state.js';
 import { realMarket } from '../markets.js';
 import { teamLink, sec, chips, logo, gameHref } from './components.js';
 import { mineRow } from '../myteam.js';
+import { ballots, weeksOf, teamWeek, matchesPoll, rankText } from '../ballots.js';
+import { boxPlot } from './ballots.js';
 
 function weekGame(id){
   for (const g of state.games){
@@ -41,16 +43,23 @@ function apTable(){
   const r = state.rankings;
   if (!r) return '<div class="skeleton tall"></div>';
   const list = r.ranks.filter(t => inConf(t.id)), others = r.others.filter(t => inConf(t.id));
+  // Every voter's ballot, when this week's are in: a box plot per team of where the voters have them.
+  const B = ballots(), bw = weeksOf(B).pop(), live = B && matchesPoll(B, bw);
+  // On a phone it sits under the team's name instead of in its own column.
+  const bxLink = (t, s, cls) => `<a class="bxlink ${cls}" href="#ballots/${esc(t.id)}" title="Every voter's ballot: ${rankText(s.hi)} to ${rankText(s.lo)}, median ${rankText(Math.round(s.med))}" aria-label="${esc(t.name)}: all AP ballots">${boxPlot(s)}<span>${rankText(s.hi).replace('#', '')}–${rankText(s.lo).replace('#', '')}</span></a>`;
+  const stat = t => live && teamWeek(B, bw, t.id);
+  const spread = t => { const s = stat(t); return `<td class="bxc">${s?.on ? bxLink(t, s, 'wide') : ''}</td>`; };
+  const under = t => { const s = stat(t); return s?.on ? bxLink(t, s, 'under') : ''; };
   const rows = list.map(t => {
     const f = state.fpi?.byTeam[t.id];
     return `<tr${mineRow(t.id)}><td class="num rk">${t.rank}</td><td class="num">${trend(t)}</td>
-      <td class="team">${logo(t.logo, 'logo sm')}${teamLink({ id: t.id, name: t.name })}${t.fpv ? ` <span class="muted small">(${t.fpv})</span>` : ''}</td>
+      <td class="team">${logo(t.logo, 'logo sm')}${teamLink({ id: t.id, name: t.name })}${t.fpv ? ` <span class="muted small">(${t.fpv})</span>` : ''}${under(t)}</td>${spread(t)}
       <td class="num">${esc(t.record || '–')}</td><td class="num hide-sm">${t.points ?? '–'}</td><td class="num">${f?.rank ?? '–'}</td>${thisWeek(t.id)}</tr>`;
   }).join('');
   return `<div class="tablewrap"><table class="tbl">
-    <thead><tr><th class="num">AP</th><th class="num"></th><th>Team</th><th class="num">Record</th><th class="num hide-sm">Pts</th><th class="num">FPI</th><th class="grp">This week</th></tr></thead>
-    <tbody>${rows || `<tr><td colspan="7" class="muted">No ranked teams in this conference.</td></tr>`}</tbody></table></div>` +
-    (others.length ? `<p class="note sub"><b>Also receiving votes:</b> ${others.map(t => `${teamLink({ id: t.id, name: t.name })} ${t.points}`).join(', ')}</p>` : '');
+    <thead><tr><th class="num">AP</th><th class="num"></th><th>Team</th><th class="bxc">${live ? 'Ballots' : ''}</th><th class="num">Record</th><th class="num hide-sm">Pts</th><th class="num">FPI</th><th class="grp">This week</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="8" class="muted">No ranked teams in this conference.</td></tr>`}</tbody></table></div>` +
+    (others.length ? `<p class="note sub"><b>Also receiving votes:</b> ${others.map(t => `${teamLink({ id: t.id, name: t.name })} ${live ? `<a class="bxpts" href="#ballots/${esc(t.id)}" title="See the ballots">${t.points}</a>` : t.points}`).join(', ')}</p>` : '');
 }
 
 function fpiTable(){
@@ -75,7 +84,7 @@ export function viewRankings(){
   const ap = state.rk !== 'fpi';
   const confs = CONF_ORDER.filter(id => state.standings?.confs.some(c => c.id === id));
   const note = ap
-    ? `${esc(state.rankings?.title?.replace(/^\d{4} NCAA Football Rankings - /, '') || 'AP Poll')}. Arrows show movement from last week; first-place votes in parentheses.`
+    ? `${esc(state.rankings?.title?.replace(/^\d{4} NCAA Football Rankings - /, '') || 'AP Poll')}. Arrows show movement from last week; first-place votes in parentheses.${ballots() ? ' Ballots: where every voter put them (line: best to worst, box: middle half, tick: median). Tap for every ballot.' : ''}`
     : `ESPN's Football Power Index: how many points better than an average FBS team on a neutral field.${state.fpi?.updated ? ` Updated ${new Date(state.fpi.updated).toLocaleDateString(undefined, {month:'short', day:'numeric'})}.` : ''}`;
   return `<div class="rk-switch">${chips([['ap', 'AP Top 25'], ['fpi', 'FPI']], ap ? 'ap' : 'fpi', 'rk')}</div>` +
     chips([['all', 'All conferences'], ...confs.map(id => [String(id), CONF[id]])], state.rkConf, 'rkconf') +

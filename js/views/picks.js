@@ -6,18 +6,19 @@ import { teamLink, sec, empty, gameHref } from './components.js';
 const tone = n => n > .005 ? 'pos' : n < -.005 ? 'neg' : '';
 const shortWk = wk => String(wk || '').replace(/^Week /, 'Wk ');
 
-/* Net per week, oldest first: bars up (won) or down (lost) from a zero line, filling the card's width. The best and
-   worst weeks carry their amounts; every bar's amount is in its tooltip and in the week headers below. */
+/* Net per week, oldest first: bars up (won) or down (lost) from a zero line, filling the card's width, each with its
+   amount (whole dollars, so a full season of weeks still fits; the tooltip has the exact figure). */
 const BAR_H = 54;
+const shortAmt = n => { const a = Math.abs(n), s = n > .005 ? '+' : n < -.005 ? '−' : '';
+  return s + '$' + (a >= 1000 ? (a / 1000).toFixed(a >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : Math.round(a)); };
 function weekBars(weeks){
   if (weeks.length < 2) return '';
   const max = Math.max(...weeks.map(w => Math.abs(w.net)), 1);
-  const hi = weeks.reduce((a, b) => b.net > a.net ? b : a), lo = weeks.reduce((a, b) => b.net < a.net ? b : a);
   const col = w => {
-    const h = Math.max(2, Math.round(Math.abs(w.net) / max * BAR_H)), lab = (w === hi && w.net > 0) || (w === lo && w.net < 0);
-    const bar = `<b class="${w.net > 0 ? 'pos' : w.net < 0 ? 'neg' : 'zero'}" style="height:${w.net ? h : 2}px"></b>`, amt = lab ? `<i>${esc(signed(w.net))}</i>` : '';
+    const h = Math.max(2, Math.round(Math.abs(w.net) / max * BAR_H));
+    const bar = `<b class="${w.net > 0 ? 'pos' : w.net < 0 ? 'neg' : 'zero'}" style="height:${w.net ? h : 2}px"></b>`, amt = `<i class="${tone(w.net)}">${esc(shortAmt(w.net))}</i>`;
     return `<div class="wb" title="${esc(w.wk)}: ${esc(signed(w.net))} on ${w.n} bet${w.n === 1 ? '' : 's'}">
-      <div class="wb-up">${w.net > 0 ? amt + bar : ''}</div><div class="wb-dn">${w.net < 0 ? bar + amt : w.net ? '' : bar}</div>
+      <div class="wb-up">${w.net > 0 ? amt + bar : w.net ? '' : amt}</div><div class="wb-dn">${w.net < 0 ? bar + amt : w.net ? '' : bar}</div>
       <span class="wb-x">${esc(shortWk(w.wk))}</span></div>`;
   };
   return `<section class="wkc"><h3>Week by week</h3>

@@ -5,7 +5,7 @@ export const state = {
   week: null, st: null, season: null, cal: [],
   games: [], byId: {}, updated: null, loading: true, err: null,
   standings: null, fpi: null, rankings: null,
-  rk: store.get('rk', 'ap'), rkConf: 'all',
+  rk: store.get('rk', 'ap'), rkConf: 'all', bWeek: null,
   preds: new Map(),
   version: 0
 };
