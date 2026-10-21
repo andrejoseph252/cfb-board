@@ -63,11 +63,31 @@ export function createRenderer(canvas){
     zoom.span = span; bs = short / (span * S);
     Wb = Math.min(buf.width, Math.ceil(cw / bs)); Hb = Math.min(buf.height, Math.ceil(ch / bs));
   }
-  /* How close the camera wants to be: tight before the snap and with a runner, wide while there's a throw to make. */
+  /* Before the snap with the route preview on: as close as frames every receiver and the first stretch of his route
+     (what the preview draws), across the field; up and down there's always room. */
+  let routesOn = true;
+  function fit(P){
+    let lo = P.b, hi = P.b;
+    for (const r of P.rec){
+      lo = Math.min(lo, r.y); hi = Math.max(hi, r.y);
+      let px = r.x, py = r.y, left = 18;
+      for (const w of r.route){
+        const d = Math.hypot(w.x - px, w.y - py), u = Math.min(1, left / (d || 1)), y = py + (w.y - py) * u;
+        lo = Math.min(lo, y); hi = Math.max(hi, y);
+        if (d >= left) break;
+        left -= d; px = w.x; py = w.y;
+      }
+    }
+    return { span: clamp(hi - lo + 7, CLOSE, THROW), mid: (lo + hi) / 2 };
+  }
+  const fitting = (G, P) => routesOn && P && !P.live && !P.result && !G.youDefend && !G.kick;
+  /* How close the camera wants to be: framing the routes (or tight) before the snap, wide while there's a throw to
+     make, tight again with a runner. */
   function zoomTarget(G, aim){
     const P = G.play;
     if (G.kick) return THROW;
     if (G.youDefend) return G.defDrill?.kind === 'rush' ? CLOSE : COVER;
+    if (fitting(G, P)) return fit(P).span;
     if (!P || !P.live && !P.result) return CLOSE;
     if (aim || P.ball.state === 'air' || canThrow(G)) return THROW;
     if (P.carrier) return CARRY;
@@ -477,7 +497,7 @@ export function createRenderer(canvas){
     let fx, fy, ahead;
     if (K){ fx = (K.ball ? Math.max(K.spotX, Math.min(K.ball.x, 108)) : K.spotX) + long * .3; fy = K.ball ? (K.ball.y + MID) / 2 : (K.spotY + MID) / 2; ahead = 0; }
     else if (!P || !P.live && !P.result){
-      fx = (P ? P.los : G.los); fy = P ? P.b : G.y; ahead = long * (portrait ? .2 : .16);
+      fx = (P ? P.los : G.los); fy = fitting(G, P) ? fit(P).mid : P ? P.b : G.y; ahead = long * (portrait ? .2 : .16);
       // Covering: frame your corner and the quarterback together, so the matchup and the formation are both in view.
       const cb = G.youDefend && G.defDrill?.kind === 'cover' && P?.def.find(d => d.user);
       if (cb) fy = (cb.y + P.qb.y) / 2;
@@ -503,13 +523,15 @@ export function createRenderer(canvas){
     cam.x += (tx - cam.x) * q; cam.y += (ty - cam.y) * q;
   }
   function snapCamera(G){
-    setZoom(snap(zoomTarget(G) ?? CLOSE));
+    // The new play isn't set up yet: start from the throw view when the routes will need framing (it eases in).
+    setZoom(snap(routesOn && !G.youDefend ? THROW : zoomTarget(G) ?? CLOSE));
     cam.x = G.los + ((portrait ? Hb : Wb) / S) * (portrait ? .2 : .16); cam.y = clamp(G.y, 0, FW);
   }
 
   /* ---------- a frame ---------- */
   function draw(G, dt, view = {}){
     t += dt;
+    if (G.play && !G.play.live && !G.play.result && !G.kick) routesOn = !!view.routes;
     prepare(G);
     updateZoom(G, dt, view.aim);
     updateCamera(G, dt, view.aim);
