@@ -25,7 +25,7 @@ const G = {
   '/':'00001 00010 00010 00100 01000 01000 10000', '?':'01110 10001 00001 00010 00100 00000 00100',
   '&':'01100 10010 10100 01000 10101 10010 01101', ' ':'00000 00000 00000 00000 00000 00000 00000'
 };
-const ROWS = Object.fromEntries(Object.entries(G).map(([k, v]) => [k, v.split(' ')]));
+export const ROWS = Object.fromEntries(Object.entries(G).map(([k, v]) => [k, v.split(' ')]));
 
 export const textWidth = (s, scale = 1) => s.length ? (s.length * 6 - 1) * scale : 0;
 

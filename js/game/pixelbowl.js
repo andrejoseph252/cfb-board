@@ -23,7 +23,7 @@ const STEP = 1 / 60;
 const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...store.get('pixelbowl', {}) };
 delete saved.record; saved.results ||= {};
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
-   the route preview are the only choices kept). */
+   the route preview, and HD graphics, are the only choices kept). */
 const PRACTICE_DEFAULTS = { count: 3, mode: 'random', concept: 'verts', routes: {}, spot: 25, session: 'quick', target: 'on', side: 'offense', ddrill: 'cover' };
 /* A practice session is a set number of throws (handoffs don't count); finished sessions are saved to history. */
 const SESSIONS = { quick: { name: 'Quick', n: 5 }, normal: { name: 'Normal', n: 10 }, long: { name: 'Long', n: 20 } };
@@ -159,6 +159,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
   canvas = $('.pb-cv'); R = createRenderer(canvas); R.resize();
+  if (saved.hd) useHD(true);
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
   if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
   canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
@@ -193,6 +194,16 @@ export function close(){
   G = null; phase = 'setup'; paused = false; keys.clear();
 }
 export const isOpen = () => !!root;
+
+/* HD graphics (beta): a second renderer with the same interface (drawhd.js), loaded only once it's switched on and
+   swapped in on the spot, mid-game included. */
+let hdMod = null;
+async function useHD(on){
+  if (on && !hdMod){ try{ hdMod = await import('./drawhd.js'); }catch{ return; } }
+  if (!root || !!R?.hd === (on && !!hdMod)) return;
+  R = (on ? hdMod.createRenderer : createRenderer)(canvas); R.resize();
+  if (G) R.snapCamera(G);
+}
 
 /* Local testing only: lets a script advance the game without animation frames (which background tabs don't get). */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__pb = {
@@ -279,7 +290,8 @@ function setup(){
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
-      <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label></div>
+      <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label>
+      <label><input type="checkbox" data-pb-opt="hd"${saved.hd ? ' checked' : ''}> HD graphics (beta)</label></div>
     ${SV.menuCard()}
     <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
     <button class="pb-go pb-take" type="button" data-pb="challenges"><span>TAKE OVER</span><small>Replay this week's real late-game moments</small></button>
@@ -1587,6 +1599,7 @@ function onInput(e){
   if (e.target.matches('[data-pb-opt]')){
     const k = e.target.dataset.pbOpt; saved[k] = e.target.checked; save();
     if (k === 'sound') setSound(saved.sound);
+    if (k === 'hd') useHD(saved.hd);
   }
   if (e.target.matches('[data-pb-name]') && editing){ editing.name = e.target.value; $('.pb-ename-err')?.remove(); }
   if (e.target.matches('[data-pb-q]')){
@@ -1637,8 +1650,10 @@ function down(e){
       ptr.mode = 'aim'; aim = { active: false, target: null };
       // A quick tap on a receiver (no pull) throws to him; pressing and pulling back is the slingshot as always.
       if (!fresh){
-        const near = P.rec.filter(r => r.routeName !== 'block' && !r.down).map(r => { const [sx, sy] = R.toScreen(r.x, r.y); return { r, d: Math.hypot(sx - p.x, sy - 8 - p.y) }; }).sort((a, b) => a.d - b.d)[0];
-        if (near && near.d < 18){ ptr.tapRec = near.r.num; ptr.t0 = now; }
+        // Measured from the middle of his body, which stands taller in HD.
+        const mid = R.figure ?? 8;
+        const near = P.rec.filter(r => r.routeName !== 'block' && !r.down).map(r => { const [sx, sy] = R.toScreen(r.x, r.y); return { r, d: Math.hypot(sx - p.x, sy - mid - p.y) }; }).sort((a, b) => a.d - b.d)[0];
+        if (near && near.d < Math.max(18, mid * 2)){ ptr.tapRec = near.r.num; ptr.t0 = now; }
       }
     }
   }

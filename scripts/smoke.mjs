@@ -6,7 +6,7 @@
 
    Checks: the board renders games; every tab renders without an error; game cards open with their details; the
    news drawer opens; the game plays a Quick game to the final whistle; practice runs a session; My Playbook opens;
-   both defense drills (cover, pass rush) run a session.
+   both defense drills (cover, pass rush) run a session; HD graphics (beta) switch on and draw a game.
    Any uncaught error or console.error on the page fails the run. If ESPN can't be reached (offline), the checks
    that need its data are skipped with a warning instead of failing, since that isn't the code's fault. */
 import { spawn } from 'node:child_process';
@@ -175,6 +175,28 @@ const game = await run(async () => {
   };
   out.cover = await drill('cover');
   out.rush = await drill('rush');
+  // HD graphics (beta): switched on from the setup screen, its renderer loads and draws a game in progress.
+  $('[data-pb="back"]')?.click(); await w(200);
+  const hd = $('[data-pb-opt="hd"]');
+  if (!hd) return { ...out, hd: 'no HD switch on the setup screen' };
+  hd.click();
+  for (let i = 0; i < 50 && !P.R.hd; i++) await w(100);
+  if (!P.R.hd) return { ...out, hd: 'the HD renderer never loaded' };
+  $('[data-pb="start"]').click();
+  let frames = 0;
+  for (let n = 0; n < 4000 && P.G.stats.plays < 8 && !vis('[data-pb="rematch"]'); n++){
+    if (['modal', 'wait'].includes(P.phase)) await w(10);
+    P.tick(.1);
+    const el = ['toss', 'drive', 'half', 'pat', 'fg', 'goforit', 'keyrush', 'keycover'].map(a => vis(`.pb-modal [data-pb="${a}"]`)).find(Boolean);
+    if (el){ el.click(); await w(10); continue; }
+    if (P.G.youDefend){ if (P.phase === 'live' && P.G.play.t > .1) key(' '); }
+    else if (P.phase === 'presnap' && !$('.pb-modal.on')) key(' ');
+    else if (P.phase === 'kick'){ const K = P.G.kick; if (K.stage === 'aim' && Math.abs(K.aim - K.center) < .02 || K.stage === 'power' && K.power > .8) key(' '); }
+    else if (P.phase === 'live' && !P.G.play.carrier && P.G.play.t > 1.4) key(String(1 + Math.floor(Math.random() * 5)));
+    P.R.draw(P.G, 1 / 30, { routes: P.phase === 'presnap', handoff: P.phase === 'presnap' }); frames++;
+  }
+  out.hd = P.G.stats.plays >= 8 || vis('[data-pb="rematch"]') ? `${P.G.stats.plays} plays, ${frames} frames` : `stalled after ${P.G.stats.plays} plays`;
+  hd.click();
   return out;
 }).catch(e => ({ err: e.message }));
 if (game.err) fail('game opens', game.err);
@@ -185,6 +207,7 @@ else {
   game.designer === 5 ? pass('My Playbook designer opens', '5 receiver rows') : fail('My Playbook designer opens', `${game.designer} receiver rows`);
   game.cover ? pass('defense: cover drill session completes', `grade ${game.cover}`) : fail('defense: cover drill session completes', 'no summary');
   game.rush ? pass('defense: pass rush session completes', `grade ${game.rush}`) : fail('defense: pass rush session completes', 'no summary');
+  /plays, \d+ frames/.test(game.hd || '') ? pass('HD graphics (beta) draws a game', game.hd) : fail('HD graphics (beta) draws a game', game.hd || 'not reached');
 }
 
 /* ---------- page errors anywhere along the way ---------- */
