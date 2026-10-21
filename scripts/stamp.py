@@ -4,7 +4,8 @@ stamped with a fingerprint of its contents (e.g. js/picks.js?v=3f9a1c2e).
 
     python3 scripts/stamp.py           # update both pages; run before every push that touches js/ or css/
     python3 scripts/stamp.py --check   # only report; exits 1 if a page is out of date
-    python3 scripts/stamp.py --major   # this commit starts a new major version (v2.7 -> v3.0)
+    python3 scripts/stamp.py --minor   # this commit is a feature release (v2.9.3 -> v2.10)
+    python3 scripts/stamp.py --major   # this commit starts a new major version (v2.9.3 -> v3.0)
 
 Why: GitHub Pages lets browsers keep each file for 10 minutes. Without fingerprints, a browser can pair a new
 module with an older cached copy of another one, and the page stops at "Loading the slate…". A changed file gets a
@@ -14,9 +15,10 @@ How: an import map points each module's plain address (./js/picks.js) at its sta
 `import ... from './picks.js'` lines don't change. Preloads let the browser fetch every module at once instead
 of discovering them one level at a time.
 
-Version: version.json holds the app's version (v2.0, v2.1, ...), shown in the Settings panel. Every commit that
-changes the app's code moves it up one minor step, counted from the version in the last commit, so stamping again
-and again before a commit still lands as a single step. Commits that only change data (the odds bot) don't touch
+Version: version.json holds the app's version (v2.9, v2.9.1, v2.10, ...), shown in the Settings panel. Every commit
+that changes the app's code moves it up one patch step (v2.9 -> v2.9.1 -> v2.9.2); --minor marks a feature release
+(-> v2.10) and --major a new major version (-> v3.0). Steps count from the version in the last commit, so stamping
+again and again before a commit still lands as a single step. A version written into version.json by hand is kept. Commits that only change data (the odds bot) don't touch
 it. The build is a fingerprint of every stamped file, so the same code always has the same build.
 """
 import hashlib
@@ -86,25 +88,32 @@ def read_json(text):
 
 
 def parse(v):
-    return tuple(int(x) for x in v.split("."))
+    p = [int(x) for x in v.split(".")]
+    return tuple((p + [0, 0])[:3])
 
 
-def version(build, major):
-    """{"version", "build", "date"}: the last commit's version if the code is unchanged, else one minor step past it
-    (or the next major with --major, or a major bump already written here and not yet committed)."""
+def fmt(v):
+    """(2, 9, 0) -> "2.9", (2, 9, 1) -> "2.9.1"."""
+    return f"{v[0]}.{v[1]}" + (f".{v[2]}" if v[2] else "")
+
+
+def version(build, step):
+    """{"version", "build", "date"}: the last commit's version if the code is unchanged, else one step past it (a patch;
+    or a minor / major step with --minor / --major), or a higher version already written here and not yet committed."""
     head = subprocess.run(["git", "show", "HEAD:version.json"], cwd=ROOT, capture_output=True, text=True)
     head = read_json(head.stdout) if head.returncode == 0 else None
     work = read_json(VERSION_FILE.read_text()) if VERSION_FILE.exists() else None
-    if head and head.get("build") == build and not major:
-        return head
+    if head and head.get("build") == build and step == "patch":
+        # Code unchanged: the last commit's version, unless one was set here by hand for this same code.
+        return work if work and work.get("build") == build and work.get("version") != head.get("version") else head
     if not head:
-        v = FIRST
+        v = FIRST + (0,)
     else:
         hv = parse(head["version"])
-        v = (hv[0] + 1, 0) if major else (hv[0], hv[1] + 1)
+        v = (hv[0] + 1, 0, 0) if step == "major" else (hv[0], hv[1] + 1, 0) if step == "minor" else (hv[0], hv[1], hv[2] + 1)
         if work and parse(work["version"]) > v:
             v = parse(work["version"])
-    v = ".".join(map(str, v))
+    v = fmt(v)
     day = work["date"] if work and work.get("version") == v else date.today().isoformat()
     return {"version": v, "build": build, "date": day}
 
@@ -129,7 +138,7 @@ def block(extra, ver):
 def main():
     check = "--check" in sys.argv
     stale = []
-    ver = version(build_id(), "--major" in sys.argv)
+    ver = version(build_id(), "major" if "--major" in sys.argv else "minor" if "--minor" in sys.argv else "patch")
     vtext = json.dumps(ver, indent=1) + "\n"
     if not VERSION_FILE.exists() or VERSION_FILE.read_text() != vtext:
         stale.append("version.json")
