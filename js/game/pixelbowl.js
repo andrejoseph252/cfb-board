@@ -70,8 +70,10 @@ function teamInfo(id){
     color: c?.color || g?.color || '#5a6470', alt: c?.alt || g?.alt || '#ffffff', off: f?.off, def: f?.def, fpi: f?.fpi
   };
 }
+/* The teams you can pick: FBS, from the standings (the color table also covers every other division, for opponents
+   on a schedule, so it's the list only when the standings haven't loaded). */
 function allTeams(){
-  const ids = new Set([...Object.keys(state.standings?.byTeam || {}), ...Object.keys(colors || {})]);
+  const ids = new Set(Object.keys(state.standings?.byTeam || {}).length ? Object.keys(state.standings.byTeam) : Object.keys(colors || {}));
   return [...ids].map(teamInfo).sort((a, b) => a.name.localeCompare(b.name));
 }
 function withImage(t){
@@ -151,7 +153,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
   if (root){ if (chal) startChallenge(chal); else if (prefill && phase === 'setup'){ pick = defaults(prefill); setup(); } return; }
   seasonCtx.icon = ICON; SV.init(seasonCtx);
   if (!document.getElementById('pb-font')){
-    const l = Object.assign(document.createElement('link'), { id: 'pb-font', rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap' });
+    const l = Object.assign(document.createElement('link'), { id: 'pb-font', rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Big+Shoulders+Display:wght@700;800;900&display=swap' });
     document.head.append(l);
   }
   if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS }));
@@ -202,12 +204,18 @@ export function close(){
 }
 export const isOpen = () => !!root;
 
-/* HD graphics (beta): a second renderer with the same interface (drawhd.js), loaded only once it's switched on and
-   swapped in on the spot, mid-game included. */
-let hdMod = null;
+/* HD graphics (beta): a second renderer with the same interface (drawhd.js) and its interface (hdui.js: the `hd`
+   class on the game restyles it, and the templates ask hdUI for the pieces that differ), loaded only once it's
+   switched on and swapped in on the spot, mid-game included. */
+let hdMod = null, hdUI = null;
+const hdOn = () => !!(root?.classList.contains('hd') && hdUI);
 async function useHD(on){
-  if (on && !hdMod){ try{ hdMod = await import('./drawhd.js'); }catch{ return; } }
-  if (!root || !!R?.hd === (on && !!hdMod)) return;
+  if (on && !hdMod){ try{ [hdMod, hdUI] = await Promise.all([import('./drawhd.js'), import('./hdui.js')]); }catch{ return; } }
+  if (!root) return;
+  if (hdUI && !document.getElementById('pb-hd-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-hd-css', textContent: hdUI.CSS }));
+  root.classList.toggle('hd', on && !!hdMod);
+  lastHud = '';   // redraw the HUD in the new style
+  if (!!R?.hd === (on && !!hdMod)) return;
   R = (on ? hdMod.createRenderer : createRenderer)(canvas); R.resize();
   if (G) R.snapCamera(G);
 }
@@ -286,7 +294,8 @@ function setup(){
   // The menu sits over a live picture of the matchup.
   G = S.newGame(me, opp, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G);
   showHud(false);
-  const rec = saved.results[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">
+  const hp = hdOn() ? hdUI.cards.pair(me, opp) : null;   // HD: the two cards' colors kept apart
+  const rec = saved.results[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" data-tid="${esc(t.id)}" style="${hp ? hp[t === me ? 0 : 1] : `--c:${esc(t.color)};--k:${inkOn(t.color)}`}">
       ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.name)}</b><small>${who}</small>
       <span class="pb-rt">${Number.isFinite(t.off) ? `OFF ${Math.round(t.off)} · DEF ${Math.round(t.def)}` : 'Tap to change'}</span></button>`;
   const seg = (key, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="set" data-k="${key}" data-v="${v}" aria-pressed="${saved[key] === v}">${l}</button>`).join('')}</div>`;
@@ -306,6 +315,20 @@ function setup(){
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
   </div>`);
+  if (saved.hd && !hdOn()) waitHD();
+}
+/* HD's look arrives a moment after the menu first draws: redraw the menu once it's in, where it was scrolled to. */
+let hdWait = 0;
+function waitHD(){
+  if (hdWait) return;
+  let n = 0;
+  hdWait = setInterval(() => { if (hdOn() || ++n > 50 || !root){ clearInterval(hdWait); hdWait = 0; if (hdOn()) hdRepaint(); } }, 100);
+}
+function hdRepaint(){
+  if (!root || phase !== 'setup' || !$('.pb-match')) return;
+  const y = $('.pb-setup')?.scrollTop || 0;
+  setup();
+  const el = $('.pb-setup'); if (el){ el.style.animation = 'none'; el.scrollTop = y; }
 }
 
 function teamPicker(which){
@@ -336,7 +359,7 @@ function startGame(cfg = null){
   const meWins = Math.random() < .5;
   phase = 'modal';
   // A pixel gold coin, flipped end over end as it goes up, landing on the winner's face: you have heads, they have tails.
-  const call = (t, side, win) => `<div class="pb-ccall${win ? ' win' : ''}" style="--c:${esc(t.color)}">${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.abbr)}</b><small>${side}</small></div>`;
+  const call = (t, side, win) => `<div class="pb-ccall${win ? ' win' : ''}" data-tid="${esc(t.id)}" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.abbr)}</b><small>${side}</small></div>`;
   modal(`<div class="pb-card pb-tosscard" style="--d:${meWins ? 1.6 : 1.76}s;--n:${meWins ? 5 : 5.5}"><h2>COIN TOSS</h2>
     <div class="pb-cstage"><div class="pb-cshad"></div><div class="pb-ccoin"><div class="pb-cspin">${pixelCoin('heads', 'h')}${pixelCoin('tails', 't')}</div><i class="pb-cshine"></i></div><i class="pb-cspark"></i></div>
     <div class="pb-ccalls">${call(G.me, 'HEADS', meWins)}${call(G.opp, 'TAILS', !meWins)}</div>
@@ -518,7 +541,9 @@ function crowdLevel(){
 let pbpTimer = 0;
 function pbp(text){
   const el = $('.pb-pbp'); if (!el || !text) return;
-  el.textContent = text; el.classList.add('on'); clearTimeout(pbpTimer); pbpTimer = setTimeout(() => el.classList.remove('on'), 3200);
+  if (hdOn()){ el.innerHTML = hdUI.hud.pbp(text, G?.lastPlay?.first && !G.twoPt && !/touchdown/.test(text) ? '1st down' : ''); el.setAttribute('style', hdUI.hud.pbpVars(G.me)); }
+  else el.textContent = text;
+  el.classList.add('on'); clearTimeout(pbpTimer); pbpTimer = setTimeout(() => el.classList.remove('on'), 3200);
 }
 function playLine(){
   const P = G.play, r = P.result, n = G.me.names || {}, q = n.QB || 'QB', c = P.carrier, who = c ? n[c.role] || ({ RB: 'Back', QB: q, TE: 'Tight end' })[c.role] || 'Receiver' : null;
@@ -587,9 +612,9 @@ function fourthDown(){
   phase = 'presnap';
   modal(`<div class="pb-card pb-4th"><h2>${ord(4)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}</h2><p>${yardLine(G.los)}</p>
     <p class="pb-advice">SIDELINE: ${adv[0]} · ${esc(adv[1])}</p>
-    <div class="pb-btns"><button class="pb-go" type="button" data-pb="goforit">GO FOR IT</button>
-    ${G.ot ? '' : '<button class="pb-go alt" type="button" data-pb="punt">PUNT</button>'}
-    ${fg ? `<button class="pb-go alt" type="button" data-pb="fg">FIELD GOAL · ${dist} YDS</button>` : ''}</div></div>`, true);
+    <div class="pb-btns"><button class="pb-go${adv[0] === 'GO FOR IT' ? ' pb-adv' : ''}" type="button" data-pb="goforit">GO FOR IT</button>
+    ${G.ot ? '' : `<button class="pb-go alt${adv[0] === 'PUNT' ? ' pb-adv' : ''}" type="button" data-pb="punt">PUNT</button>`}
+    ${fg ? `<button class="pb-go alt${adv[0] === 'FIELD GOAL' ? ' pb-adv' : ''}" type="button" data-pb="fg">FIELD GOAL · ${dist} YDS</button>` : ''}</div></div>`, true);
 }
 function doPunt(){
   closeModal(); phase = 'modal';
@@ -1008,7 +1033,8 @@ function challengeFinal(){
   const rec = saved.challenges = saved.challenges || {}, r = rec[c.id] || { won: false, tries: 0 };
   if (!G.recorded){ G.recorded = true; r.tries++; if (won) r.won = true; rec[c.id] = r; save(); }
   sfx(won ? 'td' : 'boo'); if (won) G.cheer = 6;
-  modal(`<div class="pb-card pb-final"><h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'CHALLENGE BEATEN!' : 'NOT THIS TIME'}</h2>${scoreLine(true)}
+  const noles = won && hdOn() && hdUI.cards.isFSU(G.me);
+  modal(`<div class="pb-card pb-final${won ? ' won' : ''}${noles ? ' pb-fsu' : ''}">${noles ? hdUI.cards.fsuWin() : ''}<h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'CHALLENGE BEATEN!' : 'NOT THIS TIME'}</h2>${scoreLine(true)}
     <p>${won ? `You did what ${esc(c.me.name)} couldn't.` : `Same story as real life: ${esc(c.real)}.`}</p>
     <p class="pb-rec">${r.won ? 'Beaten' : 'Not beaten yet'} · ${r.tries} ${r.tries === 1 ? 'try' : 'tries'}</p>
     <div class="pb-btns"><button class="pb-go" type="button" data-pb="chalretry">${won ? 'PLAY AGAIN' : 'TRY AGAIN'}</button><button class="pb-go alt" type="button" data-pb="challenges">CHALLENGES</button><button class="pb-go alt" type="button" data-pb="exit">EXIT</button></div></div>`);
@@ -1405,7 +1431,8 @@ function final(){
   if (complete && !G.recorded){ G.recorded = true; won ? rec.w++ : rec.l++; saved.results[G.diffKey] = rec; save(); }
   sfx(won ? 'td' : 'boo');
   if (won) G.cheer = 6;
-  modal(`<div class="pb-card pb-final"><h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'VICTORY!' : 'FINAL'}</h2>${scoreLine(true)}${driveRecap()}
+  const noles = won && hdOn() && hdUI.cards.isFSU(G.me);   // HD: Florida State's own final card
+  modal(`<div class="pb-card pb-final${won ? ' won' : ''}${noles ? ' pb-fsu' : ''}">${noles ? hdUI.cards.fsuWin() : ''}<h2 style="color:${won ? '#4cff7a' : '#ff5a4e'}">${won ? 'VICTORY!' : 'FINAL'}</h2>${scoreLine(true)}${driveRecap()}
     <table class="pb-tbl"><tr><td>Passing</td><td>${st.comp}/${st.att}, ${st.passYds} yds, ${st.passTD} TD, ${st.int} INT</td></tr>
     <tr><td>Rushing</td><td>${st.rush} for ${st.rushYds} yds, ${st.rushTD} TD</td></tr>
     <tr><td>Kicking</td><td>${st.fgm}/${st.fga} FG</td></tr><tr><td>Longest play</td><td>${st.longest} yds</td></tr>
@@ -1414,7 +1441,8 @@ function final(){
     <div class="pb-btns"><button class="pb-go" type="button" data-pb="rematch">REMATCH</button><button class="pb-go alt" type="button" data-pb="menu">NEW GAME</button><button class="pb-go alt" type="button" data-pb="exit">EXIT</button></div></div>`);
 }
 function scoreLine(big){
-  const t = (x, s) => `<div class="pb-sl" style="--c:${esc(x.color)};--k:${inkOn(x.color)}">${x.logo ? `<img src="${esc(logoUrl(x.logo, 72))}" alt="">` : ''}<b>${esc(x.abbr)}</b><span>${s}</span></div>`;
+  const hp = hdOn() ? hdUI.cards.pair(G.me, G.opp) : null;
+  const t = (x, s) => `<div class="pb-sl" data-tid="${esc(x.id)}" style="${hp ? hp[x === G.me ? 0 : 1] : `--c:${esc(x.color)};--k:${inkOn(x.color)}`}">${x.logo ? `<img src="${esc(logoUrl(x.logo, 72))}" alt="">` : ''}<b>${esc(x.abbr)}</b><span>${s}</span></div>`;
   return `<div class="pb-score${big ? ' big' : ''}">${t(G.me, G.score[0])}${t(G.opp, G.score[1])}</div>`;
 }
 
@@ -1447,21 +1475,50 @@ function hud(){
   const late = S.lateInHalf(G), live = phase === 'presnap';
   const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || 'Random')) + (G.pa ? ' · PA' : '') + (G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation]}` : '');
   const sheetUp = $('.pb-modal').classList.contains('on');
+  const H = hdOn() && hdUI.hud;   // HD: the broadcast bug and glass buttons (hdui-hud.js)
   const btns = !live || paused ? '' : [
-    sheetUp ? '' : `<button type="button" data-pb="call" class="pb-call">PLAY: ${esc(callName.toUpperCase())} ▾</button>`,
-    G.coach && !sheetUp ? '<button type="button" data-pb="snap" class="pb-snapbtn">SNAP ▶</button>' : '',
-    G.runoff > 0 && G.timeouts > 0 && !G.ot ? `<button type="button" data-pb="timeout">TIMEOUT (${G.timeouts})</button>` : '',
-    late && G.runoff > 0 && G.down < 4 && !G.twoPt ? '<button type="button" data-pb="spike">SPIKE</button>' : '',
-    late && G.score[0] > G.score[1] && !G.twoPt && G.quarter === 4 ? '<button type="button" data-pb="kneel">KNEEL</button>' : '',
-    S.inFgRange(G) && G.down < 4 && !G.twoPt && (late || G.ot) ? `<button type="button" data-pb="fg">FG · ${S.fgDistance(G)}</button>` : ''
+    sheetUp ? '' : H ? H.callBtn(callName.toUpperCase()) : `<button type="button" data-pb="call" class="pb-call">PLAY: ${esc(callName.toUpperCase())} ▾</button>`,
+    G.coach && !sheetUp ? (H ? H.chip('snap', 'SNAP ▶', '', 'go') : '<button type="button" data-pb="snap" class="pb-snapbtn">SNAP ▶</button>') : '',
+    G.runoff > 0 && G.timeouts > 0 && !G.ot ? (H ? H.chip('timeout', 'TIMEOUT', `${G.timeouts} LEFT`) : `<button type="button" data-pb="timeout">TIMEOUT (${G.timeouts})</button>`) : '',
+    late && G.runoff > 0 && G.down < 4 && !G.twoPt ? (H ? H.chip('spike', 'SPIKE') : '<button type="button" data-pb="spike">SPIKE</button>') : '',
+    late && G.score[0] > G.score[1] && !G.twoPt && G.quarter === 4 ? (H ? H.chip('kneel', 'KNEEL') : '<button type="button" data-pb="kneel">KNEEL</button>') : '',
+    S.inFgRange(G) && G.down < 4 && !G.twoPt && (late || G.ot) ? (H ? H.chip('fg', 'FG', `${S.fgDistance(G)} YDS`) : `<button type="button" data-pb="fg">FG · ${S.fgDistance(G)}</button>`) : ''
   ].join('');
   const hint = hintText();
-  const key = [G.score, q, Math.ceil(G.clock), dd, G.los, G.timeouts, btns, hint, G.runoff > 0, live && G.tellOn ? filmTell() : ''].join('|');
+  // HD: who has the ball (yours on your snaps and kicks, theirs while their drive plays out).
+  const poss = !H ? '' : ['presnap', 'live', 'dead', 'kick', 'replay'].includes(phase) ? 'me' : $('.pb-modal .pb-drive') ? 'opp' : '';
+  const key = [G.score, q, Math.ceil(G.clock), dd, G.los, G.timeouts, btns, hint, G.runoff > 0, live && G.tellOn ? filmTell() : '', poss, H ? phase : ''].join('|');
   if (key === lastHud) return; lastHud = key;
+  if (H) return hudHD(H, dd, poss, live && G.tellOn && G.play ? filmTell() : '', btns, hint);
   const tm = (t, s) => `<div class="pb-tm" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.abbr)}</b><span>${s}</span></div>`;
   $('.pb-bug').innerHTML = `${tm(G.me, G.score[0])}<div class="pb-mid"><span>${q}</span><b class="${G.runoff > 0 ? 'run' : ''}">${G.ot ? '--' : mmss(G.clock)}</b></div>${tm(G.opp, G.score[1])}`;
   const tell = live && G.tellOn && G.play ? filmTell() : '';
   $('.pb-dd').innerHTML = phase === 'kick' || !G.play && !G.kick ? '' : `<span>${dd}</span><span>${yardLine(G.los)}</span><span class="pb-to">${'●'.repeat(G.timeouts)}${'○'.repeat(3 - G.timeouts)}</span>${tell ? `<span class="pb-tell">${tell}</span>` : ''}`;
+  $('.pb-bar').innerHTML = btns;
+  $('.pb-hint').textContent = hint;
+}
+/* HD: the bug is redrawn only when the score, the quarter, the timeouts or the ball change (so its slide-ins and the
+   score flash play once); the clock ticks in place; the down & distance tab slides out again on each new spot. */
+let hdScore = null;
+function hudHD(H, dd, poss, tell, btns, hint){
+  const bug = $('.pb-bug'), ddEl = $('.pb-dd');
+  const running = !G.ot && (G.runoff > 0 || phase === 'live');
+  const st = { me: G.me, opp: G.opp, score: G.score, q: G.ot ? (G.ot === 1 ? 'OT' : `${G.ot}OT`) : ord(G.quarter), clock: G.ot ? '--' : mmss(G.clock), running, poss, tos: G.timeouts };
+  const bk = [G.me.id, G.opp.id, G.score, st.q, poss, G.timeouts].join('|');
+  if (bk !== bug.dataset.hk || !bug.querySelector('.hb-clk')){
+    const prev = hdScore?.g === G ? hdScore.s : G.score;
+    st.flash = [G.score[0] > prev[0], G.score[1] > prev[1]];
+    hdScore = { g: G, s: [...G.score] };
+    bug.innerHTML = H.bug(st); bug.dataset.hk = bk;
+  } else {
+    const c = bug.querySelector('.hb-clk b'); c.querySelector('em').textContent = st.clock; c.querySelector('i').classList.toggle('on', running);
+  }
+  let dk = '';
+  if (!(phase === 'kick' || !G.play && !G.kick)){
+    const x = Math.round(G.los), P = hdUI.kit.teamPaint(G.me, G.opp);
+    dk = H.dd({ text: dd, goal: !G.twoPt && G.toGo >= 100 - G.los, spot: x === 50 ? 'MIDFIELD' : x < 50 ? `${G.me.abbr} ${x}` : `${G.opp.abbr} ${100 - x}`, side: x === 50 ? '#fff' : x < 50 ? P.me.c : P.opp.c, tell });
+  }
+  if (dk !== ddEl.dataset.hk || (dk ? !ddEl.querySelector('.hb-dd') : ddEl.innerHTML)){ ddEl.innerHTML = dk; ddEl.dataset.hk = dk; }
   $('.pb-bar').innerHTML = btns;
   $('.pb-hint').textContent = hint;
 }
@@ -1491,7 +1548,13 @@ function hintText(){
 let bannerTimer = 0;
 function banner(text, sub, color = '#fff', ms = 1200){
   const b = $('.pb-banner'); if (!b) return;
-  b.innerHTML = `<b style="--bc:${esc(color)}">${esc(text)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}`;
+  if (typeof color === 'number'){ ms = color; color = sub; sub = ''; }   // banner(word, color, ms)
+  if (hdOn()){
+    // HD: the big ones (a touchdown, two points, a pick six) wipe in in the scoring team's colors; the rest are slabs.
+    const team = !G ? null : /^PICK SIX/.test(text) || color !== G.me.color ? G.opp : G.me;
+    const h = hdUI.hud.banner(text, sub, color, team);
+    b.className = `pb-banner ${h.cls}`; b.innerHTML = h.html;
+  } else { b.className = 'pb-banner'; b.innerHTML = `<b style="--bc:${esc(color)}">${esc(text)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}`; }
   b.classList.remove('on'); void b.offsetWidth; b.classList.add('on');
   clearTimeout(bannerTimer); bannerTimer = setTimeout(() => b.classList.remove('on'), ms);
 }
@@ -1500,6 +1563,7 @@ function modal(html, light = false, kind = ''){
   if (kind !== 'pause' && paused) return;   // a game event never covers the pause menu
   if (kind === 'pause'){ behind = m.innerHTML ? { html: m.innerHTML, light: m.classList.contains('light') } : null; }
   m.innerHTML = html; m.classList.add('on'); m.classList.toggle('light', light); m.dataset.kind = kind;
+  m.classList.toggle('fsu', hdOn() && hdUI.cards.isFSU(keyCtx ? keyCtx.main.me : G?.youDefend ? G.opp : G?.me));   // HD: garnet and gold when Florida State is yours
 }
 function closeModal(kind){
   const m = $('.pb-modal'); if (!m) return;
@@ -1606,7 +1670,7 @@ function onInput(e){
   if (e.target.matches('[data-pb-opt]')){
     const k = e.target.dataset.pbOpt; saved[k] = e.target.checked; save();
     if (k === 'sound') setSound(saved.sound);
-    if (k === 'hd') useHD(saved.hd);
+    if (k === 'hd') useHD(saved.hd).then(hdRepaint);
   }
   if (e.target.matches('[data-pb-name]') && editing){ editing.name = e.target.value; $('.pb-ename-err')?.remove(); }
   if (e.target.matches('[data-pb-q]')){

@@ -609,7 +609,7 @@ export function buildCrowd(portrait, home, away){
   const rnd = (() => { let s = 1234567; return () => (s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x9e3779b9 | 0, (s >>> 0) / 4294967296); })();
   const hc = home.color || '#777', ha = letterColor(home), ac = away.color || '#777';
   const SHIRTS = [[hc, 26], [ha, 22], ['#f2f0ea', 11], ['#8f969c', 6], ['#1d1d22', 6], ['#3c5a86', 5], [ac, 4], ['#5a2d1c', 3], ['#2f4f2f', 2]];
-  const towels = [], flags = [], bob = [];
+  const towels = [], flags = [], bob = [], chop = [];
   const rows = 38, spacing = 6, rowH = 7;
   x.fillStyle = '#3d3a44'; x.fillRect(0, 0, W, H);
   const aisle = s => { const m = ((s + 40) % 122 + 122) % 122; return m < 8; };
@@ -638,6 +638,8 @@ export function buildCrowd(portrait, home, away){
       const r = rnd();
       if (r < .05 && !visitors) towels.push({ px, py, col: rnd() < .7 ? ha : '#f4f2ea', ph: rnd() * 6, lit });
       else if (r < .09) bob.push({ px, py, shirt, skin, hat, lit, haze, hz, ph: rnd() * 6, sp: 3 + rnd() * 3 });
+      // Home fans who chop with the rest when the moment calls for it (drawhd.js decides when): an arm in their light.
+      else if (!visitors && r < .6) chop.push({ px, py, arm: css(mix(lit ? LIT(hex(skin)) : SHD(hex(skin)), haze, hz * .42)) });
     }
   }
   // Flags along the back of the lower bowl.
@@ -645,7 +647,7 @@ export function buildCrowd(portrait, home, away){
     const s = Math.round(along * (.14 + k * .24)), [px, py] = at(s, 250), w = toWorld(px, py);
     flags.push({ px, py, lit: !inShadow(w.x, w.y), k });
   }
-  return { c, towels, flags, bob, colors: { field: ha, band: hc } };
+  return { c, towels, flags, bob, chop, colors: { field: ha, band: hc } };
 }
 
 /* The midfield logo, painted on: posterized, a little grass showing through, in the late light. */

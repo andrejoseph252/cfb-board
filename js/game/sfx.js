@@ -68,6 +68,17 @@ FX.band = () => {
   [0, .28, .56, .84, 1.12].forEach(a => noise(.08, { vol: .25, freq: 2400, q: .8, at: .5 + a }));
 };
 
+/* A drum cadence for Florida State moments: two bars of four on a low tom, the first beat of each bar the loudest. */
+function cadence(start){
+  for (let i = 0; i < 8; i++){
+    const at = start + i * .42, acc = i % 4 === 0;
+    tone(acc ? 124 : 98, .3, { type: 'sine', vol: acc ? .6 : .4, at, slide: 46 });
+    noise(.09, { vol: acc ? .26 : .16, freq: 280, q: .8, at });
+  }
+}
+FX.drums = () => cadence(0);
+FX.drumsLate = () => cadence(2.3);   // after the touchdown fanfare
+
 export function sfx(name){
   if (!on || !ac) return;
   resume();

@@ -8,8 +8,8 @@
    everything the page measures feels the same at any zoom: R.W / R.H, toScreen, toWorld and dragToWorld all work in
    UI pixels, and a drag is worth as many yards as it always was. */
 import { FW, MID, GOAL_HALF, BAR, canThrow, clamp, trajectory, throwSpread } from './sim.js';
-import { drawText, drawTextCentered } from './font.js';
 import * as A from './hdart.js';
+import { sfx } from './sfx.js';
 
 const { S } = A;
 const UI = 290;   // UI pixels on the screen's short side: draw.js's logical resolution
@@ -24,6 +24,20 @@ const R_ = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const NUMS = { QB: [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19], RB: [...R_(20, 35), 2, 4, 5, 6, 7], X: [...R_(1, 19), ...R_(80, 88)],
   TE: R_(80, 89), OL: R_(50, 79), DL: [...R_(90, 99), ...R_(50, 58)], LB: [...R_(30, 59), 1, 6, 10], CB: R_(1, 39), S: [...R_(1, 9), ...R_(20, 49)] };
 NUMS.Z = NUMS.SL = NUMS.X;
+/* The HD interface's colors (hdkit.js's tokens) for the overlays. */
+const INK = '#0b0d10', GLASS = 'rgba(16,18,22,.78)', GO = '#3ddc84', YEL = '#ffd23f', BAD = '#ff4d4f';
+const STATE = { open: GO, tight: YEL, covered: BAD };
+/* The engine's pop-up colors, in the new palette. */
+const POP = { '#4cff7a': GO, '#ff5a4e': BAD, '#ffd84a': YEL, '#9fc4ff': '#9fc4ff', '#fff': '#fff' };
+const FINE = typeof matchMedia === 'function' ? matchMedia('(pointer: fine)') : null;
+/* Big Shoulders Display (index.html loads it) once it's ready; a narrow system face until then. */
+const DISPLAY = '"Big Shoulders Display"';
+let fontOK = false;
+try { document.fonts.load(`800 12px ${DISPLAY}`).then(f => { if (f.length) fontOK = true; }, () => {}); } catch {}
+const font = (px, w = 800) => `${w} ${px.toFixed(2)}px ${fontOK ? `${DISPLAY},` : ''}"Arial Narrow",Impact,sans-serif`;
+/* Florida State (ESPN id 52): garnet and gold. */
+const FSU = '52', GARNET = '#782f40', GOLD = '#ceb888';
+const isFSU = t => String(t?.id) === FSU;
 
 export function createRenderer(canvas){
   const ctx = canvas.getContext('2d');
@@ -85,6 +99,7 @@ export function createRenderer(canvas){
      make, tight again with a runner. */
   function zoomTarget(G, aim){
     const P = G.play;
+    if (spearOn()) return CLOSE;
     if (G.kick) return THROW;
     if (G.youDefend) return G.defDrill?.kind === 'rush' ? CLOSE : COVER;
     if (fitting(G, P)) return fit(P).span;
@@ -193,6 +208,16 @@ export function createRenderer(canvas){
         const s = Math.sin(t * 5 + fl.k + c * .45), wv = Math.round(s * 1.4 * (c / 18)), f = s > .4 ? .18 : 0, y0 = fl.py - 30 + wv;
         bx.fillStyle = T(C.colors.field, f); bx.fillRect(fl.px + 2 + c, y0, 1, 11);
         bx.fillStyle = T(C.colors.band, f); bx.fillRect(fl.px + 2 + c, y0 + 4, 1, 3);
+      }
+    }
+    if (C.chop && chopping(G)){
+      // The chop: arms up, then down toward the field together, about twice a second.
+      const ph = (t * 1.9) % 1, f = ph < .42 ? 0 : ph < .56 ? 1 : 2;
+      for (const c of C.chop){
+        bx.fillStyle = c.arm;
+        if (f === 0){ bx.fillRect(c.px + 2, c.py - 11, 1, 7); bx.fillRect(c.px + 2, c.py - 12, 1, 1); }
+        else if (f === 1){ bx.fillRect(c.px + 2, c.py - 6, 1, 2); bx.fillRect(c.px + 3, c.py - 8, 1, 2); bx.fillRect(c.px + 4, c.py - 9, 1, 1); }
+        else bx.fillRect(c.px, c.py - 4, 2, 2);
       }
     }
     if (Math.random() < .5){
@@ -359,23 +384,50 @@ export function createRenderer(canvas){
   }
   const kickCast = { at: null, list: null };
 
-  /* ---------- overlays (UI pixels, on the screen) ---------- */
-  function line(x0, y0, x1, y1, col, w = 1){
-    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
-    ctx.fillStyle = col;
-    for (let i = 0; i <= n; i++) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n) - (w >> 1), Math.round(y0 + (y1 - y0) * i / n) - (w >> 1), w, w);
+  /* ---------- overlays (UI pixels, on the screen) ----------
+     Drawn as clean vector shapes at the device's resolution (the HD interface's look: dark outlines, the UI's
+     green / yellow / red, Big Shoulders Display for numbers and words). */
+  const pathPts = pts => { ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); };
+  /* A rounded diamond centered on (x, y), r from the center to a corner. */
+  function diamond(x, y, r){
+    const c = r * .3;
+    ctx.beginPath();
+    ctx.moveTo(x - c * .7, y - r + c * .7);
+    ctx.quadraticCurveTo(x, y - r, x + c * .7, y - r + c * .7); ctx.lineTo(x + r - c * .7, y - c * .7);
+    ctx.quadraticCurveTo(x + r, y, x + r - c * .7, y + c * .7); ctx.lineTo(x + c * .7, y + r - c * .7);
+    ctx.quadraticCurveTo(x, y + r, x - c * .7, y + r - c * .7); ctx.lineTo(x - r + c * .7, y + c * .7);
+    ctx.quadraticCurveTo(x - r, y, x - r + c * .7, y - c * .7); ctx.closePath();
   }
+  /* Text with a dark rim, in the display face (once it has loaded). */
+  function say(text, x, y, px, col, { align = 'center', base = 'middle', rim = 2.4, alpha = 1 } = {}){
+    ctx.save(); ctx.globalAlpha = alpha; ctx.font = font(px); ctx.textAlign = align; ctx.textBaseline = base; ctx.lineJoin = 'round';
+    ctx.lineWidth = rim; ctx.strokeStyle = INK; ctx.strokeText(text, x, y); ctx.fillStyle = col; ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+  /* How open a receiver is: the nearest defender's distance, in the three states the tags show. */
+  function openness(P, r){
+    const d = Math.min(...P.def.map(x => Math.hypot(x.x - r.x, x.y - r.y)));
+    return d > 3 ? 'open' : d > 1.6 ? 'tight' : 'covered';
+  }
+  /* Receiver tags: a small color marker over each head (green open, yellow tight, red covered). Open is the biggest
+     and breathes a soft halo, covered is smaller and dimmer, so it reads without color too. With a keyboard (a fine
+     pointer) a tiny number beside it names the key that throws to him. */
   function labels(G){
-    const P = G.play, L = lift();
+    const P = G.play, L = lift(), keys = FINE?.matches;
     for (const r of P.rec){
       if (r.routeName === 'block' && P.t < 1) continue;
-      const d = Math.min(...P.def.map(x => Math.hypot(x.x - r.x, x.y - r.y)));
-      const col = d > 3 ? '#4cff7a' : d > 1.6 ? '#ffd84a' : '#ff5a4e';
-      const [x, y] = toScreen(r.x, r.y);
-      ctx.fillStyle = col; ctx.fillRect(x - 4, y + 1, 9, 1); ctx.fillRect(x - 3, y + 2, 7, 1);
-      ctx.fillStyle = '#101010'; ctx.fillRect(x - 4, y - 25 - L, 9, 9);
-      ctx.fillStyle = col; ctx.fillRect(x - 3, y - 24 - L, 7, 7);
-      drawText(ctx, String(r.num), x - 2, y - 24 - L, { color: '#101010', scale: 1 });
+      const st = openness(P, r), [x, y0] = toScreen(r.x, r.y), y = y0 - 18 - L;
+      const rad = st === 'open' ? 4.6 : st === 'tight' ? 4 : 3.3;
+      ctx.save();
+      if (st === 'open'){ const p = (Math.sin(t * 5) + 1) / 2; diamond(x, y, rad + 2 + p * 1.4); ctx.fillStyle = `rgba(61,220,132,${(.16 + p * .16).toFixed(2)})`; ctx.fill(); }
+      ctx.globalAlpha = st === 'covered' ? .74 : 1;
+      diamond(x, y, rad + .9); ctx.fillStyle = INK; ctx.fill();
+      diamond(x, y, rad); ctx.fillStyle = STATE[st]; ctx.fill();
+      // A little light on the top facet.
+      ctx.beginPath(); ctx.moveTo(x - rad * .5, y - rad * .5); ctx.lineTo(x, y - rad * .92); ctx.lineTo(x + rad * .5, y - rad * .5); ctx.lineTo(x, y - rad * .12); ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fill();
+      ctx.restore();
+      if (keys) say(String(r.num), x + rad + 2.2, y + .3, 7.5, '#fff', { align: 'left', rim: 2, alpha: st === 'covered' ? .74 : 1 });
     }
   }
   function aimArc(G, aim){
@@ -383,43 +435,56 @@ export function createRenderer(canvas){
     // spot, how far the throw can stray right now: the ring grows under pressure and on the run.
     const P = G.play, q = P.qb, { h, tier } = trajectory(G, aim.x, aim.y), sd = throwSpread(G, aim.x, aim.y), pts = [];
     for (let i = 0; i <= 24; i++){ const s = i / 24; pts.push(toScreen(q.x + (aim.x - q.x) * s, q.y + (aim.y - q.y) * s, 1.8 - .6 * s + 4 * h * s * (1 - s))); }
-    const col = { bullet: [255, 255, 255], touch: [125, 216, 255], deep: [255, 216, 74] }[tier];
-    dotted(ctx, pts, `rgb(${col})`, 2, 1);
-    const [tx, ty] = toScreen(aim.x, aim.y), seg = 32;
-    ctx.fillStyle = `rgba(${col},.85)`;
-    for (let a = 0; a < seg; a++){ const th = a / seg * Math.PI * 2, [x, y] = toScreen(aim.x + Math.cos(th) * sd * 1.6, aim.y + Math.sin(th) * sd * 1.6); ctx.fillRect(x, y, 1, 1); }
-    ctx.fillStyle = '#fff'; ctx.fillRect(tx - 1, ty, 3, 1); ctx.fillRect(tx, ty - 1, 1, 3);
+    const col = { bullet: '255,255,255', touch: '111,227,255', deep: '255,210,63' }[tier];
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    pathPts(pts); ctx.strokeStyle = 'rgba(11,13,16,.55)'; ctx.lineWidth = 2.6; ctx.stroke();
+    pathPts(pts); ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.2; ctx.setLineDash([3.2, 2.4]); ctx.lineDashOffset = -t * 14; ctx.stroke(); ctx.setLineDash([]);
+    const ring = []; for (let a = 0; a <= 36; a++){ const th = a / 36 * Math.PI * 2; ring.push(toScreen(aim.x + Math.cos(th) * sd * 1.6, aim.y + Math.sin(th) * sd * 1.6)); }
+    pathPts(ring); ctx.fillStyle = `rgba(${col},.12)`; ctx.fill(); ctx.strokeStyle = 'rgba(11,13,16,.5)'; ctx.lineWidth = 2; ctx.stroke();
+    pathPts(ring); ctx.strokeStyle = `rgba(${col},.95)`; ctx.lineWidth = .9; ctx.stroke();
+    const [tx, ty] = toScreen(aim.x, aim.y);
+    for (const [w, c] of [[2.6, INK], [1.1, '#fff']]){
+      ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(tx - 3.2, ty); ctx.lineTo(tx + 3.2, ty); ctx.moveTo(tx, ty - 3.2); ctx.lineTo(tx, ty + 3.2); ctx.stroke();
+    }
+    ctx.restore();
   }
-  /* An arrow bobbing over a player's head: the back to hand off to, the drill's target, you, the ball carrier. */
+  /* A pointer bobbing over a player's head: the back to hand off to, the drill's target, you, the ball carrier. */
   function mark(p, col){
-    const [x, y] = toScreen(p.x, p.y), b = Math.floor(t * 6) % 2, L = lift();
-    ctx.fillStyle = '#101010'; ctx.fillRect(x - 3, y - 19 - b - L, 7, 4);
-    ctx.fillStyle = col; ctx.fillRect(x - 2, y - 18 - b - L, 5, 1); ctx.fillRect(x - 1, y - 17 - b - L, 3, 1); ctx.fillRect(x, y - 16 - b - L, 1, 1);
+    const [x, y] = toScreen(p.x, p.y), L = lift(), yy = y - 19 - L - (Math.sin(t * 6) + 1) * .9;
+    ctx.save(); ctx.lineJoin = 'round';
+    const tri = () => { ctx.beginPath(); ctx.moveTo(x - 4.8, yy - 3.4); ctx.lineTo(x + 4.8, yy - 3.4); ctx.lineTo(x, yy + 2.8); ctx.closePath(); };
+    tri(); ctx.strokeStyle = INK; ctx.lineWidth = 1.8; ctx.stroke(); ctx.fillStyle = col; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 3.2, yy - 2.6); ctx.lineTo(x + 3.2, yy - 2.6); ctx.lineTo(x, yy - 1.1); ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fill();
+    ctx.restore();
   }
-  /* The drag stick on defense: a ring where your finger went down and a knob where it is now. */
+  /* The drag stick on defense: a glass ring where your finger went down and a knob where it is now. */
   function stick(v){
-    ctx.fillStyle = 'rgba(255,255,255,.28)';
-    for (let a = 0; a < 40; a++){ const th = a / 40 * Math.PI * 2; ctx.fillRect(Math.round(v.ax + Math.cos(th) * v.r), Math.round(v.ay + Math.sin(th) * v.r), 1, 1); }
-    const r = Math.max(3, Math.round(v.r * .38));
-    ctx.fillStyle = 'rgba(255,216,74,.85)';
-    for (let y = -r; y <= r; y++){ const w = Math.round(Math.sqrt(r * r - y * y)); ctx.fillRect(Math.round(v.kx) - w, Math.round(v.ky) + y, w * 2 + 1, 1); }
+    ctx.save();
+    ctx.beginPath(); ctx.arc(v.ax, v.ay, v.r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(16,18,22,.28)'; ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.stroke();
+    const r = Math.max(3, v.r * .38);
+    ctx.beginPath(); ctx.arc(v.kx, v.ky, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,210,63,.92)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.beginPath(); ctx.arc(v.kx - r * .25, v.ky - r * .3, r * .45, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fill();
+    ctx.restore();
   }
+  /* A glass capsule (meters' track). */
+  function capsule(x, y, w, h, fill = GLASS){ ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(w, h) / 2); ctx.fillStyle = fill; ctx.fill(); }
   /* Pass rush timing meter over your rusher: a marker sweeps the bar; tap while it's in the green. */
   function rushMeter(p, m){
-    const [x, y] = toScreen(p.x, p.y), w = 30, x0 = x - w / 2, y0 = y - 30 - lift();
-    ctx.fillStyle = '#101010'; ctx.fillRect(x0 - 1, y0 - 1, w + 2, 6);
-    ctx.fillStyle = '#3a3f46'; ctx.fillRect(x0, y0, w, 4);
-    ctx.fillStyle = m.flash ? '#ff5a4e' : '#4cff7a'; ctx.fillRect(x0 + Math.round(m.lo * w), y0, Math.max(2, Math.round((m.hi - m.lo) * w)), 4);
-    ctx.fillStyle = '#fff'; ctx.fillRect(x0 + Math.round(m.pos * w) - 1, y0 - 2, 2, 8);
+    const [x, y] = toScreen(p.x, p.y), w = 32, x0 = Math.round(x - w / 2), y0 = y - 31 - lift();
+    ctx.save();
+    capsule(x0 - 1.2, y0 - 1.2, w + 2.4, 6.4, INK); capsule(x0, y0, w, 4, 'rgba(255,255,255,.14)');
+    ctx.beginPath(); ctx.roundRect(x0 + m.lo * w, y0, Math.max(2, (m.hi - m.lo) * w), 4, 1.5); ctx.fillStyle = m.flash ? BAD : GO; ctx.fill();
+    const nx = x0 + m.pos * w;
+    ctx.beginPath(); ctx.roundRect(nx - 1.3, y0 - 2.6, 2.6, 9.2, 1.3); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = .8; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.restore();
   }
   function stunned(G){
     const L = lift();
     for (const p of G.play.all){
       if (!(p.stun > 0) || p.down) continue;
       const [x, y] = toScreen(p.x, p.y), a = t * 8;
-      ctx.fillStyle = '#ffd84a';
-      ctx.fillRect(x + Math.round(Math.cos(a) * 5), y - 16 - L + Math.round(Math.sin(a) * 1.5), 1, 1);
-      ctx.fillRect(x - Math.round(Math.cos(a) * 5), y - 16 - L - Math.round(Math.sin(a) * 1.5), 1, 1);
+      for (const s of [1, -1]){ ctx.beginPath(); ctx.arc(x + s * Math.cos(a) * 5, y - 16 - L + s * Math.sin(a) * 1.5, .9, 0, Math.PI * 2); ctx.fillStyle = YEL; ctx.fill(); }
     }
   }
   function effects(P, dt){
@@ -430,40 +495,53 @@ export function createRenderer(canvas){
       const [x, y] = toScreen(f.x, f.y, f.z); ctx.fillStyle = f.c; ctx.fillRect(x, y, n, n);
     }
     P.fx = P.fx.filter(f => f.t <= f.life);
+    // Pop-up words: pop in, rise, fade.
     for (const p of P.pops){
       p.t += dt; if (p.t > 1.3) continue;
-      const [x, y] = toScreen(p.x, p.y);
-      drawTextCentered(ctx, p.text, x, y - 30 - L - p.t * 14, { color: p.color, outline: '#101010' });
+      const [x, y] = toScreen(p.x, p.y), grow = Math.min(1, p.t / .12), a = p.t > 1 ? 1 - (p.t - 1) / .3 : 1;
+      say(p.text, x, y - 32 - L - p.t * 14, 10.5 * (.7 + .3 * grow), POP[String(p.color).toLowerCase()] || p.color, { rim: 2.6, alpha: a });
     }
     P.pops = P.pops.filter(p => p.t <= 1.3);
   }
-  /* Close in, a receiver can be off the screen: a tab on the edge with his number points the way. */
+  /* Close in, a receiver can be off the screen: a glass tab on the edge points the way (in his tag's color once
+     the ball is snapped; with his number on a keyboard). */
   function edgeArrows(G){
-    const P = G.play;
+    const P = G.play, keys = FINE?.matches;
     for (const r of P.rec){
       if (r.down || r.routeName === 'block' && P.live) continue;
       const [x, y] = toScreen(r.x, r.y), top = y - Math.round(30 * f2u());
       const offL = x < 2, offR = x > Wu - 2, offU = y < 0, offD = top > Hu;
       if (!offL && !offR && !offU && !offD) continue;
-      const w = 17, h = 11, ex = clamp(x - (w >> 1), 2, Wu - w - 2), ey = clamp(y - 20, 4, Hu - h - 4);
-      ctx.fillStyle = 'rgba(10,14,28,.82)'; ctx.fillRect(ex, ey, w, h);
-      ctx.fillStyle = '#ffd84a';
-      if (offL || offR){ for (let q = 0; q < 4; q++){ const ax = offL ? ex + 1 + q : ex + w - 2 - q; ctx.fillRect(ax, ey + 5 - q, 1, q * 2 + 1); } }
-      else for (let q = 0; q < 4; q++){ const ay = offU ? ey + 1 + q : ey + h - 2 - q; ctx.fillRect(ex + 3 - q, ay, q * 2 + 1, 1); }
-      drawText(ctx, String(r.num), offL ? ex + 7 : offR ? ex + 3 : ex + 9, ey + 2, { color: '#ffd84a', scale: 1 });
+      const col = P.live ? STATE[openness(P, r)] : YEL;
+      const w = keys ? 19 : 13, h = 13, ex = clamp(x - w / 2, 3, Wu - w - 3), ey = clamp(y - 20, 4, Hu - h - 4);
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(ex, ey, w, h, 4); ctx.fillStyle = GLASS; ctx.fill(); ctx.lineWidth = .8; ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.stroke();
+      // The chevron at the side facing him.
+      const cx = offL ? ex + 4 : offR ? ex + w - 4 : keys ? ex + 5 : ex + w / 2, cy = offU ? ey + 4.5 : offD ? ey + h - 4.5 : ey + h / 2;
+      ctx.beginPath();
+      if (offL || offR){ const s = offL ? -1 : 1; ctx.moveTo(cx - s * 1.6, cy - 3); ctx.lineTo(cx + s * 1.4, cy); ctx.lineTo(cx - s * 1.6, cy + 3); }
+      else { const s = offU ? -1 : 1; ctx.moveTo(cx - 3, cy - s * 1.6); ctx.lineTo(cx, cy + s * 1.4); ctx.lineTo(cx + 3, cy - s * 1.6); }
+      ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = col; ctx.stroke();
+      ctx.restore();
+      if (keys) say(String(r.num), offL ? ex + w - 6 : offR ? ex + 6 : ex + w - 6, ey + h / 2 + .4, 8.5, col, { rim: 0 });
+      else if (offU || offD){ ctx.beginPath(); ctx.arc(ex + w / 2, offU ? ey + h - 3.5 : ey + 3.5, 1.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
     }
   }
   function kickOverlay(G){
     const K = G.kick, [bxs, bys] = toScreen(K.spotX, K.spotY);
     if (K.stage !== 'aim' && K.stage !== 'power') return;
     const L = 14, [ax, ay] = toScreen(K.spotX + Math.cos(K.aim) * L, K.spotY + Math.sin(K.aim) * L);
-    line(bxs, bys, ax, ay, '#ffd84a', 1);
-    ctx.fillStyle = '#ffd84a'; ctx.fillRect(ax - 1, ay - 1, 3, 3);
-    // Power meter beside the ball.
-    const mx = bxs + (portrait ? 14 : -4), my = bys + (portrait ? -6 : 12);
-    ctx.fillStyle = '#101010'; ctx.fillRect(mx - 1, my - 31, 6, 33);
-    const hgt = Math.round((K.stage === 'power' ? K.power : 0) * 30);
-    ctx.fillStyle = K.power > .92 ? '#ff5a4e' : '#4cff7a'; ctx.fillRect(mx, my - hgt, 4, hgt);
+    ctx.save(); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(bxs, bys); ctx.lineTo(ax, ay); ctx.strokeStyle = 'rgba(11,13,16,.55)'; ctx.lineWidth = 2.6; ctx.stroke();
+    ctx.setLineDash([3, 2.4]); ctx.lineDashOffset = -t * 12; ctx.strokeStyle = YEL; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(ax, ay, 2.2, 0, Math.PI * 2); ctx.fillStyle = YEL; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = INK; ctx.stroke();
+    // Power meter beside the ball: a glass capsule filling from the bottom; the top sliver (over 92%) is too much.
+    const mx = bxs + (portrait ? 14 : -4), my = bys + (portrait ? -6 : 12), H = 32;
+    capsule(mx - 1.4, my - H - 1.4, 7.8, H + 2.8, INK); capsule(mx, my - H, 5, H, 'rgba(255,255,255,.14)');
+    ctx.fillStyle = 'rgba(255,77,79,.35)'; ctx.fillRect(mx, my - H, 5, Math.round(H * .08));
+    const hgt = (K.stage === 'power' ? K.power : 0) * H;
+    if (hgt > .5){ ctx.beginPath(); ctx.roundRect(mx, my - hgt, 5, hgt, 2.5); ctx.fillStyle = K.power > .92 ? BAD : GO; ctx.fill(); }
+    ctx.restore();
   }
   /* Dust drifting in the sunlit air. */
   function dust(dt){
@@ -490,6 +568,107 @@ export function createRenderer(canvas){
     ctx.drawImage(vig, 0, 0);
   }
 
+  /* ---------- Florida State ----------
+     When FSU plays: a flaming spear planted at midfield before the opening kickoff of a home game (the camera goes
+     to it while the coin is tossed), the home crowd doing the chop on big moments, and garnet-and-gold confetti
+     with a drum cadence whenever FSU scores. */
+  const SPEAR_T = 6.2, DROP = .75;
+  const fsu = { G: null, score: [0, 0], celeb: 0, flash: 0, conf: [], spear: -1, done: false };
+  const spearOn = () => fsu.spear >= 0;
+  const CONF = [GARNET, GOLD, '#a3485c', '#e9d9ae', GARNET, GOLD, '#ffffff'];
+  function fsuTrack(G, dt){
+    if (fsu.G !== G) Object.assign(fsu, { G, score: [...G.score], celeb: 0, flash: 0, conf: [], spear: -1, done: false });
+    const side = isFSU(G.me) ? 0 : isFSU(G.opp) ? 1 : -1;
+    if (side >= 0 && G.score[side] > fsu.score[side]) celebrate();
+    fsu.score = [...G.score];
+    fsu.celeb = Math.max(0, fsu.celeb - dt);
+    // Before the opening kickoff of a home game: the toss has been called, no one has had the ball yet.
+    const before = isFSU(G.me) && !G.youDefend && !G.practice && !!G.firstHalfReceiver && !G.drive && !G.lastDrive && !G.kick
+      && G.quarter === 1 && !G.score[0] && !G.score[1];
+    if (!spearOn() && !fsu.done && before){ fsu.spear = 0; sfx('drums'); }
+    if (spearOn()){
+      const was = fsu.spear; fsu.spear += dt;
+      if (was < DROP && fsu.spear >= DROP) plant(G);
+      if (fsu.spear >= SPEAR_T || !before){ fsu.spear = -1; fsu.done = true; }
+    }
+  }
+  function plant(G){
+    cam.shake = Math.max(cam.shake, 2.5);
+    const P = G.play; if (!P) return;
+    for (let i = 0; i < 28; i++){
+      const a = Math.random() * Math.PI * 2, v = 1 + Math.random() * 3;
+      P.fx.push({ x: 50, y: MID, z: .2, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 1 + Math.random() * 3, c: [GARNET, GOLD, '#8a6a44', '#ffd04a'][i % 4], t: 0, life: .5 + Math.random() * .5 });
+    }
+  }
+  function celebrate(){
+    fsu.celeb = 4.4; fsu.flash = 1;
+    // Two cannons from the bottom corners, and a rain from the top.
+    fsu.conf = Array.from({ length: 150 }, (_, i) => {
+      const c = CONF[i % CONF.length], sp = Math.random() * 6, w = 3 + Math.random() * 5, term = 22 + Math.random() * 22;
+      if (i % 3 === 2) return { x: Math.random() * Wu, y: -4 - Math.random() * Hu * .35, vx: (Math.random() - .5) * 16, vy: term, sp, w, c, term };
+      const L = i % 3 === 0, a = -(Math.PI / 2 - (.25 + Math.random() * .45)), v = 220 + Math.random() * 170;
+      return { x: L ? 4 : Wu - 4, y: Hu * .82, vx: (L ? 1 : -1) * Math.cos(a) * v, vy: Math.sin(a) * v, sp, w, c, term };
+    });
+    sfx('drumsLate');
+  }
+  /* The home crowd chops on the big moments: a score, a kick, the spear. */
+  const chopping = G => isFSU(G.me) && ((G.cheer || 0) > 0 || fsu.celeb > 0 || spearOn() || !!G.kick);
+  /* The spear on the buffer: dropping in point first, planted in the logo, its wrapped end burning. */
+  function spear(){
+    const s = fsu.spear, fall = s < DROP ? 1 - s / DROP : 0, e = fall * fall;
+    const fade = clamp((SPEAR_T - s) / .8, 0, 1), X = 50 - e * 5, Y = MID - e * 1.5, Z = e * 20;
+    const at = u => toBuf(X - .6 * u, Y - .35 * u, Z - .4 + 7.4 * u);   // u: 0 the point (in the turf) .. 1 the burning end
+    bx.globalAlpha = fade;
+    // Its long shadow, then the shockwave rings in garnet and gold.
+    const shp = u => { const [gx, gy] = toBuf(X - .6 * u, Y - .35 * u, 0), hs = Math.max(0, Z - .4 + 7.4 * u) * S * (portrait ? .8 : .78); return [gx + hs * KX, gy + hs * KY]; };
+    if (!fall) thick(bx, shp(0), shp(1), ['rgba(6,10,20,.3)', 'rgba(6,10,20,.3)'], !portrait);
+    if (s > DROP && s < DROP + 1.6) for (const [col, lag] of [[[120, 47, 64], 0], [[206, 184, 136], .25]]){
+      const q = clamp((s - DROP - lag) / 1.2, 0, 1), r = 1 + q * 9; if (q <= 0 || q >= 1) continue;
+      bx.fillStyle = A.css(col, (1 - q) * .85);
+      for (let a = 0; a < 64; a++){ const th = a / 64 * Math.PI * 2, [x, y] = toBuf(50 + Math.cos(th) * r, MID + Math.sin(th) * r); bx.fillRect(x - 1, y - 1, 2, 2); }
+    }
+    if (!fall){ const [gx, gy] = toBuf(X, Y); bx.fillStyle = 'rgba(40,28,14,.45)'; bx.fillRect(gx - 4, gy - 1, 9, 3); }
+    // The shaft, its garnet and gold wraps and a pair of tassels.
+    thick(bx, at(0), at(1), ['#f0c888', '#c08a4a', '#8a5a2a', '#4e3016'], true);
+    for (const [u0, u1, col] of [[.6, .66, GARNET], [.68, .72, GOLD], [.74, .8, GARNET], [.86, .9, GOLD]]) thick(bx, at(u0), at(u1), [col, col, col, A.css(A.mix(A.hex(col), [0, 0, 0], .35))], true);
+    const [tx, ty] = at(.7), sw = Math.round(Math.sin(t * 4) * 1.2);
+    bx.fillStyle = GOLD; bx.fillRect(tx + 2, ty, 1, 5 + sw); bx.fillStyle = GARNET; bx.fillRect(tx + 3, ty + 1, 1, 4 - sw);
+    // The fire on the end: a warm glow and flickering flame pixels rising.
+    const [fx, fy] = at(.97), big = fall ? .8 : 1;
+    const glow = bx.createRadialGradient(fx, fy - 14, 2, fx, fy - 14, 34);
+    glow.addColorStop(0, 'rgba(255,170,60,.32)'); glow.addColorStop(1, 'rgba(255,120,40,0)');
+    bx.fillStyle = glow; bx.fillRect(fx - 34, fy - 48, 68, 68);
+    for (let i = 0; i < 64; i++){
+      const h = A.hash2(i, 77), ph = (t * (1.1 + h * 1.1) + h * 7) % 1, size = 1 + Math.round((1 - ph) * 4.4 * big);
+      const dx = Math.round((A.hash2(i, 78) - .5) * 14 * (1 - ph * .65) + Math.sin(t * 8 + i) * 2.2 * ph);
+      const dy = -Math.round(ph * 50 * big) + (fall ? Math.round(ph * 16 * fall) : 0);
+      bx.fillStyle = ph < .1 ? '#fff2b0' : ph < .32 ? '#ffd04a' : ph < .6 ? '#ff8a1e' : ph < .84 ? '#d2462a' : 'rgba(60,50,50,.35)';
+      bx.fillRect(fx + dx - (size >> 1), fy + dy - (size >> 1), size, size);
+    }
+    bx.globalAlpha = 1;
+  }
+  /* Garnet and gold confetti (and a brief garnet glow at the edges) after an FSU score, in UI pixels. */
+  function confetti(dt){
+    ctx.save();
+    if (fsu.flash > 0){
+      for (const [y0, y1] of [[0, Hu * .22], [Hu, Hu * .78]]){
+        const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, `rgba(120,47,64,${(fsu.flash * .55).toFixed(3)})`); g.addColorStop(1, 'rgba(120,47,64,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, Math.min(y0, y1), Wu, Math.abs(y1 - y0));
+      }
+      fsu.flash = Math.max(0, fsu.flash - dt * .7);
+    }
+    const a = Math.min(1, fsu.celeb / .9);
+    for (const c of fsu.conf){
+      c.vx *= Math.max(0, 1 - 1.8 * dt); c.vy = Math.min(c.term, c.vy + 260 * dt) * (c.vy < 0 ? Math.max(0, 1 - 1.2 * dt) : 1);
+      c.x += (c.vx + Math.sin(t * 3 + c.sp) * 9) * dt; c.y += c.vy * dt; c.sp += dt * c.w;
+      if (c.y < -3 || c.y > Hu + 3) continue;
+      ctx.globalAlpha = a; ctx.setTransform(k, 0, 0, k, 0, 0); ctx.translate(c.x, c.y); ctx.rotate(c.sp * .5); ctx.scale(1, Math.cos(c.sp) || .1);
+      ctx.fillStyle = c.c; ctx.fillRect(-1.7, -.9, 3.4, 1.8);
+    }
+    ctx.restore();
+    if (fsu.celeb <= 0) fsu.conf = [];
+  }
+
   /* ---------- camera ---------- */
   function updateCamera(G, dt, aim){
     const P = G.play, K = G.kick;
@@ -511,6 +690,8 @@ export function createRenderer(canvas){
       fx = foc.x; fy = foc.y; ahead = P.carrier ? long * .14 : canThrow(G) ? long * .24 : long * .1;
       if (aim){ fx = (P.qb.x + aim.x) / 2; fy = (P.qb.y + aim.y) / 2; ahead = long * .05; }
     }
+    // The spear at midfield, framed in the top half (the coin toss card is below).
+    if (spearOn()){ fx = 50 - long * (portrait ? .14 : 0); fy = MID; ahead = 0; }
     let tx = fx + ahead, ty = fy;
     // Near the goal line, frame the whole end zone with room to spare at the far edge (where the scoreboard sits on a
     // phone), and for kicks the uprights too, without letting the ball itself drift to the edge.
@@ -533,6 +714,7 @@ export function createRenderer(canvas){
     t += dt;
     if (G.play && !G.play.live && !G.play.result && !G.kick) routesOn = !!view.routes;
     prepare(G);
+    fsuTrack(G, dt);
     updateZoom(G, dt, view.aim);
     updateCamera(G, dt, view.aim);
     const sh = cam.shake > 0 ? cam.shake : 0; cam.shake = Math.max(0, cam.shake - dt * 10);
@@ -544,14 +726,15 @@ export function createRenderer(canvas){
     else if (P){
       lines(G);
       if (!P.live && !P.result && view.routes) routes(G);
-      if (view.handoff && !P.carrier) ring(P.rb, '125,249,255');
-      if (P.target && !P.thrown && !P.carrier) ring(P.target, '255,216,74');   // the target drill's man to hit
-      if (view.readKey) ring(view.readKey, '255,216,74');   // the read option's key: the end left unblocked
-      if (mine && !P.result) ring(mine, '255,216,74');   // you, on defense
+      if (view.handoff && !P.carrier) ring(P.rb, '111,227,255');
+      if (P.target && !P.thrown && !P.carrier) ring(P.target, '255,210,63');   // the target drill's man to hit
+      if (view.readKey) ring(view.readKey, '255,210,63');   // the read option's key: the end left unblocked
+      if (mine && !P.result) ring(mine, '255,210,63');   // you, on defense
       if (view.landing && P.ball.state === 'air') landing(G, view.landing);
       drawPlayers(G, P.all);
       ball(G);
     }
+    if (spearOn()) spear();
     goalposts();
     // Onto the screen, then the overlays in UI pixels.
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
@@ -562,10 +745,10 @@ export function createRenderer(canvas){
     else if (P){
       if (P.live && canThrow(G) && !view.aim && !G.youDefend) labels(G);
       stunned(G);
-      if (P.carrier && !P.carrier.down) mark(P.carrier, '#ffd84a');
-      if (view.handoff && !P.carrier) mark(P.rb, '#7df9ff');
-      if (P.target && !P.thrown && !P.carrier) mark(P.target, '#ffd84a');
-      if (mine && !P.result) mark(mine, '#ffd84a');
+      if (P.carrier && !P.carrier.down) mark(P.carrier, YEL);
+      if (view.handoff && !P.carrier) mark(P.rb, '#6fe3ff');
+      if (P.target && !P.thrown && !P.carrier) mark(P.target, YEL);
+      if (mine && !P.result) mark(mine, YEL);
       if (view.rush && mine) rushMeter(mine, view.rush);
       if (view.aim){ labels(G); aimArc(G, view.aim); }
       if (!G.youDefend && !P.carrier && !P.result) edgeArrows(G);
@@ -574,6 +757,8 @@ export function createRenderer(canvas){
     ctx.setTransform(k, 0, 0, k, 0, 0);
     dust(dt);
     vignette();
+    if (fsu.conf.length || fsu.flash > 0) confetti(dt);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
     if (view.stick) stick(view.stick);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
