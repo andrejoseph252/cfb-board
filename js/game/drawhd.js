@@ -285,9 +285,15 @@ export function createRenderer(canvas){
   /* ---------- players ---------- */
   const phase = new WeakMap();   // each player's breathing rhythm
   /* The pose for this moment: stances before the snap, strides when moving, blocking and ready stances after. */
-  function frameOf(G, p){
+  function frameOf(G, p, engaged){
     const P = G.play, K = G.kick;
     if (p.down) return { down: true };
+    // Your corner jumping the route, and anyone the ball is coming down on: both hands up for it.
+    if (p.jump > 0) return { pose: 'set', c: 1, arms: 'reach' };
+    const B = P?.ball;
+    if (B?.state === 'air' && B.T - B.t < .4 && Math.hypot(p.x - B.tx, p.y - B.ty) < 2.4) return { pose: 'set', c: 0, arms: 'reach' };
+    // Locked up at the line: hands in his man's chest, feet churning.
+    if (engaged.has(p)) return { pose: 'set', c: 1, arms: 'block', run: Math.floor(t * 9 + (phase.get(p) || 0) * 3) % 8 };
     // A stride every 2.6 yards of ground covered, so the feet keep pace with the turf at any speed; a truck lowers
     // the shoulder.
     if (Math.hypot(p.vx, p.vy) > .6) return { pose: 'set', run: Math.floor(p.step / 2.6 * 8) % 8, c: p.truck > 0 ? 2 : 0 };
@@ -303,16 +309,29 @@ export function createRenderer(canvas){
     return { pose: 'set', c: 1, arms: big ? 'block' : 'ready' };
   }
   function drawPlayers(G, list){
-    const counts = {}, drawn = [], pre = G.kick || !G.play || !G.play.live && !G.play.result;
+    const counts = {}, drawn = [], pre = G.kick || !G.play || !G.play.live && !G.play.result, P = G.play;
+    // Who's locked up with whom at the line (each side leans into the other).
+    const engaged = new Map();
+    if (P?.live) for (const d of P.def){
+      const o = d.eng?.by || (d.role === 'DL' && !d.free && d.ol) || null;
+      if (o && !d.down && !o.down){ engaged.set(d, o); engaged.set(o, d); }
+    }
+    // A tackle: the man with the ball goes down away from the hit, the tackler on top of him.
+    const R_ = P?.result, victim = R_?.by ? (R_.type === 'sack' ? P.qb : P.carrier) : null;
     for (const p of list){
       const off = p.team === 'off', team = `${off ? G.me.id : G.opp.id}${off ? 'o' : 'd'}`;
       const slot = `${off ? 'o' : 'd'}${p.role}`, idx = counts[slot] = (counts[slot] ?? -1) + 1;
-      const f = frameOf(G, p);
+      const f = frameOf(G, p, engaged);
       let view, flip = false;
       if (portrait) view = off ? (p.vx < -.5 ? 'front' : 'back') : (p.vx > .5 ? 'back' : 'front');
       else { view = 'side'; flip = p.face < 0; }
       if (portrait && Math.abs(p.vy) > Math.abs(p.vx) + .5){ view = 'side'; flip = p.vy < 0; }
       if (f.down) flip = (p.face ?? 1) < 0;
+      if (f.down && victim){
+        const sxOf = q => toBuf(q.x, q.y)[0];
+        if (p === victim) flip = sxOf(R_.by) > sxOf(p);
+        else if (p === R_.by) flip = sxOf(victim) < sxOf(p);
+      }
       let ph = phase.get(p); if (ph == null){ ph = Math.random() * 6; phase.set(p, ph); }
       const still = f.run == null && !f.down, b = still && Math.sin(t * 2.1 + ph) > .35 ? 1 : 0;
       const spr = A.getSprite({ uni: off ? uniOff : uniDef, view, pose: f.pose || 'set', c: f.c || 0, arms: f.arms || 'hang', b, run: f.run ?? null,
@@ -327,6 +346,15 @@ export function createRenderer(canvas){
       if (p.juke > 0){ const k = Math.sin(Math.PI * (1 - p.juke / .3)); lean = -(p.jukeDir || 1) * .32 * k; dx = Math.round((p.jukeDir || 1) * 2 * k); }
       if (p.dive > 0){ const k = 1 - p.dive / .32; hop = Math.round(Math.sin(Math.PI * k) * 7); lean = (portrait ? 0 : -.35) * Math.sin(Math.PI * k); }
       if (p.stumble > 0) dx += Math.round(Math.sin(t * 38));
+      // The jump: up and back down over its .45 s, his shadow left on the turf.
+      if (p.jump > 0) hop = Math.round(Math.sin(Math.PI * (1 - p.jump / .45)) * 15);
+      // Locked up: a shove toward his man every few beats, and turf kicking up under the churning feet.
+      const foe = engaged.get(p);
+      if (foe){
+        const [fx] = toBuf(foe.x, foe.y), push = Math.sin(t * 13 + ph * 2) > .35 ? 1 : 0;
+        dx += Math.sign(fx - gx) * push;
+        if (Math.random() < .035) kick(p.x, p.y, 2, .5);
+      }
       if (!portrait) [lean, dx] = [lean * .4, 0];   // from the side, a cut runs up or down the screen
       if (f.down){
         let at = downAt.get(p); if (at == null){ at = t; downAt.set(p, at); }
@@ -337,6 +365,11 @@ export function createRenderer(canvas){
       // The ball, tucked in the carrier's arm (or in the quarterback's hands on a dropback).
       const B = G.play?.ball, ball = !G.kick && G.play?.live && B?.state === 'held' && B.holder === p && !p.down ? (view === 'side' ? (flip ? -4 : 4) : view === 'back' ? 5 : -6) : null;
       drawn.push({ spr, gx: gx + dx, gy, hop, down: f.down, lean, rot, fall, ball });
+      // Pressure: a red ring pulses under the quarterback as an unblocked rusher closes in.
+      if (p === P?.qb && P.live && canThrow(G) && !G.youDefend){
+        const near = Math.min(99, ...P.def.filter(d => (d.free || d.blitz) && !d.eng && !d.down).map(d => Math.hypot(d.x - p.x, d.y - p.y)));
+        if (near < 4.5) pressure = { p, k: 1 - near / 4.5 };
+      }
     }
     // Long late-afternoon shadows, then erased where the stadium already shades the grass.
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = 'source-over'; sx.clearRect(0, 0, Wb, Hb);
@@ -345,7 +378,17 @@ export function createRenderer(canvas){
     goalposts(true);
     if (art){ sx.globalCompositeOperation = 'destination-out'; worldTransform(sx, A.FX0, A.FY0); sx.drawImage(art.mask, 0, 0); sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = 'source-over'; }
     bx.globalAlpha = .34; bx.drawImage(sl, 0, 0, Wb, Hb, 0, 0, Wb, Hb); bx.globalAlpha = 1;
-    for (const d of drawn) bx.drawImage(A.AO, d.gx - (A.AO.width >> 1), d.gy - 4);
+    if (pressure){
+      const { p, k } = pressure, [x, y] = toBuf(p.x, p.y), pulse = (Math.sin(t * (8 + k * 8)) + 1) / 2, rx = 15 + Math.round(pulse * 3), ry = 6 + Math.round(pulse);
+      bx.fillStyle = `rgba(255,77,79,${(.25 + k * .55) * (.6 + pulse * .4)})`;
+      for (let a = 0; a < 44; a++){ const th = a / 44 * Math.PI * 2; bx.fillRect(Math.round(x + Math.cos(th) * rx) - 1, Math.round(y + Math.sin(th) * ry) - 1, 2, 2); }
+      pressure = null;
+    }
+    // Contact shadows, smaller under a man in the air.
+    for (const d of drawn){
+      if (!d.hop) bx.drawImage(A.AO, d.gx - (A.AO.width >> 1), d.gy - 4);
+      else { const w = Math.round(A.AO.width * Math.max(.45, 1 - d.hop / 24)); bx.drawImage(A.AO, d.gx - (w >> 1), d.gy - 3, w, A.AO.height - 2); }
+    }
     drawn.sort((a, b) => a.gy - b.gy || a.gx - b.gx);
     for (const d of drawn){
       if (d.fall){   // tipping over, about his feet
@@ -359,6 +402,37 @@ export function createRenderer(canvas){
     }
   }
   const downAt = new WeakMap();   // when each player hit the turf (for the fall)
+  let pressure = null;
+
+  /* Turf and dust kicked up on the field (buffer pixels, world positions): from the line's churning feet, and a big
+     burst where a tackle lands. */
+  const clods = [];
+  const TURF = ['#6b5236', '#8a6a3c', '#4f7a2e', '#6f9a43', '#c9b48a'];
+  function kick(x, y, n, up = 1){
+    for (let i = 0; i < n; i++) clods.push({ x: x + (Math.random() - .5) * .8, y: y + (Math.random() - .5) * .6, z: .1, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3,
+      vz: (1.5 + Math.random() * 3) * up, c: TURF[Math.floor(Math.random() * TURF.length)], s: Math.random() < .3 ? 2 : 1, life: .5 + Math.random() * .4, t: 0 });
+  }
+  let rings = [], seenResult = null;
+  function impacts(G, dt){
+    const R_ = G.play?.result;
+    if (R_ && R_ !== seenResult){
+      seenResult = R_;
+      if (['tackle', 'sack', 'dive', 'fumble'].includes(R_.type)){ kick(R_.x, R_.y, R_.type === 'sack' ? 26 : 14, 1.2); rings.push({ x: R_.x, y: R_.y, t: 0, big: R_.type === 'sack' }); }
+    }
+    for (const c of clods){ c.t += dt; c.x += c.vx * dt; c.y += c.vy * dt; c.vz -= 14 * dt; c.z = Math.max(0, c.z + c.vz * dt); if (!c.z){ c.vx *= .6; c.vy *= .6; } }
+    for (let i = clods.length - 1; i >= 0; i--) if (clods[i].t > clods[i].life) clods.splice(i, 1);
+    for (const r of rings) r.t += dt;
+    rings = rings.filter(r => r.t < .45);
+  }
+  function drawImpacts(){
+    for (const r of rings){   // a dust ring spreading on the turf
+      const k = r.t / .45, [x, y] = toBuf(r.x, r.y), rx = Math.round((r.big ? 10 : 7) + k * (r.big ? 26 : 18)), ry = Math.round(rx * .4);
+      bx.fillStyle = `rgba(214,196,160,${(1 - k) * .55})`;
+      for (let a = 0; a < 40; a++){ const th = a / 40 * Math.PI * 2; bx.fillRect(Math.round(x + Math.cos(th) * rx), Math.round(y + Math.sin(th) * ry), 2, 2); }
+    }
+    for (const c of clods){ const [x, y] = toBuf(c.x, c.y, c.z); bx.globalAlpha = Math.min(1, (c.life - c.t) * 4); bx.fillStyle = c.c; bx.fillRect(x, y, c.s, c.s); }
+    bx.globalAlpha = 1;
+  }
   function ball(G){
     const b = G.play.ball;
     if (b.state === 'held' && b.holder && !b.holder.down) return;
@@ -740,6 +814,7 @@ export function createRenderer(canvas){
     if (G.play && !G.play.live && !G.play.result && !G.kick) routesOn = !!view.routes;
     prepare(G);
     fsuTrack(G, dt);
+    impacts(G, dt);
     updateZoom(G, dt, view.aim);
     updateCamera(G, dt, view.aim);
     const sh = cam.shake > 0 ? cam.shake : 0; cam.shake = Math.max(0, cam.shake - dt * 10);
@@ -757,6 +832,7 @@ export function createRenderer(canvas){
       if (mine && !P.result) ring(mine, '255,210,63');   // you, on defense
       if (view.landing && P.ball.state === 'air') landing(G, view.landing);
       drawPlayers(G, P.all);
+      drawImpacts();
       ball(G);
     }
     if (spearOn()) spear();

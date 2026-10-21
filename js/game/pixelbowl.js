@@ -308,8 +308,7 @@ function teamPicker(which){
   modal(`<div class="pb-setup pb-picker">
     <div class="pb-ph"><b>${which === 'me' ? 'YOUR TEAM' : 'OPPONENT'}</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
     <input class="pb-q" type="search" placeholder="Search ${list.length} teams" autocomplete="off" data-pb-q>
-    <div class="pb-list">${list.map(t => `<button type="button" data-pb="team" data-id="${esc(t.id)}" data-n="${esc(t.name.toLowerCase())} ${esc(t.abbr.toLowerCase())}" style="--c:${esc(t.color)}">
-      ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="" loading="lazy">` : '<i></i>'}<span>${esc(t.name)}</span><em></em></button>`).join('')}</div></div>`);
+    ${SV.teamGroups(list, 'team')}</div>`);
   if (!coarse()) $('.pb-q')?.focus();
 }
 

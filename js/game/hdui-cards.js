@@ -114,6 +114,14 @@ export const CSS = `
   box-shadow:inset 4px 0 0 var(--c)}
 .pb.hd .pb-list img,.pb.hd .pb-list i{width:32px;height:32px;padding:3px;border-radius:50%;background:#fff;object-fit:contain;margin-left:6px}
 .pb.hd .pb-list button:active{background:rgba(255,255,255,.14)}
+.pb.hd .pb-glist{display:block;margin:0 -6px;padding:0 6px 4px}
+.pb.hd .pb-cgrp + .pb-cgrp{margin-top:14px}
+.pb.hd .pb-cgrp:not(:has(button:not([hidden]))){display:none}
+.pb.hd .pb-cgrp h3{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:10px;margin:0 -6px 6px;padding:9px 10px 7px;border-radius:12px;
+  background:rgba(32,35,40,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);font:700 10.5px/1 var(--hd-body);letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.pb.hd .pb-cgrp h3::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1)}
+.pb.hd .pb-cteams{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.pb.hd .pb-glist:not(:has(button:not([hidden])))::after{content:"No team matches.";display:block;padding:18px 4px;font:500 14px var(--hd-body);color:rgba(255,255,255,.5)}
 
 /* ---------- coin toss ---------- */
 .pb.hd .pb-tosscard{text-align:center;gap:12px}

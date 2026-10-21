@@ -2,7 +2,7 @@
    country, stats, the playoff), game week (scouting, game plan, practice, kickoff), and the result of each game.
    pixelbowl.js owns the game itself and hands this module what it needs through init(ctx). */
 import { esc, store } from '../util.js';
-import { state } from '../state.js';
+import { state, CONF, CONF_ORDER } from '../state.js';
 import * as api from '../api.js';
 import { parseFpi, parseStandings } from '../models.js';
 import { myTeam } from '../myteam.js';
@@ -73,13 +73,26 @@ export function setupScreen(){
     ${hist.length ? `<div class="sz-hist"><div class="sz-h">PAST SEASONS</div>${hist.slice(0, 6).map(h => `<div class="sz-hrow${h.champ ? ' champ' : ''}">${logo(h.team, 40)}<b>${esc(h.year)} ${esc(h.team.abbr)}</b><span>${h.w}–${h.l}${h.rank ? ` · #${h.rank}` : ''}</span><em>${esc(h.outcome)}</em></div>`).join('')}</div>` : ''}
   </div>`);
 }
+/* The team picker's list, the board's way: a heading per conference in the board's order (independents last), teams
+   A to Z under each. Searching hides teams that don't match and, in CSS, any conference left empty. Used for both
+   pickers (pixelbowl.js passes its own action). */
+export function teamGroups(list, act){
+  const st = state.standings, confOf = t => st?.byTeam[t.id]?.conf;
+  const name = c => CONF[c] || st?.confs?.find(x => String(x.id) === String(c))?.name || 'Other';
+  const btn = t => `<button type="button" data-pb="${act}" data-id="${esc(t.id)}" data-n="${esc(t.name.toLowerCase())} ${esc(t.abbr.toLowerCase())}" style="--c:${esc(t.color)}">
+      ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72, 'light'))}" alt="" loading="lazy">` : '<i></i>'}<span>${esc(t.name)}</span><em></em></button>`;   // on a white disc: the regular logo
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  if (!list.some(t => confOf(t) != null)) return `<div class="pb-list">${[...list].sort(byName).map(btn).join('')}</div>`;
+  const confs = [...new Set(list.map(t => Number(confOf(t))))].sort((a, b) => (CONF_ORDER.indexOf(a) + 1 || 99) - (CONF_ORDER.indexOf(b) + 1 || 99));
+  return `<div class="pb-list pb-glist">${confs.map(c => `<section class="pb-cgrp"><h3>${esc(name(c))}</h3><div class="pb-cteams">${
+    list.filter(t => Number(confOf(t)) === c).sort(byName).map(btn).join('')}</div></section>`).join('')}</div>`;
+}
 function teamList(){
   const list = ctx.allTeams();
   ctx.modal(`<div class="pb-setup pb-picker">
     <div class="pb-ph"><b>YOUR TEAM</b><button class="pb-x" type="button" data-pb="s-new" aria-label="Back">${ctx.icon.x}</button></div>
     <input class="pb-q" type="search" placeholder="Search ${list.length} teams" autocomplete="off" data-pb-q>
-    <div class="pb-list">${list.map(t => `<button type="button" data-pb="s-team" data-id="${esc(t.id)}" data-n="${esc(t.name.toLowerCase())} ${esc(t.abbr.toLowerCase())}" style="--c:${esc(t.color)}">
-      ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="" loading="lazy">` : '<i></i>'}<span>${esc(t.name)}</span><em></em></button>`).join('')}</div></div>`);
+    ${teamGroups(list, 's-team')}</div>`);
 }
 async function begin(){
   const name = ctx.teamInfo(setupPick.team).name;

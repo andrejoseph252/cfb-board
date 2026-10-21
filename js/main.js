@@ -33,7 +33,7 @@ if (!TABS.some(([k]) => k === state.tab)) state.tab = 'week';
 const svgI = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const BT_ICON = {
   week: svgI('M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4M8 14h3M8 17h6'),
-  conf: svgI('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'),
+  conf: svgI('M4 4h3v3H4zM10 5.5h10M4 10.5h3v3H4zM10 12h8M4 17h3v3H4zM10 18.5h6'),
   rankings: svgI('M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4'),
   team: svgI('M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z'),
   picks: svgI('M4 8a2 2 0 0 0 0 4v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4a2 2 0 0 0 0-4V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2zM14 5v14')

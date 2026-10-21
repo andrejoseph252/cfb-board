@@ -174,7 +174,8 @@ function figFB(o){
     if (o.arms === 'ready'){ el = [cx + s * 8.3, 17.8 + c + b]; hd = [cx + s * 5.4, 20.3 + c]; }
     if (o.arms === 'knees'){ el = [cx + s * 7.9, 18.2 + c]; hd = [cx + s * 4.6, yKnee - 1.6]; }
     if (o.arms === 'block'){ el = [cx + s * 7.6, 17 + c + b]; hd = [cx + s * 4.2, 16.5 + c]; }
-    if (run != null){
+    if (o.arms === 'reach'){ el = [cx + s * 6.6, 8.6 + c + b]; hd = [cx + s * 4.6, 2.6 + c + b]; }   // both hands up for the ball
+    else if (run != null && o.arms !== 'block'){
       // Pumping, opposite the legs: the forward hand comes up across the chest, the back one drops past the hip.
       const sa = Math.sin((run / 8 + (s > 0 ? .5 : 0)) * Math.PI * 2);
       el = [cx + s * (8.3 + sa * .2), 17.6 + c - sa * 1.1]; hd = [cx + s * (7.2 - Math.max(0, sa) * 1.6), (back ? 19.4 - sa * 3 : 18.6 - sa * 4) + c];
@@ -184,7 +185,7 @@ function figFB(o){
     return [sh, el, hd];
   };
   // From the back, arms reaching forward are hidden behind the body.
-  const armsBehind = back && o.arms !== 'throw' && run == null;
+  const armsBehind = back && o.arms !== 'throw' && o.arms !== 'reach' && run == null;
   if (armsBehind) for (const s of [-1, 1]) arm(g, ...armPose(s));
   const pN = g.newPart(); g.rect(pN, 'K', 9, 9 + c + b, 12, 11 + c + b);
   // Pants, torso and shoulder pads as one part, so the numbers sit cleanly across it.
@@ -278,7 +279,9 @@ function figSide(o){
   let aB = [[sh[0] - .8, sh[1]], [sh[0] + .4, 18 + c], [sh[0] + 2.6, 20 + c]], aF = [[sh[0] + 1.8, sh[1] + .2], [sh[0] + 3, 18 + c], [sh[0] + 5.2, 19.6 + c]];
   if (o.arms === 'knees') aF = [[sh[0] + 1.8, sh[1] + .2], [sh[0] + 2.2, 18.4 + c], [front.knee[0] + .6, front.knee[1] - 1.8]];
   if (o.arms === 'throw') aF = [[sh[0] + .2, sh[1]], [sh[0] - 1.6, 9.5 + c], [sh[0] - .6, 5 + c]];
-  if (run != null){
+  if (o.arms === 'reach'){ aF = [[sh[0] + .6, sh[1]], [sh[0] + 2.2, 8.4 + c], [sh[0] + 3.4, 3.2 + c]]; aB = [[sh[0] - .4, sh[1]], [sh[0] + .6, 8.8 + c], [sh[0] + 1.4, 3.8 + c]]; }
+  else if (o.arms === 'block'){ aF = [[sh[0] + .6, sh[1] + .4], [sh[0] + 3.4, 15.6 + c], [sh[0] + 6.2, 14.6 + c]]; aB = [[sh[0] - .2, sh[1]], [sh[0] + 2.6, 16.4 + c], [sh[0] + 5.4, 15.6 + c]]; }   // hands into his man's chest
+  else if (run != null){
     // Arms pump opposite the legs (the near arm with the far leg), elbows bent, hands driving forward and up.
     const armAt = ph => { const a = .95 * Math.cos(ph * Math.PI * 2), el = [sh[0] + 4 * Math.sin(a), sh[1] + 4 * Math.cos(a)], f = a + 1.5;
       return [[sh[0] + .3, sh[1] + .3], el, [el[0] + 3.4 * Math.sin(f), el[1] + 3.4 * Math.cos(f)]]; };
