@@ -56,7 +56,8 @@ export function viewBallots(id){
     ap?.rank && w === latest && fresh && `AP <b>#${ap.rank}</b>`,
     t?.on && `<b>${t.pts.toLocaleString()}</b> points`,
     t?.fpv && `<b>${t.fpv}</b> first-place vote${t.fpv === 1 ? '' : 's'}`,
-    `${esc(t?.wk.label || `Week ${w}`)}${t?.wk.date ? ` · ${esc(t.wk.date)}` : ''}`
+    `${esc(t?.wk.label || `Week ${w}`)}${t?.wk.date ? ` · ${esc(t.wk.date)}` : ''}`,
+    `<a class="dlink" href="#team/${esc(id)}">Team schedule ›</a>`
   ].filter(Boolean).map(x => `<span>${x}</span>`).join('');
   const head = detailHead({ title: esc(name), label: `${name} · AP ballots`, sub, logoSrc: ap?.logo, color });
   const weekChips = weeks.length > 1 ? chips(weeks.map(x => [x, `Wk ${x}`]), w, 'bweek') : '';

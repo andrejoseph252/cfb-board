@@ -123,6 +123,9 @@ document.addEventListener('click', e => {
   // Tapping a card anywhere except its links, buttons or the excitement dropdown opens the game.
   const c = e.target.closest('.game[data-id]');
   if (c && !e.target.closest('a, button, details')){ location.hash = '#game/' + c.dataset.id; return; }
+  // A table row that opens something (the AP table's rows open that team's ballots).
+  const row = e.target.closest('tr[data-href]');
+  if (row && !e.target.closest('a, button')){ location.hash = row.dataset.href; return; }
   const t = e.target.closest('button'); if (!t) return;
   const d = t.dataset;
   if (d.tab) return setTab(d.tab);

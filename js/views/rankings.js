@@ -52,8 +52,11 @@ function apTable(){
   const under = t => { const s = stat(t); return s?.on ? bxLink(t, s, 'under') : ''; };
   const rows = list.map(t => {
     const f = state.fpi?.byTeam[t.id];
-    return `<tr${mineRow(t.id)}><td class="num rk">${t.rank}</td><td class="num">${trend(t)}</td>
-      <td class="team">${logo(t.logo, 'logo sm')}${teamLink({ id: t.id, name: t.name })}${t.fpv ? ` <span class="muted small">(${t.fpv})</span>` : ''}${under(t)}</td>${spread(t)}
+    // With ballots in, the whole row opens them (the team's name too; its schedule is a tap away in there).
+    const name = live ? `<a class="tlink" href="#ballots/${esc(t.id)}">${esc(t.name)}</a>` : teamLink({ id: t.id, name: t.name });
+    const mr = mineRow(t.id), attrs = !live ? mr : (mr ? mr.replace('class="mine"', 'class="mine bx-row"') : ' class="bx-row"') + ` data-href="#ballots/${esc(t.id)}"`;
+    return `<tr${attrs}><td class="num rk">${t.rank}</td><td class="num">${trend(t)}</td>
+      <td class="team">${logo(t.logo, 'logo sm')}${name}${t.fpv ? ` <span class="muted small">(${t.fpv})</span>` : ''}${under(t)}</td>${spread(t)}
       <td class="num">${esc(t.record || '–')}</td><td class="num hide-sm">${t.points ?? '–'}</td><td class="num">${f?.rank ?? '–'}</td>${thisWeek(t.id)}</tr>`;
   }).join('');
   return `<div class="tablewrap"><table class="tbl">
@@ -84,7 +87,7 @@ export function viewRankings(){
   const ap = state.rk !== 'fpi';
   const confs = CONF_ORDER.filter(id => state.standings?.confs.some(c => c.id === id));
   const note = ap
-    ? `${esc(state.rankings?.title?.replace(/^\d{4} NCAA Football Rankings - /, '') || 'AP Poll')}. Arrows show movement from last week; first-place votes in parentheses.${ballots() ? ' Ballots: where every voter put them (line: best to worst, box: middle half, tick: median). Tap for every ballot.' : ''}`
+    ? `${esc(state.rankings?.title?.replace(/^\d{4} NCAA Football Rankings - /, '') || 'AP Poll')}.${ballots() ? ' Tap a team to see every voter\'s ballot.' : ''}`
     : `ESPN's Football Power Index: how many points better than an average FBS team on a neutral field.${state.fpi?.updated ? ` Updated ${new Date(state.fpi.updated).toLocaleDateString(undefined, {month:'short', day:'numeric'})}.` : ''}`;
   return `<div class="rk-switch">${chips([['ap', 'AP Top 25'], ['fpi', 'FPI']], ap ? 'ap' : 'fpi', 'rk')}</div>` +
     chips([['all', 'All conferences'], ...confs.map(id => [String(id), CONF[id]])], state.rkConf, 'rkconf') +
