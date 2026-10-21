@@ -319,6 +319,13 @@ function figSideLine(o){
 }
 
 /* ---------- uniforms ---------- */
+/* Teams whose real uniform the two-color rule below gets wrong, by ESPN id: only what differs, per home and road. */
+const KITS = {
+  // Florida State: gold helmet with a garnet facemask and stripe; garnet jersey with white numbers at home, white
+  // with garnet numbers on the road; gold pants either way.
+  52: { home: { H: '#ceb888', W: '#782f40', M: '#782f40', N: '#ffffff', T: '#ceb888', P: '#ceb888', Q: '#782f40', O: '#782f40', G: '#782f40' },
+    away: { H: '#ceb888', W: '#782f40', M: '#782f40', N: '#782f40', T: '#782f40', P: '#ceb888', Q: '#782f40', O: '#f2f2ee', G: '#782f40' } }
+};
 /* A team's uniform from its two colors: at home the jersey in the team color, on the road white with color trim. */
 export function uniform(t, away){
   const color = t.color || '#777', alt = t.alt && !near(t.alt, color) ? t.alt : (lum(color) > .6 ? '#222222' : '#ffffff');
@@ -328,8 +335,9 @@ export function uniform(t, away){
   const u = away
     ? { ...shared, J: '#f2f2ee', T: color, N: contrast(color, '#f2f2ee'), P: lum(alt) > .7 ? '#d9d9d9' : '#e8e8e8', Q: color, O: '#f2f2ee', G: color }
     : { ...shared, J: color, T: alt, N: contrast(alt, color), P: lum(color) < .25 ? alt : '#f2f2f2', Q: color, O: color, G: alt };
+  Object.assign(u, KITS[t.id]?.[away ? 'away' : 'home']);
   u.key = Object.values(u).join('');
-  u.stripe = !near(alt, color);
+  u.stripe = !near(u.W, u.H);
   return u;
 }
 

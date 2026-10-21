@@ -46,6 +46,8 @@ Adding a tab means adding a file in `js/views/` and one line in the `TABS` list 
 - Closing point spreads: `data/spreads.json`, saved by the GitHub Action before each kickoff (`scripts/spreads.py`;
   ESPN's scoreboard drops the line at the final). Used to show whether the favorite covered and to tag underdog covers.
 - Games, scores, rankings, logos, sportsbook lines: ESPN scoreboard.
+- Team colors and logos for the game: `data/teams.json`, saved by the GitHub Action (`scripts/teams.py`); ESPN's team list
+  can't be read from a web page, and without it a team not on this week's slate played in gray.
 - Team schedules, box scores, drives: ESPN team schedule + game summary.
 - Per-play win / cover / over-under probability: ESPN core probabilities feed.
 - Standings: ESPN standings. Rankings: ESPN AP poll + FPI.

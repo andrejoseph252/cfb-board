@@ -43,8 +43,15 @@ const yardLine = x => { x = Math.round(x); return x === 50 ? 'MIDFIELD' : x < 50
 const hypot = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 /* ---------- teams ---------- */
+/* Every team's colors, name and logo: from data/teams.json (scripts/teams.py), since ESPN's team list can't be read
+   from a web page; straight from ESPN only if that file is missing. Without either, a team not on this week's slate
+   would play in gray. */
 let colors = null;
 async function loadColors(){
+  try{
+    const r = await fetch('data/teams.json');
+    if (r.ok){ colors = await r.json(); return; }
+  }catch{}
   try{
     const j = await api.teams();
     const list = j?.sports?.[0]?.leagues?.[0]?.teams || [];
