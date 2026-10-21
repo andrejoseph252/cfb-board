@@ -46,6 +46,7 @@ export const CSS = `
 .pb.hd :is(.pb-card,.pb-setup)::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:rgba(255,255,255,.22)}
 @keyframes hdSheet{from{transform:translateY(40px);opacity:0}}
 @media (prefers-reduced-motion:reduce){.pb.hd :is(.pb-card,.pb-setup){animation:none}}
+.pb.hd .pb-modal.stay :is(.pb-card,.pb-card *){animation:none}
 .pb.hd .pb-card h2{margin:0;font:800 36px/.92 var(--hd-display);letter-spacing:.005em;text-transform:uppercase;color:#fff;text-shadow:none}
 .pb.hd .pb-card p{margin:0;color:rgba(255,255,255,.72);font-size:14px;line-height:1.45}
 .pb.hd .pb-sub{margin:0;font:400 13px/1.45 var(--hd-body);color:rgba(255,255,255,.6)}

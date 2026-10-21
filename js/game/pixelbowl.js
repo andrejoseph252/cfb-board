@@ -1077,7 +1077,8 @@ function otCheck(){
 /* A compact sheet of play cards before the snap. A call lasts one play; Random is the default. */
 let sheetTab = 'std', hotOpen = false;
 function playSheet(){
-  if (phase !== 'presnap' || G.practice || $('.pb-modal').classList.contains('on')) return;
+  const m = $('.pb-modal');
+  if (phase !== 'presnap' || G.practice || m.classList.contains('on') && m.dataset.kind !== 'call') return;   // (open already: redrawn in place)
   const all = S.PRACTICE_ROLES, current = G.call === 'custom' ? 'u:' + G.callId : G.call || '';
   const card = (v, name, tip, routes) => `<button type="button" data-pb="callpick" data-v="${esc(v)}" aria-pressed="${current === v}"${G.recommended?.has(v) ? ' class="pb-starred"' : ''}>
       ${formationSVG(all, routes, true)}<b>${esc(name)}</b><small>${esc(tip)}</small></button>`;
@@ -1562,7 +1563,13 @@ function modal(html, light = false, kind = ''){
   const m = $('.pb-modal');
   if (kind !== 'pause' && paused) return;   // a game event never covers the pause menu
   if (kind === 'pause'){ behind = m.innerHTML ? { html: m.innerHTML, light: m.classList.contains('light') } : null; }
+  // The same sheet redrawn in place (a formation or play-action switch on the play sheet): no entrance again, and
+  // everything stays scrolled where it was, so a tap never makes it jump.
+  const same = kind && kind === m.dataset.kind && m.classList.contains('on');
+  const scrolls = same ? [...m.querySelectorAll('*')].map(el => [el.scrollTop, el.scrollLeft]) : null;
   m.innerHTML = html; m.classList.add('on'); m.classList.toggle('light', light); m.dataset.kind = kind;
+  m.classList.toggle('stay', !!same);
+  if (scrolls) [...m.querySelectorAll('*')].forEach((el, i) => { const s = scrolls[i]; if (s && (s[0] || s[1])){ el.scrollTop = s[0]; el.scrollLeft = s[1]; } });
   m.classList.toggle('fsu', hdOn() && hdUI.cards.isFSU(keyCtx ? keyCtx.main.me : G?.youDefend ? G.opp : G?.me));   // HD: garnet and gold when Florida State is yours
 }
 function closeModal(kind){
@@ -1589,14 +1596,14 @@ function onClick(e){
       else G.call = v;
       closeModal(); if (phase === 'presnap') S.setupPlay(G); return;
     }
-    case 'calltab': sheetTab = b.dataset.v; closeModal(); return playSheet();
-    case 'formpick': G.formation = b.dataset.v; if (phase === 'presnap') S.setupPlay(G); closeModal(); return playSheet();
-    case 'patoggle': G.pa = !G.pa; if (S.RUN_CALLS[G.call]) G.call = null; if (phase === 'presnap') S.setupPlay(G); closeModal(); return playSheet();
+    case 'calltab': sheetTab = b.dataset.v; return playSheet();   // redrawn in place (modal() keeps it still)
+    case 'formpick': G.formation = b.dataset.v; if (phase === 'presnap') S.setupPlay(G); return playSheet();   // redrawn in place (modal() keeps it still)
+    case 'patoggle': G.pa = !G.pa; if (S.RUN_CALLS[G.call]) G.call = null; if (phase === 'presnap') S.setupPlay(G); return playSheet();   // redrawn in place (modal() keeps it still)
     case 'hot': {
       const cur = Object.fromEntries(G.play.rec.map(r => [r.role, r.routeName]));
       cur[b.dataset.role] = b.dataset.v || undefined;
       Object.assign(G, { call: 'custom', callId: null, callName: 'Hot routes', callRoutes: cur });
-      if (phase === 'presnap') S.setupPlay(G); closeModal(); return playSheet();
+      if (phase === 'presnap') S.setupPlay(G); return playSheet();
     }
     case 'playbook': return playbookScreen();
     case 'pbnew': return editPlay(null, 'playbook');

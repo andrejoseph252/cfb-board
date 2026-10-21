@@ -150,15 +150,17 @@ function helmetStripe(g, view, cx, top, lim){
 
 /* Front or back, standing set, running, throwing. 22x34, feet on row 32. */
 function figFB(o){
-  const g = new Grid(22, 34), cx = 11, c = o.c || 0, b = o.b || 0, back = o.view === 'back', run = o.run;
+  const g = new Grid(22, 34), cx = 11, back = o.view === 'back', run = o.run;
+  // Running (8 frames a stride): the body rides a pixel higher off each push.
+  const c = (o.c || 0) - (run != null && run % 4 >= 1 && run % 4 <= 2 ? 1 : 0), b = o.b || 0;
   const yHip = 21 + c, yKnee = 26.6 + c * .35;
   for (const s of [-1, 1]){
     const hipX = cx + s * 2.6; let kneeX = cx + s * (3.1 + c * .5), kneeY = yKnee, footX = cx + s * (3.3 + c * .4), footY = 31;
     if (run != null){
-      const lift = (run === 0 && s === 1) || (run === 2 && s === -1);
-      kneeX = cx + s * 2.9; footX = cx + s * 3;
-      if (lift){ kneeY = yKnee - 1; footY = back ? 25.5 : 27.5; }
-      if (run === 1 || run === 3) footY = s === (run === 1 ? 1 : -1) ? 29.5 : 31;
+      // This leg's swing: it lifts while coming through (from behind, the sole shows) and plants while the other swings.
+      const up = Math.max(0, Math.sin((run / 8 + (s > 0 ? 0 : .5)) * Math.PI * 2));
+      kneeX = cx + s * (2.9 - up * .5); footX = cx + s * (3 - up * .9);
+      kneeY = yKnee - up * (back ? 1.2 : 2.4); footY = 31 - up * (back ? 6.5 : 4);
     }
     const p = g.newPart();
     g.cap(p, 'P', hipX, yHip, kneeX, kneeY, 2.55);
@@ -172,8 +174,11 @@ function figFB(o){
     if (o.arms === 'ready'){ el = [cx + s * 8.3, 17.8 + c + b]; hd = [cx + s * 5.4, 20.3 + c]; }
     if (o.arms === 'knees'){ el = [cx + s * 7.9, 18.2 + c]; hd = [cx + s * 4.6, yKnee - 1.6]; }
     if (o.arms === 'block'){ el = [cx + s * 7.6, 17 + c + b]; hd = [cx + s * 4.2, 16.5 + c]; }
-    if (run != null){ const fwd = (run < 2) === (s > 0);
-      el = fwd ? [cx + s * 8.2, 16.8 + c] : [cx + s * 8.6, 18.6 + c]; hd = fwd ? [cx + s * 6.2, back ? 16.2 + c : 14.5 + c] : [cx + s * 8.6, 22 + c]; }
+    if (run != null){
+      // Pumping, opposite the legs: the forward hand comes up across the chest, the back one drops past the hip.
+      const sa = Math.sin((run / 8 + (s > 0 ? .5 : 0)) * Math.PI * 2);
+      el = [cx + s * (8.3 + sa * .2), 17.6 + c - sa * 1.1]; hd = [cx + s * (7.2 - Math.max(0, sa) * 1.6), (back ? 19.4 - sa * 3 : 18.6 - sa * 4) + c];
+    }
     if (o.arms === 'throw' && s === 1){ el = [cx + 9, 9.5 + c]; hd = [cx + 8.6, 4.6 + c]; }
     if (o.arms === 'throw' && s === -1){ el = [cx - 8.2, 17.5 + c]; hd = [cx - 5, 19.5 + c]; }
     return [sh, el, hd];
@@ -250,13 +255,21 @@ function figLine(o){
 
 /* Side view, facing right: set or running. 24x34, feet on row 32. */
 function figSide(o){
-  const g = new Grid(24, 34), c = o.c || 0, b = o.b || 0, run = o.run;
-  const lean = run != null ? 1.2 : 0;
+  const g = new Grid(24, 34), b = o.b || 0, run = o.run;
+  let c = o.c || 0;
+  const lean = run != null ? 1.6 : 0;
   let back = { hip: [9.6, 21 + c], knee: [8.6, 26.6 + c * .3], foot: [8.2, 31] }, front = { hip: [12.4, 21 + c], knee: [14.4, 26.4 + c * .3], foot: [14, 31] };
   if (run != null){
-    const A = { hip: [12, 21], knee: [15.6, 24.4], foot: [17.4, 29.6] }, B = { hip: [10.2, 21], knee: [8.2, 25.6], foot: [4.6, 25.2] };
-    const M1 = { hip: [11.4, 21], knee: [12.6, 26], foot: [11.2, 31] }, M2 = { hip: [10.6, 21], knee: [11.8, 24.6], foot: [8.4, 27.4] };
-    [front, back] = run === 0 ? [A, B] : run === 1 ? [M1, M2] : run === 2 ? [B, A] : [M2, M1];
+    // An 8-frame stride: each thigh swings about the hip, the knee folds as the leg comes through (the heel kicks up
+    // behind), and the whole body drops to keep the lower foot on the turf, so it rises and falls with each step.
+    const legAt = ph => {
+      const a = ph * Math.PI * 2, th = .62 * Math.cos(a), bend = Math.sin(a) < 0 ? .25 + 1.45 * -Math.sin(a) : .22;
+      const hip = [11.2, 21], knee = [hip[0] + 5.2 * Math.sin(th), hip[1] + 5.2 * Math.cos(th)], sa = th - bend;
+      return { hip, knee, foot: [knee[0] + 5.4 * Math.sin(sa), knee[1] + 5.4 * Math.cos(sa)] };
+    };
+    front = legAt(run / 8); back = legAt(run / 8 + .5);
+    c = 31 - Math.max(front.foot[1], back.foot[1]);
+    for (const L of [front, back]) for (const k of ['hip', 'knee', 'foot']) L[k] = [L[k][0], L[k][1] + c];
   }
   const leg = L => { const p = g.newPart(); g.cap(p, 'P', L.hip[0], L.hip[1], L.knee[0], L.knee[1], 2.55);
     g.cap(p, 'O', L.knee[0], L.knee[1] + 1.1, L.foot[0], L.foot[1] - .6, 1.9); g.ell(p, 'B', L.foot[0] + 1, L.foot[1] + .5, 2.7, 1.3); };
@@ -265,9 +278,12 @@ function figSide(o){
   let aB = [[sh[0] - .8, sh[1]], [sh[0] + .4, 18 + c], [sh[0] + 2.6, 20 + c]], aF = [[sh[0] + 1.8, sh[1] + .2], [sh[0] + 3, 18 + c], [sh[0] + 5.2, 19.6 + c]];
   if (o.arms === 'knees') aF = [[sh[0] + 1.8, sh[1] + .2], [sh[0] + 2.2, 18.4 + c], [front.knee[0] + .6, front.knee[1] - 1.8]];
   if (o.arms === 'throw') aF = [[sh[0] + .2, sh[1]], [sh[0] - 1.6, 9.5 + c], [sh[0] - .6, 5 + c]];
-  if (run != null){ const sw = run === 0 ? 1 : run === 2 ? -1 : 0;
-    aF = [[sh[0] + .6, sh[1] + .4], [sh[0] + 2 + sw * 2.5, 18 + c - Math.abs(sw)], [sh[0] + 4 + sw * 3.2, 15.5 + c + (sw < 0 ? 4 : 0)]];
-    aB = [[sh[0] - .6, sh[1]], [sh[0] - 2 * sw, 18 + c], [sh[0] - 1 - sw * 3, 19 + c - (sw < 0 ? 4 : 0)]]; }
+  if (run != null){
+    // Arms pump opposite the legs (the near arm with the far leg), elbows bent, hands driving forward and up.
+    const armAt = ph => { const a = .95 * Math.cos(ph * Math.PI * 2), el = [sh[0] + 4 * Math.sin(a), sh[1] + 4 * Math.cos(a)], f = a + 1.5;
+      return [[sh[0] + .3, sh[1] + .3], el, [el[0] + 3.4 * Math.sin(f), el[1] + 3.4 * Math.cos(f)]]; };
+    aF = armAt(run / 8 + .5); aB = armAt(run / 8);
+  }
   arm(g, ...aB);
   const pN = g.newPart(); g.rect(pN, 'K', 11 + Math.round(lean), 9 + c + b, 13 + Math.round(lean), 11 + c + b);
   const pB = g.newPart({ pad: true });

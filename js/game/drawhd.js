@@ -116,13 +116,18 @@ export function createRenderer(canvas){
   }
 
   /* ---------- coordinates ---------- */
-  const toBuf = (x, y, z = 0) => portrait
-    ? [Math.round((y - cam.y) * S + Wb / 2), Math.round(Hb / 2 - (x - cam.x) * S - z * S * .8)]
-    : [Math.round((x - cam.x) * S + Wb / 2 + z * S * .3), Math.round((y - cam.y) * S + Hb / 2 - z * S * .75)];
+  /* World to buffer pixels. The camera is pinned to whole pixels and everything is placed from there, so the players,
+     the ball and the turf move together on one pixel grid instead of shimmering against each other. */
+  const toBuf = (x, y, z = 0) => {
+    const cx = Math.round(cam.x * S), cy = Math.round(cam.y * S), hw = Wb >> 1, hh = Hb >> 1;
+    return portrait ? [Math.round(y * S) - cy + hw, hh - (Math.round(x * S) - cx) - Math.round(z * S * .8)]
+      : [Math.round(x * S) - cx + hw + Math.round(z * S * .3), Math.round(y * S) - cy + hh - Math.round(z * S * .75)];
+  };
   const toScreen = (x, y, z = 0) => { const [a, b] = toBuf(x, y, z), f = bs / k; return [Math.round(a * f), Math.round(b * f)]; };
   const toWorld = (ux, uy) => {
     const px = ux * k / bs, py = uy * k / bs;
-    return portrait ? { x: cam.x + (Hb / 2 - py) / S, y: cam.y + (px - Wb / 2) / S } : { x: cam.x + (px - Wb / 2) / S, y: cam.y + (py - Hb / 2) / S };
+    const cx = Math.round(cam.x * S), cy = Math.round(cam.y * S), hw = Wb >> 1, hh = Hb >> 1;
+    return portrait ? { x: (cx + hh - py) / S, y: (cy + px - hw) / S } : { x: (cx + px - hw) / S, y: (cy + py - hh) / S };
   };
   /* A screen-space drag (UI px) as a field vector in yards, at draw.js's scale whatever the zoom. */
   const dragToWorld = (dx, dy) => portrait ? { x: -dy / OLD, y: dx / OLD } : { x: dx / OLD, y: dy / OLD };
@@ -284,7 +289,9 @@ export function createRenderer(canvas){
   function frameOf(G, p){
     const P = G.play, K = G.kick;
     if (p.down) return { down: true };
-    if (Math.hypot(p.vx, p.vy) > .6) return { pose: 'set', run: Math.floor(p.step * 1.4) % 4 };
+    // A stride every 2.6 yards of ground covered, so the feet keep pace with the turf at any speed; a truck lowers
+    // the shoulder.
+    if (Math.hypot(p.vx, p.vy) > .6) return { pose: 'set', run: Math.floor(p.step / 2.6 * 8) % 8, c: p.truck > 0 ? 2 : 0 };
     const big = p.role === 'OL' || p.role === 'DL';
     if (K || !P || !P.live && !P.result){
       if (big || p.role === 'TE' && !K) return { pose: 'line' };
@@ -314,8 +321,23 @@ export function createRenderer(canvas){
       // From the side, the two lines' stances would overlap: set them a touch apart.
       const nz = pre && !portrait && f.pose === 'line' ? (off ? -.45 : .35) : 0;
       const [gx, gy] = toBuf(p.x + nz, p.y);
-      const hop = p.celebrate && !p.down ? Math.round(Math.abs(Math.sin(t * 9 + p.x)) * 8) : 0;   // touchdown celebration
-      drawn.push({ spr, gx, gy, hop, down: f.down });
+      let hop = p.celebrate && !p.down ? Math.round(Math.abs(Math.sin(t * 9 + p.x)) * 8) : 0;   // touchdown celebration
+      // Moves: a juke leans him away from the cut, a dive launches him, a stumble wobbles, and a man going down tips
+      // over for a beat before he lies on the turf.
+      let lean = 0, rot = 0, fall = null, dx = 0;
+      if (p.juke > 0){ const k = Math.sin(Math.PI * (1 - p.juke / .3)); lean = -(p.jukeDir || 1) * .32 * k; dx = Math.round((p.jukeDir || 1) * 2 * k); }
+      if (p.dive > 0){ const k = 1 - p.dive / .32; hop = Math.round(Math.sin(Math.PI * k) * 7); lean = (portrait ? 0 : -.35) * Math.sin(Math.PI * k); }
+      if (p.stumble > 0) dx += Math.round(Math.sin(t * 38));
+      if (!portrait) [lean, dx] = [lean * .4, 0];   // from the side, a cut runs up or down the screen
+      if (f.down){
+        let at = downAt.get(p); if (at == null){ at = t; downAt.set(p, at); }
+        const k = (t - at) / .22;
+        if (k < 1){ rot = (flip ? -1 : 1) * Math.PI / 2 * Math.min(1, k * k * 1.2 + .15); fall = A.getSprite({ uni: off ? uniOff : uniDef, view: 'side', pose: 'set', c: 0, arms: 'hang', b: 0, run: null,
+          num: jersey(team, p.role, idx), skin: p.skin || '#c68642', flip, lit: !A.inShadow(p.x, p.y), down: false }); }
+      } else downAt.delete(p);
+      // The ball, tucked in the carrier's arm (or in the quarterback's hands on a dropback).
+      const B = G.play?.ball, ball = !G.kick && G.play?.live && B?.state === 'held' && B.holder === p && !p.down ? (view === 'side' ? (flip ? -4 : 4) : view === 'back' ? 5 : -6) : null;
+      drawn.push({ spr, gx: gx + dx, gy, hop, down: f.down, lean, rot, fall, ball });
     }
     // Long late-afternoon shadows, then erased where the stadium already shades the grass.
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = 'source-over'; sx.clearRect(0, 0, Wb, Hb);
@@ -326,8 +348,18 @@ export function createRenderer(canvas){
     bx.globalAlpha = .34; bx.drawImage(sl, 0, 0, Wb, Hb, 0, 0, Wb, Hb); bx.globalAlpha = 1;
     for (const d of drawn) bx.drawImage(A.AO, d.gx - (A.AO.width >> 1), d.gy - 4);
     drawn.sort((a, b) => a.gy - b.gy || a.gx - b.gx);
-    for (const d of drawn) bx.drawImage(d.spr.cv, d.gx - d.spr.ax, d.gy - d.spr.ay - d.hop);
+    for (const d of drawn){
+      if (d.fall){   // tipping over, about his feet
+        bx.setTransform(1, 0, 0, 1, d.gx, d.gy); bx.rotate(d.rot); bx.drawImage(d.fall.cv, -d.fall.ax, -d.fall.ay); bx.setTransform(1, 0, 0, 1, 0, 0);
+        continue;
+      }
+      const s = d.spr, y = d.gy - d.hop;
+      if (d.lean){ bx.setTransform(1, 0, d.lean, 1, d.gx - s.ax - d.lean * s.ay, y - s.ay); bx.drawImage(s.cv, 0, 0); bx.setTransform(1, 0, 0, 1, 0, 0); }
+      else bx.drawImage(s.cv, d.gx - s.ax, y - s.ay);
+      if (d.ball != null){ const b = A.ballSprite(false, false, 0); bx.drawImage(b, d.gx + d.ball - (b.width >> 1), y - 16); }
+    }
   }
+  const downAt = new WeakMap();   // when each player hit the turf (for the fall)
   function ball(G){
     const b = G.play.ball;
     if (b.state === 'held' && b.holder && !b.holder.down) return;
@@ -387,7 +419,6 @@ export function createRenderer(canvas){
   /* ---------- overlays (UI pixels, on the screen) ----------
      Drawn as clean vector shapes at the device's resolution (the HD interface's look: dark outlines, the UI's
      green / yellow / red, Big Shoulders Display for numbers and words). */
-  const pathPts = pts => { ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); };
   /* A rounded diamond centered on (x, y), r from the center to a corner. */
   function diamond(x, y, r){
     const c = r * .3;
@@ -431,22 +462,17 @@ export function createRenderer(canvas){
     }
   }
   function aimArc(G, aim){
-    // The real flight (white: a bullet; blue: a touch throw over the linebackers; gold: a deep ball) and, around the
-    // spot, how far the throw can stray right now: the ring grows under pressure and on the run.
+    // The real flight (white: a bullet; blue: a touch throw over the linebackers; gold: a deep ball) as a fine dotted
+    // arc and, around the spot, how far the throw can stray right now: a ring of dots that grows under pressure and on
+    // the run. Kept light on purpose, so it never hides the receivers.
     const P = G.play, q = P.qb, { h, tier } = trajectory(G, aim.x, aim.y), sd = throwSpread(G, aim.x, aim.y), pts = [];
     for (let i = 0; i <= 24; i++){ const s = i / 24; pts.push(toScreen(q.x + (aim.x - q.x) * s, q.y + (aim.y - q.y) * s, 1.8 - .6 * s + 4 * h * s * (1 - s))); }
-    const col = { bullet: '255,255,255', touch: '111,227,255', deep: '255,210,63' }[tier];
-    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    pathPts(pts); ctx.strokeStyle = 'rgba(11,13,16,.55)'; ctx.lineWidth = 2.6; ctx.stroke();
-    pathPts(pts); ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.2; ctx.setLineDash([3.2, 2.4]); ctx.lineDashOffset = -t * 14; ctx.stroke(); ctx.setLineDash([]);
-    const ring = []; for (let a = 0; a <= 36; a++){ const th = a / 36 * Math.PI * 2; ring.push(toScreen(aim.x + Math.cos(th) * sd * 1.6, aim.y + Math.sin(th) * sd * 1.6)); }
-    pathPts(ring); ctx.fillStyle = `rgba(${col},.12)`; ctx.fill(); ctx.strokeStyle = 'rgba(11,13,16,.5)'; ctx.lineWidth = 2; ctx.stroke();
-    pathPts(ring); ctx.strokeStyle = `rgba(${col},.95)`; ctx.lineWidth = .9; ctx.stroke();
-    const [tx, ty] = toScreen(aim.x, aim.y);
-    for (const [w, c] of [[2.6, INK], [1.1, '#fff']]){
-      ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(tx - 3.2, ty); ctx.lineTo(tx + 3.2, ty); ctx.moveTo(tx, ty - 3.2); ctx.lineTo(tx, ty + 3.2); ctx.stroke();
-    }
-    ctx.restore();
+    const col = { bullet: '255,255,255', touch: '125,216,255', deep: '255,216,74' }[tier];
+    dotted(ctx, pts, `rgb(${col})`, 2, 1);
+    const [tx, ty] = toScreen(aim.x, aim.y), seg = 28;
+    ctx.fillStyle = `rgba(${col},.85)`;
+    for (let a = 0; a < seg; a++){ const th = a / seg * Math.PI * 2, [x, y] = toScreen(aim.x + Math.cos(th) * sd * 1.6, aim.y + Math.sin(th) * sd * 1.6); ctx.fillRect(x, y, 1, 1); }
+    ctx.fillStyle = '#fff'; ctx.fillRect(tx - 1, ty, 3, 1); ctx.fillRect(tx, ty - 1, 1, 3);
   }
   /* A pointer bobbing over a player's head: the back to hand off to, the drill's target, you, the ball carrier. */
   function mark(p, col){
