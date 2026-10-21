@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-21T05:26:17+00:00",
+ "updated": "2026-10-21T10:40:51+00:00",
  "threads": [
   {
    "kind": "post",
@@ -1541,28 +1541,6 @@
    "teams": [
     "Savannah State",
     "Morehouse"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Arizona State Defeats Hawai'i 30-12",
-   "url": "https://www.reddit.com/r/CFB/comments/1x30zmo/postgame_thread_arizona_state_defeats_hawaii_3012/",
-   "published": "2026-10-11T06:34:04+00:00",
-   "gameId": "401856808",
-   "teams": [
-    "Arizona State",
-    "Hawai'i"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Boise State Defeats Fresno State 38-31",
-   "url": "https://www.reddit.com/r/CFB/comments/1x30r90/postgame_thread_boise_state_defeats_fresno_state/",
-   "published": "2026-10-11T06:19:29+00:00",
-   "gameId": "401860901",
-   "teams": [
-    "Boise State",
-    "Fresno State"
    ]
   }
  ],
