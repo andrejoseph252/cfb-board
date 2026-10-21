@@ -6,7 +6,9 @@ import { esc, store } from '../util.js';
 import { state } from '../state.js';
 import * as api from '../api.js';
 import { myTeam } from '../myteam.js';
-import { logoUrl } from '../views/components.js';
+import { logoUrl as boardLogo } from '../views/components.js';
+// The game sets logos on white discs and team-color tiles: always the regular (light-background) versions.
+const logoUrl = (src, px) => boardLogo(src, px, 'light');
 import { inkOn } from '../views/preview.js';
 import * as S from './sim.js';
 import { attachNames } from './names.js';

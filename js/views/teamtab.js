@@ -184,7 +184,7 @@ function header(t, color, games){
   return `<header class="th" style="--mt:${esc(color)};--mt-ink:${inkOn(color)}">
     <span class="th-wm" aria-hidden="true">${logo(t.logo, 'logo lg')}</span>
     <div class="th-top"><span>${esc(CONF[st?.conf] || '')}${state.season ? ` · ${esc(state.season)} season` : ''}</span><button class="th-change" type="button" data-teamchange>Change team</button></div>
-    <div class="th-id"><span class="th-disc">${logo(t.logo, 'logo lg')}</span>
+    <div class="th-id"><span class="th-disc">${logo(t.logo, 'logo lg on-light')}</span>
       <div class="th-main"><h2 title="${esc(t.full || t.name)}">${esc(t.name || t.full)}${STAR}</h2><div class="th-pills">${pills.map(x => `<span>${x}</span>`).join('')}</div></div></div>
     ${strip(games, t.id)}</header>`;
 }

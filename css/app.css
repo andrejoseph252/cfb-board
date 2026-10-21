@@ -149,6 +149,8 @@ main > .chips:first-child{margin-bottom:18px}
 .row > a{display:block;line-height:0}
 .stripe{height:22px;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(127,127,127,.25)}
 .logo{width:30px;height:30px;object-fit:contain;display:block}
+/* The few logos that stay lost on a dark theme even in ESPN's dark version (js/darklogos.js) sit on a light disc. */
+img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
 .game .logo{width:22px;height:22px}
 .logo.sm{width:20px;height:20px;display:inline-block;vertical-align:-5px}
 .logo.lg{width:56px;height:56px}
@@ -1199,11 +1201,17 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
   .bt-l{font-size:10.5px;font-weight:500;letter-spacing:.01em;max-width:calc(100% - 10px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .btab[aria-current="page"]{color:var(--tb-pill-ink)}
   .btab[aria-current="page"] .bt-l{font-weight:600}
-  .btabs.on-team .btab[aria-current="page"]{color:#fff}
+  .btabs.on-team .btab[aria-current="page"]{color:var(--team-ink,#fff)}
+  /* The team's logo: the dark-background version on the colored pill and the dark bar; the regular one on a light bar. */
+  .bt-i .bt-ll{display:none}
+  :root[data-tabs="bottom"][data-theme="light"] .btab:not([aria-current="page"]) .bt-ld,:root[data-tabs="bottom"][data-theme="light"] .btabs:not(.on-team) .bt-ld{display:none}
+  :root[data-tabs="bottom"][data-theme="light"] .btab:not([aria-current="page"]) .bt-ll,:root[data-tabs="bottom"][data-theme="light"] .btabs:not(.on-team) .bt-ll{display:block}
   .btab:active .bt-i{transform:scale(.88)}
   :root[data-tabs="bottom"] body.drawer-open .btabs,:root[data-tabs="bottom"] body.pb-open .btabs{display:none}
 }
 @media (max-width:640px) and (prefers-color-scheme:light){
+  :root[data-tabs="bottom"]:not([data-theme]) .btab:not([aria-current="page"]) .bt-ld{display:none}
+  :root[data-tabs="bottom"]:not([data-theme]) .btab:not([aria-current="page"]) .bt-ll{display:block}
   :root[data-tabs="bottom"]:not([data-theme]){--tb-bg:rgba(255,255,255,.82);--tb-edge:rgba(0,0,0,.08);--tb-lit:rgba(255,255,255,.9);--tb-ink:rgba(0,0,0,.55);
     --tb-pill:#141414;--tb-pill-ink:#fff;--tb-shadow:0 12px 30px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08)}
 }

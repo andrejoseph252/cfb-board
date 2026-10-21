@@ -20,7 +20,8 @@ export const current = () => s || (s = SN.load());
 const persist = () => SN.save(s);
 
 /* ---------- little pieces ---------- */
-const logo = (t, size = 72, cls = '') => t?.logo ? `<img class="${cls}" src="${esc(logoUrl(t.logo, size))}" alt="" loading="lazy">` : `<i class="sz-nologo ${cls}" style="--c:${esc(t?.color || '#5a6470')}">${esc((t?.abbr || '?').slice(0, 3))}</i>`;
+// Logos on the dark lists use the dark-background versions; the white discs (cls on-light / sz-idl) the regular ones.
+const logo = (t, size = 72, cls = '') => t?.logo ? `<img class="${cls}" src="${esc(logoUrl(t.logo, size, /on-light|sz-idl/.test(cls) ? 'light' : undefined))}" alt="" loading="lazy">` : `<i class="sz-nologo ${cls}" style="--c:${esc(t?.color || '#5a6470')}">${esc((t?.abbr || '?').slice(0, 3))}</i>`;
 const rec = r => `${r.w}–${r.l}`;
 const ordw = w => w >= 99 ? 'Final' : w === SN.CCG_WEEK ? 'Champ. week' : `Week ${w}`;
 const pip = (n, max, cls = '') => `<span class="sz-pips ${cls}">${Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
@@ -64,7 +65,7 @@ export function setupScreen(){
     <div class="sz-kicker">SEASON MODE</div>
     <h1 class="sz-title">YOUR ${esc(String(state.season || new Date().getFullYear()))}<br><span>SEASON</span></h1>
     <p class="sz-lead">Play your team's real schedule, week by week. Scout every opponent, set the game plan, run the week's practice, then play it or coach it. The rest of the country plays out around you: real results where they've happened, simulated where they haven't. Win your conference, make the playoff.</p>
-    <button class="sz-pickteam" type="button" data-pb="s-teams" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">${logo(t, 96)}<span><small>YOUR TEAM</small><b>${esc(t.name)}</b><em>Tap to change</em></span></button>
+    <button class="sz-pickteam" type="button" data-pb="s-teams" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">${logo(t, 96, 'on-light')}<span><small>YOUR TEAM</small><b>${esc(t.name)}</b><em>Tap to change</em></span></button>
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Game length</span>${seg('len', Object.entries(LENGTHS).map(([k, d]) => [k, `${d.name} ${Math.floor(d.q / 60)}:${String(d.q % 60).padStart(2, '0')}`]))}</div>
     ${have ? `<p class="sz-warn">Starting a new season ends your current one (${esc(have.teams[have.teamId]?.name || '')}, ${rec(SN.recOf(SN.table(have), have.teamId))}).</p>` : ''}
@@ -295,7 +296,7 @@ function scoutStep(g, W, P){
   const opp = SN.oppOf(s, g), o = P.opp, r = SN.recOf(T(), opp.id), raw = o.raw, f1 = x => Number.isFinite(x) ? x.toFixed(1) : '–';
   const film = W.prac.film >= 2, mix = SC.coverageMix(o);
   const star = opp.names?.QB ? `<div class="sz-star"><small>WATCH OUT FOR</small><b>${esc(opp.names.QB)}</b><span>QB${opp.names.X ? ` · and ${esc(opp.names.X)} out wide` : ''}</span></div>` : '';
-  return `<div class="sz-opp" style="--c:${esc(opp.color)};--k:${inkOn(opp.color)}">${logo(opp, 120)}<div><small>SCOUTING REPORT</small><h2>${rankTag(opp.id)}${esc(opp.name.toUpperCase())}</h2>
+  return `<div class="sz-opp" style="--c:${esc(opp.color)};--k:${inkOn(opp.color)}">${logo(opp, 120, 'on-light')}<div><small>SCOUTING REPORT</small><h2>${rankTag(opp.id)}${esc(opp.name.toUpperCase())}</h2>
       <p>${rec(r)} · FPI ${Number.isFinite(opp.fpi) ? (opp.fpi > 0 ? '+' : '') + opp.fpi : 'n/a'}</p></div></div>
     <div class="sz-cols">
       <section class="sz-unit"><h3>THEIR OFFENSE</h3><b class="sz-tag">${esc(o.off.style)}</b>
@@ -411,7 +412,7 @@ function afterGame(g, before, G){
     ${H.length ? `<div class="sz-mini"><div class="sz-h">AROUND THE COUNTRY</div><ul class="sz-news">${H.map(headline).join('')}</ul></div>` : ''}
     <button class="pb-go" type="button" data-pb="s-hub">CONTINUE ▶</button></div>`, won);
 }
-const scoreSide = (t, sc) => `<div class="pb-sl" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.abbr)}</b><span>${sc}</span></div>`;
+const scoreSide = (t, sc) => `<div class="pb-sl" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">${t.logo ? `<img src="${esc(logoUrl(t.logo, 72, 'light'))}" alt="">` : ''}<b>${esc(t.abbr)}</b><span>${sc}</span></div>`;
 
 /* A practice drill finished during game week: its grade scales that area's practice. */
 export function drillDone(area, score){

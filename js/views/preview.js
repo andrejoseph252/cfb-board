@@ -36,7 +36,7 @@ export function banner(g, s){
     const t = g[k], ap = t.rank || apRank(t.id), conf = state.standings?.byTeam[t.id]?.confRec;
     const lost = done && !t.winner && g[other(k)].winner;
     const rec = [t.record, conf && g.confGame ? `${conf.w}-${conf.l} ${CONF[t.conf] || 'conf'}` : null].filter(Boolean).join(' · ');
-    const disc = `<span class="mh-disc">${logo(t.logo, 'mh-logo')}</span>`;
+    const disc = `<span class="mh-disc">${logo(t.logo, 'mh-logo on-light')}</span>`;
     return `<div class="mh-side ${k}${lost ? ' lost' : ''}">
       ${t.id ? `<a href="${teamHref(t.id)}" tabindex="-1" aria-hidden="true">${disc}</a>` : disc}
       <div class="mh-name${ballClass(g, t)}">${ap ? `<span class="mh-rank">#${ap}</span>` : ''}${t.id ? `<a class="tlink" href="${teamHref(t.id)}">${esc(t.name)}</a>` : esc(t.name)}${ballIcon(g, t)}</div>

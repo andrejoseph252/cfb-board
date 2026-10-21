@@ -9,7 +9,9 @@ import { parseSchedule } from './models.js';
 export let myTeam = store.get('myteam', null);   // { id, name, color, alt, logo }
 
 export function setMyTeam(t){
-  myTeam = t ? { id: String(t.id), name: t.name, color: t.color || null, alt: t.alt || null, logo: t.logo || null } : null;
+  // A team picked from the logo grid comes without colors; this week's games have them if it's on the board.
+  const g = t && state.games.flatMap(g => [g.home, g.away]).find(x => String(x.id) === String(t.id));
+  myTeam = t ? { id: String(t.id), name: t.name, color: t.color || g?.color || null, alt: t.alt || g?.alt || null, logo: t.logo || g?.logo || null } : null;
   store.set('myteam', myTeam);
   invalidate();
 }

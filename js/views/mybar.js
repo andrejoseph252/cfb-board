@@ -57,7 +57,7 @@ export function myTeamBar(){
   }
   const live = g?.state === 'in';
   return `<a class="mt${live ? ' live' : ''}" href="${href}" style="--mt:${esc(color)};--mt-ink:${ink}">
-    <span class="mt-disc">${logo(t?.logo || myTeam.logo || espnLogo(myTeam.id), 'mt-logo')}</span>
+    <span class="mt-disc">${logo(t?.logo || myTeam.logo || espnLogo(myTeam.id), 'mt-logo on-light')}</span>
     <span class="mt-main"><b class="mt-name">${STAR}${esc(myTeam.name)}</b><span class="mt-line">${line.filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</span></span>
     ${right ? `<span class="mt-right">${right}</span>` : ''}${CHEV}</a>`;
 }

@@ -8,6 +8,7 @@ import './pull.js';
 import { fire } from './live.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc, logoUrl } from './views/components.js';
+import { inkOn } from './views/preview.js';
 import { isMine, setMyTeam, myTeam } from './myteam.js';
 import { viewWeek, weekList } from './views/slate.js';
 import { viewConferences } from './views/conferences.js';
@@ -49,7 +50,7 @@ function renderHeader(){
   // The My team tab is labeled with the team once one is picked.
   const label = (k, l) => k === 'team' && myTeam ? esc(myTeam.name) : l;
   const tabs = TABS.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${label(k, l)}${counts[k] ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('');
-  const tkey = tabs + (myTeam?.logo || '') + (state.standings ? 1 : 0);
+  const tkey = tabs + (myTeam?.logo || '') + (myTeam?.color || '') + (state.standings ? 1 : 0) + (document.documentElement.dataset.theme || '');
   if (tkey !== lastTabs){
     $('#tabs').innerHTML = tabs; lastTabs = tkey;
     // Phones: the same tabs as a bar along the bottom, icon over a short label.
@@ -58,10 +59,12 @@ function renderHeader(){
     // One highlight slides between tabs (--i); on your team's tab it takes the team's own color.
     const bt = $('#btabs'), i = TABS.findIndex(([k]) => k === state.tab);
     bt.style.setProperty('--i', i); bt.style.setProperty('--n', TABS.length);
-    bt.classList.toggle('on-team', state.tab === 'team' && !!myTeam?.color);
-    if (myTeam?.color) bt.style.setProperty('--team', myTeam.color);
+    // Until a newly picked team's color arrives (its schedule), the pill is a neutral dark, never the empty tab's white.
+    const tc = myTeam && (myTeam.color || '#3A3A3A');
+    bt.classList.toggle('on-team', state.tab === 'team' && !!myTeam);
+    if (tc){ bt.style.setProperty('--team', tc); bt.style.setProperty('--team-ink', inkOn(tc)); }
     bt.innerHTML = TABS.map(([k]) => `<button class="btab" type="button" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">
-      <span class="bt-i">${k === 'team' && myTeam?.logo ? `<img src="${esc(logoUrl(myTeam.logo, 72))}" alt="">` : BT_ICON[k]}${k === 'picks' && counts.picks ? `<em>${counts.picks}</em>` : ''}</span><span class="bt-l">${short[k]}</span></button>`).join('');
+      <span class="bt-i">${k === 'team' && myTeam?.logo ? `<img class="bt-ld" src="${esc(logoUrl(myTeam.logo, 72, 'dark'))}" alt=""><img class="bt-ll" src="${esc(logoUrl(myTeam.logo, 72, 'light'))}" alt="">` : BT_ICON[k]}${k === 'picks' && counts.picks ? `<em>${counts.picks}</em>` : ''}</span><span class="bt-l">${short[k]}</span></button>`).join('');
   }
   renderWeekPicker();
   renderStale();

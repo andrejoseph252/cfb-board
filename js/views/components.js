@@ -9,18 +9,34 @@ import { upset, upsetWhy, BOLT } from '../upset.js';
 import { ats, atsWhy, fmtLine } from '../ats.js';
 import { isMine, mySide, myColor, STAR } from '../myteam.js';
 import { scored, momentum } from '../live.js';
+import { DARK, DISC } from '../darklogos.js';
 
 export const teamHref = id => `#team/${encodeURIComponent(id)}`;
 export const gameHref = id => `#game/${encodeURIComponent(id)}`;
 
 /* ESPN's team logos are 500px originals; its image resizer serves them near display size instead (about 9x smaller).
-   Big logos (drawer headers) get 180px, everything else 72px, both enough for 3x phone screens. */
+   Big logos (drawer headers) get 180px, everything else 72px, both enough for 3x phone screens.
+   On a dark theme a navy, black or deep-maroon logo disappears. ESPN draws a dark-background version of every logo
+   (500-dark), but for most teams it's just a white silhouette of a logo that already read fine, so the board only uses
+   it for the teams scripts/logos.py found lost on dark (DARK); the few whose dark version is no better sit on a light
+   disc (DISC). variant: 'light' | 'dark' (always that version) | undefined (follow the theme). */
 const ESPN_LOGO = /^https:\/\/a\.espncdn\.com\/(i\/teamlogos\/[^?#]+\.png)$/;
-export function logoUrl(src, px){
-  const m = ESPN_LOGO.exec(src || '');
-  return m ? `https://a.espncdn.com/combiner/i?img=/${m[1]}&w=${px}&h=${px}` : src;
+const teamOf = path => /\/(\d+)\.png$/.exec(path)?.[1];
+export const darkUI = () => { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+export function logoUrl(src, px, variant){
+  const m = ESPN_LOGO.exec(src || ''); if (!m) return src;
+  const dark = variant ? variant === 'dark' : darkUI() && DARK.has(teamOf(m[1]));
+  const path = dark ? m[1].replace('/ncaa/500/', '/ncaa/500-dark/') : m[1];
+  return `https://a.espncdn.com/combiner/i?img=/${path}&w=${px}&h=${px}`;
 }
-export const logo = (src, cls = 'logo') => src ? `<img class="${cls}" src="${esc(logoUrl(src, /\b(lg|mh-logo)\b/.test(cls) ? 180 : 72))}" alt="" loading="lazy">` : `<span class="${cls}"></span>`;
+/* Whether a logo needs the light disc behind it here. */
+export const needsDisc = src => darkUI() && DISC.has(teamOf(ESPN_LOGO.exec(src || '')?.[1] || ''));
+/* A logo on a white disc ('on-light' in cls) keeps its regular colors. */
+export const logo = (src, cls = 'logo') => {
+  if (!src) return `<span class="${cls}"></span>`;
+  const light = /\bon-light\b/.test(cls);
+  return `<img class="${cls}${!light && needsDisc(src) ? ' disc' : ''}" src="${esc(logoUrl(src, /\b(lg|mh-logo)\b/.test(cls) ? 180 : 72, light ? 'light' : undefined))}" alt="" loading="lazy">`;
+};
 
 /* Team name that opens the schedule drawer. Pass {logo:true} to include the logo inside the link. My team gets a star. */
 export function teamLink(t, { rank = true, withLogo = false, label } = {}){
@@ -121,7 +137,7 @@ function scoreFx(g, e){
   const word = { td: 'Touchdown', fg: 'Field goal', safety: 'Safety' }[e.kind];
   const where = a > b ? `leads ${a}–${b}` : a < b ? `trails ${a}–${b}` : `ties it ${a}–${b}`;
   return `<div class="tdfx ${e.kind}" style="--tc:${esc(t.color)};--ti:${inkOn(t.color)};--d:-${Math.round(e.elapsed)}ms;--len:${e.length}ms" aria-hidden="true">
-    <span class="tdfx-logo">${logo(t.logo, 'logo')}</span><span class="tdfx-t"><b>${word}</b><small>${esc(t.abbr)} ${where}</small></span></div>`;
+    <span class="tdfx-logo">${logo(t.logo, 'logo on-light')}</span><span class="tdfx-t"><b>${word}</b><small>${esc(t.abbr)} ${where}</small></span></div>`;
 }
 
 /* Before kickoff the two percentages (or team abbreviations, with no line yet) are the pick buttons. */
