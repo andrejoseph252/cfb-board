@@ -1165,10 +1165,17 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
   :root[data-tabs="bottom"] .tabs .stale{pointer-events:auto}
   /* With no tab row, the header runs straight into the page: keep the usual rhythm, not a double gap. */
   :root[data-tabs="bottom"] main.wrap{padding-top:10px}
-  :root[data-tabs="bottom"] body{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 92px)}
+  :root[data-tabs="bottom"] body{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+  /* The page fades out under and below the bar, so nothing peeks through the gap at the bottom edge. */
+  :root[data-tabs="bottom"] body::after{content:"";position:fixed;left:0;right:0;bottom:0;z-index:14;pointer-events:none;
+    height:calc(max(10px,calc(env(safe-area-inset-bottom,0px) - 14px)) + 52px);
+    background:linear-gradient(to bottom,color-mix(in srgb,var(--bg) 0%,transparent),var(--bg) 55%)}
+  :root[data-tabs="bottom"] body.drawer-open::after,:root[data-tabs="bottom"] body.pb-open::after{display:none}
   /* A floating capsule: frosted, rounded, lifted off the bottom edge, with one highlight that glides to the tab you pick. */
   :root[data-tabs="bottom"] .btabs{display:grid;grid-template-columns:repeat(var(--n,5),1fr);position:fixed;z-index:15;
-    left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
+    left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));
+    /* On a phone with a home bar it sits partway into that strip, like iOS's own floating tab bars (not a full strip above it). */
+    bottom:max(10px,calc(env(safe-area-inset-bottom,0px) - 14px));
     padding:6px;border-radius:26px;
     background:color-mix(in srgb,var(--surface) 84%,transparent);-webkit-backdrop-filter:saturate(1.8) blur(22px);backdrop-filter:saturate(1.8) blur(22px);
     border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);
