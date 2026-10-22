@@ -1,35 +1,10 @@
-import { esc, pct, fmtTime } from '../util.js';
+import { esc } from '../util.js';
 import { state, CONF, CONF_ORDER, apRank, teamConf } from '../state.js';
-import { realMarket } from '../markets.js';
-import { teamLink, sec, chips, logo, gameHref } from './components.js';
+import { teamLink, sec, chips } from './components.js';
+import { statTable, recCell, teamCell, rating, weekCols, dash } from './stattable.js';
 import { mineRow } from '../myteam.js';
 import { ballots, weeksOf, teamWeek, matchesPoll, rankText } from '../ballots.js';
 import { boxPlot } from './ballots.js';
-
-function weekGame(id){
-  for (const g of state.games){
-    if (g.home.id === id) return [g, 'home'];
-    if (g.away.id === id) return [g, 'away'];
-  }
-  return [];
-}
-
-/* "vs #14 Tennessee · W 29-23" or "@ USC · Sat 7:30 PM · 60%" */
-function thisWeek(id){
-  const [g, side] = weekGame(id);
-  if (!g) return '<td class="grp muted">Bye</td>';
-  const me = g[side], o = g[side === 'home' ? 'away' : 'home'];
-  let tail;
-  if (g.state === 'post' && g.completed) tail = `<span class="${me.winner ? 'pos' : 'neg'} strong">${me.winner ? 'W' : 'L'} ${esc(me.score)}-${esc(o.score)}</span>`;
-  else if (g.state === 'in') tail = `<span class="status live">${esc(me.score)}-${esc(o.score)}</span>`;
-  else {
-    const m = realMarket(g), p = m?.pHome ?? state.preds.get(g.id)?.pHome;
-    const d = new Date(g.date);
-    tail = `<span class="muted">${g.tbd ? d.toLocaleDateString(undefined, {weekday:'short'}) : `${d.toLocaleDateString(undefined, {weekday:'short'})} ${fmtTime(d)}`}</span>` +
-      (p != null ? ` <span class="wk-p" title="${m ? 'Market' : 'FPI'} win chance">${pct(side === 'home' ? p : 1 - p)}%</span>` : '');
-  }
-  return `<td class="grp"><a class="dlink" href="${gameHref(g.id)}">${g.neutral ? 'vs' : side === 'home' ? 'vs' : '@'}</a> ${teamLink(o)} <span class="wk-tail">${tail}</span></td>`;
-}
 
 function trend(t){
   if (!t.prev) return '<span class="mv new">New</span>';
@@ -39,48 +14,50 @@ function trend(t){
 
 const inConf = id => state.rkConf === 'all' || String(teamConf(id)) === state.rkConf;
 
+/* The AP poll: rank and team pinned; "Poll" shows the movement, the record and where every voter has them (the
+   ballots' spread, on the row itself); "This week" shows the game. With this week's ballots in, a row opens them. */
 function apTable(){
   const r = state.rankings;
   if (!r) return '<div class="skeleton tall"></div>';
-  const list = r.ranks.filter(t => inConf(t.id)), others = r.others.filter(t => inConf(t.id));
-  // Every voter's ballot, when this week's are in: a box plot per team of where the voters have them.
+  const others = r.others.filter(t => inConf(t.id));
   const B = ballots(), bw = weeksOf(B).pop(), live = B && matchesPoll(B, bw);
-  // On a phone it sits under the team's name instead of in its own column.
-  const bxLink = (t, s, cls) => `<a class="bxlink ${cls}" href="#ballots/${esc(t.id)}" title="Every voter's ballot: ${rankText(s.hi)} to ${rankText(s.lo)}, median ${rankText(Math.round(s.med))}" aria-label="${esc(t.name)}: all AP ballots">${boxPlot(s)}<span>${rankText(s.hi).replace('#', '')}–${rankText(s.lo).replace('#', '')}</span></a>`;
-  const stat = t => live && teamWeek(B, bw, t.id);
-  const spread = t => { const s = stat(t); return `<td class="bxc">${s?.on ? bxLink(t, s, 'wide') : ''}</td>`; };
-  const under = t => { const s = stat(t); return s?.on ? bxLink(t, s, 'under') : ''; };
-  const rows = list.map(t => {
-    const f = state.fpi?.byTeam[t.id];
-    // With ballots in, the whole row opens them (the team's name too; its schedule is a tap away in there).
-    const name = live ? `<a class="tlink" href="#ballots/${esc(t.id)}">${esc(t.name)}</a>` : teamLink({ id: t.id, name: t.name });
-    const mr = mineRow(t.id), attrs = !live ? mr : (mr ? mr.replace('class="mine"', 'class="mine bx-row"') : ' class="bx-row"') + ` data-href="#ballots/${esc(t.id)}"`;
-    return `<tr${attrs}><td class="num rk">${t.rank}</td><td class="num">${trend(t)}</td>
-      <td class="team">${logo(t.logo, 'logo sm')}${name}${t.fpv ? ` <span class="muted small">(${t.fpv})</span>` : ''}${under(t)}</td>${spread(t)}
-      <td class="num">${esc(t.record || '–')}</td><td class="num hide-sm">${t.points ?? '–'}</td><td class="num">${f?.rank ?? '–'}</td>${thisWeek(t.id)}</tr>`;
-  }).join('');
-  return `<div class="tablewrap"><table class="tbl">
-    <thead><tr><th class="num">AP</th><th class="num"></th><th>Team</th><th class="bxc">${live ? 'Ballots' : ''}</th><th class="num">Record</th><th class="num hide-sm">Pts</th><th class="num">FPI</th><th class="grp">This week</th></tr></thead>
-    <tbody>${rows || `<tr><td colspan="8" class="muted">No ranked teams in this conference.</td></tr>`}</tbody></table></div>` +
+  const rows = r.ranks.filter(t => inConf(t.id)).map(t => {
+    const mr = mineRow(t.id), s = live ? teamWeek(B, bw, t.id) : null;
+    const attrs = !live ? mr : (mr ? mr.replace('class="mine"', 'class="mine bx-row"') : ' class="bx-row"') + ` data-href="#ballots/${esc(t.id)}"`;
+    return { ...t, s, attrs };
+  });
+  const name = t => (live ? `<a class="tlink" href="#ballots/${esc(t.id)}">${esc(t.name)}</a>` : teamLink({ id: t.id, name: t.name })) + (t.fpv ? ` <span class="sv-fpv">(${t.fpv})</span>` : '');
+  const recd = t => { const m = /^(\d+)-(\d+)(?:-(\d+))?$/.exec(t.record || ''); return m ? recCell(m[1], m[2], m[3]) : esc(t.record || '–'); };
+  const spread = t => t.s?.on
+    ? `<a class="bxlink" href="#ballots/${esc(t.id)}" title="Every voter's ballot: ${rankText(t.s.hi)} to ${rankText(t.s.lo)}, median ${rankText(Math.round(t.s.med))}" aria-label="${esc(t.name)}: all AP ballots">${boxPlot(t.s)}<span>${rankText(t.s.hi).replace('#', '')}–${rankText(t.s.lo).replace('#', '')}</span></a>`
+    : `<span class="sv-na small">${live ? '–' : 'Not in yet'}</span>`;
+  return statTable('ap', [
+    { h: 'AP', cls: 'num sv-rk', td: t => `<span class="sv-pos big">${t.rank}</span>` },
+    { h: 'Team', cls: 'team', td: t => teamCell(t, name(t)) },
+    { g: 'poll', h: '+/−', cls: 'num sv-mv', title: 'Movement from last week', td: trend },
+    { g: 'poll', h: 'Record', cls: 'num strong', td: recd },
+    { g: 'poll', h: 'Ballots', cls: 'sv-bx', title: 'Where the voters have them: best to worst, the box the middle half', td: spread },
+    ...weekCols('week')
+  ], rows, 'No ranked teams in this conference.') +
     (others.length ? `<p class="note sub"><b>Also receiving votes:</b> ${others.map(t => `${teamLink({ id: t.id, name: t.name })} ${live ? `<a class="bxpts" href="#ballots/${esc(t.id)}" title="See the ballots">${t.points}</a>` : t.points}`).join(', ')}</p>` : '');
 }
 
+/* FPI: "Power" (rating, record, AP), "Outlook" (projected record, playoff chance), "This week". */
 function fpiTable(){
   const f = state.fpi;
   if (!f) return state.fpiErr ? `<div class="err"><b>Couldn't load ESPN FPI.</b> ${esc(state.fpiErr)}</div>` : '<div class="skeleton tall"></div>';
-  const list = f.list.filter(t => inConf(t.id));
-  return `<div class="tablewrap"><table class="tbl">
-    <thead><tr><th class="num">FPI</th><th>Team</th><th class="num">Rating</th><th class="num">Record</th><th class="num">AP</th>
-      <th class="num hide-sm">Proj</th><th class="num hide-sm">Playoff</th><th class="grp">This week</th></tr></thead>
-    <tbody>${list.map(t => {
-      const st = state.standings?.byTeam[t.id];
-      return `<tr${mineRow(t.id)}><td class="num rk">${t.rank}</td>
-        <td class="team">${logo(t.logo, 'logo sm')}${teamLink({ id: t.id, name: st?.name || t.name })}</td>
-        <td class="num">${t.fpi?.toFixed(1) ?? '–'}</td>
-        <td class="num">${st?.overall ? `${st.overall.w}-${st.overall.l}` : '–'}</td><td class="num">${apRank(t.id) ?? ''}</td>
-        <td class="num hide-sm">${t.projW != null ? `${t.projW.toFixed(1)}-${t.projL.toFixed(1)}` : '–'}</td>
-        <td class="num hide-sm">${t.playoff != null ? t.playoff.toFixed(t.playoff < 1 && t.playoff > 0 ? 1 : 0) + '%' : '–'}</td>${thisWeek(t.id)}</tr>`;
-    }).join('')}</tbody></table></div>`;
+  const rows = f.list.filter(t => inConf(t.id)).map(t => ({ ...t, st: state.standings?.byTeam[t.id], attrs: mineRow(t.id) }));
+  const po = p => p.toFixed(p < 1 && p > 0 ? 1 : 0);
+  return statTable('fpi', [
+    { h: 'FPI', cls: 'num sv-rk', td: t => `<span class="sv-pos big">${t.rank}</span>` },
+    { h: 'Team', cls: 'team', td: t => teamCell(t, teamLink({ id: t.id, name: t.st?.name || t.name })) },
+    { g: 'power', h: 'Rating', cls: 'num strong', title: 'Points better than an average FBS team, neutral field', td: t => rating(t.fpi) },
+    { g: 'power', h: 'Record', cls: 'num', td: t => t.st?.overall ? recCell(t.st.overall.w, t.st.overall.l) : dash },
+    { g: 'power', h: 'AP', cls: 'num', title: 'AP rank', td: t => apRank(t.id) ?? dash },
+    { g: 'outlook', h: 'Proj', cls: 'num', title: 'Projected final record', td: t => t.projW != null ? recCell(t.projW.toFixed(1), t.projL.toFixed(1), 0, ' dec') : dash },
+    { g: 'outlook', h: 'Playoff', cls: 'num sv-po', title: 'Chance to make the playoff', td: t => t.playoff != null ? `<span class="sv-bar" style="--p:${Math.min(100, t.playoff)}%"></span><span class="sv-pv">${po(t.playoff)}%</span>` : dash },
+    ...weekCols('week')
+  ], rows, 'No teams in this conference.');
 }
 
 export function viewRankings(){

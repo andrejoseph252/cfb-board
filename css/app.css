@@ -1334,3 +1334,148 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .tbl tr.bx-row{cursor:pointer;transition:background-color .12s}
 .tbl tr.bx-row:hover td{background:color-mix(in srgb,var(--ink) 4%,transparent)}
 .tbl tr.bx-row:active td{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+
+/* ---------- Rankings: tables that fit a phone (js/views/stattable.js) ----------
+   Rank and team pinned; one column group at a time, picked by a segmented control. A wide table (its own width, a
+   container query) shows every group at once under spanning group headers. */
+.sv{container:sv / inline-size;margin-bottom:10px}
+.sv-seg{position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);padding:3px;margin:0 0 8px;background:var(--soft);border-radius:10px;isolation:isolate}
+.sv-seg button{position:relative;z-index:1;border:0;background:none;color:var(--muted);font:600 13px/1 var(--body);padding:8px 4px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:color .2s;-webkit-tap-highlight-color:transparent}
+.sv-seg button[aria-selected="true"]{color:var(--ink)}
+.sv-seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.sv-thumb{position:absolute;z-index:0;top:3px;bottom:3px;left:3px;width:calc((100% - 6px) / var(--n));border-radius:8px;background:var(--surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.12),0 0 0 1px var(--line);transform:translateX(calc(var(--i) * 100%));transition:transform .28s cubic-bezier(.3,.7,.2,1)}
+.sv-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sv-tbl{font-size:13.5px;font-variant-numeric:tabular-nums lining-nums}
+.sv-tbl th,.sv-tbl td{padding:0 9px;height:42px;vertical-align:middle}
+.sv-tbl thead th{height:30px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--soft) 45%,var(--surface))}
+.sv-tbl td.team{width:100%;max-width:0;font-weight:600}
+.sv-team{display:flex;align-items:center;gap:8px;min-width:0}
+.sv-team .logo.sm{flex:none;width:22px;height:22px}
+.sv-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-fpv{color:var(--muted);font-size:12px;font-weight:500}
+.sv-tbl td.sv-rk,.sv-tbl th.sv-rk{width:1%;padding-right:2px;padding-left:12px;text-align:right}
+.sv-pos.big{color:var(--ink);font:800 19px/1 var(--display)}
+.sv-tbl .strong{font-weight:700}
+.sv-na{color:var(--muted);opacity:.6}
+.sv-empty{text-align:center;padding:18px !important;height:auto !important}
+.sv-tbl .r{display:inline-flex}
+.sv-tbl .r i{font-style:normal;min-width:1.2ch}
+.sv-tbl .r i:first-child{min-width:2.2ch;text-align:right}
+.sv-tbl .r.dec i{min-width:3.6ch}
+.sv-tbl td.sv-mv{padding-right:2px;min-width:30px}
+.sv-opp{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-weight:600}
+.sv-opp .dlink{font-weight:500;color:var(--muted);font-size:12px;min-width:1.6em}
+.sv-opp .logo.xs{width:18px;height:18px;flex:none}
+.sv-opp .fn{display:none}
+.sv-opp .tlink .rank{font-size:11px;color:var(--muted);margin-right:3px;font-weight:600}
+.sv-bye{color:var(--muted);font-style:italic}
+.sv-res{text-decoration:none;color:inherit;white-space:nowrap;font-weight:600}
+.sv-res b{font-weight:800}
+.sv-res.pos{color:var(--good)} .sv-res.neg{color:var(--bad)}
+.sv-res .status.live::before{width:6px;height:6px;margin-right:5px}
+.sv-kick{color:var(--muted);white-space:nowrap;font-size:12.5px}
+.sv-kick span{color:var(--ink);font-weight:600}
+.sv-wp{font-weight:700}
+.sv-po{min-width:64px}
+.sv-tbl td.sv-po{position:relative}
+.sv-bar{position:absolute;left:9px;right:9px;bottom:8px;height:3px;border-radius:2px;background:var(--soft);overflow:hidden}
+.sv-bar::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--accent);border-radius:2px}
+.sv-pv{font-weight:600}
+/* The voters' spread, right on the poll row. */
+.sv-tbl td.sv-bx{text-align:left}
+.sv-tbl td.sv-bx .bxlink{display:flex;align-items:center;gap:6px;padding:0;color:var(--muted);font-size:11.5px;font-weight:600;text-decoration:none;white-space:nowrap}
+.sv-tbl td.sv-bx .bx{width:64px;height:11px}
+.sv-tbl tr.mine td{background:color-mix(in srgb,var(--mine) 13%,transparent)}
+.sv-tbl tr.mine td:first-child{box-shadow:inset 3px 0 0 var(--mine)}
+.sv-tbl tr.sv-groups th{height:26px;border-bottom:0;background:none;font:800 13px/1 var(--display);letter-spacing:.06em;color:var(--ink);text-align:left}
+.sv-tbl tr.sv-groups th.sv-gh{border-left:1px solid var(--line)}
+@keyframes sv-in{from{opacity:0;transform:translateX(calc(var(--dir,1) * 10px))}to{opacity:1;transform:none}}
+.sv.switching td:is(.g0,.g1,.g2) > *{animation:sv-in .26s cubic-bezier(.3,.7,.2,1) both}
+@media (prefers-reduced-motion:reduce){.sv-thumb{transition:none}.sv.switching *{animation:none !important}}
+.sv-tbl tr.sv-groups{display:none}
+.sv:not([data-i="0"]) .g0,.sv:not([data-i="1"]) .g1,.sv:not([data-i="2"]) .g2{display:none}
+@container sv (min-width:780px){
+  .sv-seg{display:none}
+  .sv-tbl tr.sv-groups{display:table-row}
+  .sv :is(.g0,.g1,.g2){display:table-cell !important}
+  .sv-tbl :is(td,th).gs{border-left:1px solid var(--line);padding-left:14px}
+  .sv-tbl td.team{max-width:none;width:28%}
+  .sv-tbl :is(td,th){padding:0 12px}
+  .sv-tbl td.sv-bx .bx{width:88px}
+}
+@container sv (min-width:1000px){ .sv-opp .ab{display:none} .sv-opp .fn{display:inline} }
+@container sv (max-width:420px){
+  .sv-tbl th,.sv-tbl td{padding:0 7px}
+  .sv-tbl td.sv-rk,.sv-tbl th.sv-rk{padding-left:10px;padding-right:0}
+  .sv-team{gap:7px}
+  .sv-opp .logo.xs{display:none} .sv-opp{gap:4px}
+  /* the ballots chart alone (its range is in its title), so team names keep their room */
+  .sv-tbl td.sv-bx .bxlink span{display:none} .sv-tbl td.sv-bx .bx{width:56px}
+}
+
+/* ---------- Conferences: standings as rows, with the conference race (conferences.js) ----------
+   The conference record leads each row; a tap opens the rest, which a wide list shows as columns. Title game spots,
+   in the hunt and out each get their color: a rail at the row's edge, the place number, and a label where they start. */
+.rw{container:rw/inline-size;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-variant-numeric:tabular-nums;font-size:14px}
+.rw-row,.rw-head{display:grid;align-items:center;column-gap:10px;padding:9px 12px 9px 10px}
+.rw-row{position:relative;border-top:1px solid var(--soft);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .12s}
+.rw-head + .rw-row,.rw-tier + .rw-row{border-top:0}
+.rw-row:hover{background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.rw-row[data-open]{background:color-mix(in srgb,var(--ink) 3.5%,transparent)}
+.rw-row > span{min-width:0;white-space:nowrap}
+.rw-head{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:8px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.rw-head > span:not(.c-t){text-align:right}
+.rw .c-t{display:flex;align-items:center;min-width:0;font-weight:600}
+.rw-row .c-t .logo.sm{width:22px;height:22px;flex:none;margin-right:8px}
+.rw-row .tlink{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rw-row .tlink .rank{font-size:14px;margin-right:4px}
+.rw-row.rw-mine{background:color-mix(in srgb,var(--mine) 13%,transparent);box-shadow:inset 3px 0 0 var(--mine)}
+.rw-x{grid-area:x;justify-self:end;width:22px;height:22px;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--muted);border-radius:6px;cursor:pointer}
+.rw-x svg{width:12px;height:12px;transition:transform .18s}
+.rw-row[data-open] .rw-x svg{transform:rotate(180deg)}
+.rw-more{grid-area:more;display:none;flex-wrap:wrap;gap:6px;padding:8px 0 2px 30px}
+.rw-row[data-open] .rw-more{display:flex;animation:rw-in .16s ease-out}
+@keyframes rw-in{from{opacity:0;transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.rw-row[data-open] .rw-more{animation:none}.rw-x svg{transition:none}}
+.rw-s{display:grid;gap:1px;min-width:62px;padding:6px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--soft)}
+.rw-s small{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rw-s b{font:800 17px/1.1 var(--display);color:var(--ink)}
+.rw-s.pos b{color:var(--good)} .rw-s.neg b{color:var(--bad)} .rw-s.fpi b{color:var(--fpi)}
+.rw-conf{grid-template-columns:22px minmax(0,1fr) 46px 46px 22px;grid-template-areas:"n t cr ov x" "more more more more more"}
+.rw-head.rw-conf{grid-template-areas:"n t cr ov x"}
+.rw-conf .c-n{grid-area:n;text-align:right;color:var(--muted);font-size:12.5px;font-weight:600}
+.rw-conf .c-t{grid-area:t}
+.rw-conf .c-cr{grid-area:cr;text-align:right}
+.rw-conf .c-ov{grid-area:ov;text-align:right}
+.rw-row.rw-conf .c-cr{font:800 19px/1 var(--display);letter-spacing:.01em}
+.rw-row.rw-conf .c-ov{color:var(--muted);font-size:13px}
+.rw-conf .c-df,.rw-conf .c-st,.rw-conf .c-ap,.rw-conf .c-fp{display:none;text-align:right}
+.rw-conf .c-x{grid-area:x}
+.rw-row.rw-conf .c-fp{color:var(--fpi)}
+.rw-row .pos{color:var(--good)} .rw-row .neg{color:var(--bad)}
+/* the race */
+.rw-row.t-title::before,.rw-row.t-hunt::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:0 2px 2px 0;background:var(--good)}
+.rw-row.t-hunt::before{background:var(--x-mid)}
+.rw-row.rw-mine::before{display:none}
+.rw-row.t-title .c-n{color:var(--good)}
+.rw-row.t-hunt .c-n{color:var(--x-mid)}
+.rw-row.t-out :is(.c-t,.c-ov){opacity:.62}
+.rw-row.t-out .c-cr{color:var(--muted)}
+.rw-tier{display:flex;align-items:center;gap:8px;padding:8px 12px 3px 10px;border-top:1px solid var(--soft);font:700 10px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.rw-head + .rw-tier{border-top:0}
+.rw-tier::after{content:"";flex:1;height:1px;background:currentColor;opacity:.28}
+.rw-tier.t-title{color:var(--good)} .rw-tier.t-hunt{color:var(--x-mid)}
+@container rw (min-width:500px){
+  .rw-conf{grid-template-columns:24px minmax(0,1fr) 46px 50px 42px 38px 30px 32px;grid-template-areas:"n t cr ov df st ap fp"}
+  .rw-conf .c-df{display:block;grid-area:df} .rw-conf .c-st{display:block;grid-area:st}
+  .rw-conf .c-ap{display:block;grid-area:ap} .rw-conf .c-fp{display:block;grid-area:fp}
+  .rw-row.rw-conf :is(.c-df,.c-st,.c-ap){font-size:13px}
+  .rw-row.rw-conf .c-ov{color:var(--ink)}
+  .rw-head.rw-conf{grid-template-areas:"n t cr ov df st ap fp"}
+  .rw-head.rw-conf .c-x,.rw-conf .rw-x,.rw-conf .rw-more,.rw-row.rw-conf[data-open] .rw-more{display:none}
+  .rw-row.rw-conf{cursor:default}
+  .rw-row.rw-conf[data-open]:not(.rw-mine){background:none}
+}
+/* A wide screen gives the standings room for their columns next to the games. */
+@media (min-width:1100px){ .split{grid-template-columns:minmax(500px,560px) minmax(0,1fr)} }
