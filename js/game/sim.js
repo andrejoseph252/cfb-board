@@ -401,7 +401,9 @@ export function step(G, dt, inp){
       // Pass rush. The ends speed-rush: around the edge to a spot behind the quarterback, so stepping up in the pocket
       // gets away from them. The tackles bull-rush: they drive their blocker back, and the pocket shrinks.
       if (d.free){
-        if (d.edge && dist(d, qb) > 2.6){ tx = qb.x - 1.6; ty = qb.y + d.edge * 2.4; } else { tx = qb.x; ty = qb.y; }
+        // (The turn comes from outside the spot behind him: that spot is ~2.9 yards off, so an end steering for it
+        // until he was any closer than that would circle the pocket forever and never get home.)
+        if (d.edge && dist(d, qb) > 4){ tx = qb.x - 1.6; ty = qb.y + d.edge * 2.4; } else { tx = qb.x; ty = qb.y; }
       } else { tx = qb.x; ty = qb.y; spd = d.edge ? .9 : 1.5; }
     } else if (d.blitz){
       tx = qb.x; ty = qb.y; spd = P.t < .35 ? 0 : d.spd * (P.t < 1.4 ? .55 : .9);
