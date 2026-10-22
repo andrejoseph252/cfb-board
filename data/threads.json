@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-22T20:53:38+00:00",
+ "updated": "2026-10-22T23:42:28+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] ECU @ Memphis (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xcwup2/game_thread_ecu_memphis_730_pm_et/",
+   "published": "2026-10-22T22:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "ECU",
+    "Memphis"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Liberty @ Kennesaw State (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xcw5f9/game_thread_liberty_kennesaw_state_700_pm_et/",
+   "published": "2026-10-22T22:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Liberty",
+    "Kennesaw State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] James Madison @ Appalachian State (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xcw5ei/game_thread_james_madison_appalachian_state_700/",
+   "published": "2026-10-22T22:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "James Madison",
+    "Appalachian State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] New Mexico State Defeats Sam Houston 30-24",
