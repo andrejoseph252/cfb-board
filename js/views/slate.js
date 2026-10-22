@@ -62,12 +62,6 @@ export function weekList(){
     const moved = gs.filter(g => move(g) >= .03).sort((a, b) => move(b) - move(a));
     return moved.length ? grid(moved) : empty('No line has moved 3 points or more yet. Markets usually settle in by midweek.');
   }
-  // The Ranked filter: ranked-on-ranked games first, then everyone else in the poll, each best rank first.
-  if (state.tier === 'ranked' && !q){
-    const byRank = l => [...l].sort((a, b) => bestRank(a) - bestRank(b));
-    const both = byRank(gs.filter(g => g.home.rank && g.away.rank)), rest = byRank(gs.filter(g => !(g.home.rank && g.away.rank)));
-    return (both.length ? group('Ranked vs ranked', both.length, grid(both)) : '') + (rest.length ? group('Everyone else in the poll', rest.length, grid(rest)) : '');
-  }
   const days = {};
   for (const g of gs){ const k = etDay(g.date); (days[k] ??= []).push(g); }
   // Big days split into kickoff windows; each group header carries the day so it's clear while stuck on screen.
