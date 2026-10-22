@@ -14,7 +14,7 @@ export const order = (a, b) => confPct(b.confRec) - confPct(a.confRec) || over(b
 /* ---------- standings: list rows with the conference race ----------
    Each team is a row led by its conference record; a tap opens the rest (differential, streak, AP, FPI), which a wide
    list shows as columns instead. Ties share a place ("T3").
-   The race, two ways (a switch at the top, remembered):
+   The race, two ways (a switch in each table's header row, shared and remembered):
    - Standings (the default, kept clean): by the standings. The top two (and anyone tied with second) hold the title
      game spots, teams within a loss of second are in the hunt, the rest out, each level labeled where it starts.
      ESPN FPI's chance to win the conference shows only where it matters: a small pill on the two teams it projects
@@ -39,7 +39,7 @@ function standingsTable(c){
   const known = CONF[c.id] !== 'Independents' && teams.some(t => odds(t) > 0), withOdds = known && oddsView();
   const tier = withOdds ? teams.map(t => oddsTier(odds(t) || 0)) : race(teams, c.id);
   const favs = known ? new Set([...teams].sort((a, b) => (odds(b) || 0) - (odds(a) || 0)).slice(0, 2).map(t => t.id)) : new Set();
-  const head = `<div class="rw-head rw-conf${withOdds ? ' rw-odds' : ''}"><span class="c-n">#</span><span class="c-t">Team</span>${withOdds ? '<span class="c-od" title="Chance to win the conference (ESPN FPI)">Title</span>' : ''}<span class="c-cr">Conf</span><span class="c-ov">Overall</span>
+  const head = `<div class="rw-head rw-conf${withOdds ? ' rw-odds' : ''}"><span class="c-n">#</span><span class="c-t">Team${known ? `<button class="ios-sw" type="button" role="switch" aria-checked="${withOdds}" data-confodds title="Show every team's chance to win the conference (ESPN FPI)"><span>Odds</span><i></i></button>` : ''}</span>${withOdds ? '<span class="c-od" aria-label="Chance to win the conference (ESPN FPI)"></span>' : ''}<span class="c-cr">Conf</span><span class="c-ov">Overall</span>
     <span class="c-df">Diff</span><span class="c-st">Strk</span><span class="c-ap">AP</span><span class="c-fp">FPI</span><span class="c-x"></span></div>` +
     (withOdds ? `<div class="rw-key">${ODDS.map(([k, l]) => `<span class="t-${k}"><i></i>${l}</span>`).join('')}<span class="k-fav"><b>%</b>Projected title game</span><em>Odds: ESPN FPI</em></div>` : '');
   let place = 0;
@@ -68,10 +68,12 @@ function standingsTable(c){
   return `<div class="rw" data-rw="conf">${head}${rows.join('')}</div>`;
 }
 const oddsView = () => store.get('confOdds', false);
-// The Standings / Title odds switch.
+// The Title odds switch: flips every table at once; the knob slides before the page redraws.
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-confodds]'); if (!b) return;
-  store.set('confOdds', b.dataset.confodds === '1'); invalidate('main');
+  const on = !oddsView(); store.set('confOdds', on);
+  for (const sw of document.querySelectorAll('[data-confodds]')) sw.setAttribute('aria-checked', on);
+  setTimeout(() => invalidate('main'), 180);
 });
 // A tap on a row (not on a link) opens or closes its details.
 document.addEventListener('click', e => {
@@ -93,9 +95,7 @@ export function viewConferences(){
   const s = state.standings;
   const ids = CONF_ORDER.filter(id => s ? s.confs.some(c => c.id === id) : state.games.some(g => g.home.conf === id || g.away.conf === id));
   const shown = state.conf === 'all' || !ids.includes(Number(state.conf)) ? ids : [Number(state.conf)];
-  const sw = state.fpi && s ? `<div class="sv-seg cv-seg" role="tablist" aria-label="Standings view" style="--n:2;--i:${oddsView() ? 1 : 0}">
-      <button type="button" role="tab" data-confodds="0" aria-selected="${!oddsView()}">Standings</button><button type="button" role="tab" data-confodds="1" aria-selected="${oddsView()}">Title odds</button><span class="sv-thumb" aria-hidden="true"></span></div>` : '';
-  const head = chips([['all', 'All'], ...ids.map(id => [id, CONF[id]])], state.conf, 'conf') + sw;
+  const head = chips([['all', 'All'], ...ids.map(id => [id, CONF[id]])], state.conf, 'conf');
   const left = id => {
     if (!s) return state.standingsErr ? `<div class="err"><b>Couldn't load standings.</b> ${esc(state.standingsErr)}</div>` : '<div class="skeleton tall"></div>';
     const c = s.confs.find(x => x.id === id);
