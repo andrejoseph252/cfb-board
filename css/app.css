@@ -1506,5 +1506,11 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 }
 @container rw (max-width:370px){ .rw-key em{display:none} }
 
+/* The clean standings' quiet odds: a small pill on the projected title game, a tile in the details. */
+.c-pill{flex:none;margin-left:7px;padding:3px 6px 2px;border-radius:999px;font:700 10.5px/1 var(--body);color:var(--surface);background:var(--good)}
+.rw-s.od-title b{color:var(--good)} .rw-s.od-hunt b{color:var(--x-mid)} .rw-s.od-long b,.rw-s.od-out b{color:var(--muted)}
+/* The Standings / Title odds switch above the conferences. */
+.cv-seg{max-width:340px;margin:12px 0 18px}
+
 /* A wide screen gives the standings room for their columns next to the games. */
 @media (min-width:1100px){ .split{grid-template-columns:minmax(500px,560px) minmax(0,1fr)} }

@@ -88,9 +88,9 @@ function setView(kind, i, from){
   }
   from?.focus?.({ preventScroll: true });
 }
-document.addEventListener('click', e => { const b = e.target.closest('.sv-seg button'); if (b) setView(b.dataset.sv, Number(b.dataset.svi), b); });
+document.addEventListener('click', e => { const b = e.target.closest('.sv-seg button[data-sv]'); if (b) setView(b.dataset.sv, Number(b.dataset.svi), b); });
 document.addEventListener('keydown', e => {
-  const b = e.target.closest?.('.sv-seg button'); if (!b || !/^Arrow(Left|Right)$/.test(e.key)) return;
+  const b = e.target.closest?.('.sv-seg button[data-sv]'); if (!b || !/^Arrow(Left|Right)$/.test(e.key)) return;
   e.preventDefault(); setView(b.dataset.sv, Number(b.dataset.svi) + (e.key === 'ArrowRight' ? 1 : -1));
   b.parentNode.querySelector('[aria-selected="true"]')?.focus();
 });
