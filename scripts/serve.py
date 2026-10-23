@@ -8,6 +8,7 @@ accepts enough simultaneous connections for the page's parallel module downloads
 """
 import functools
 import http.server
+import json
 import pathlib
 import socket
 import sys
@@ -31,6 +32,22 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
+
+    # The sound lab (audio-lab/) saves its picks and notes straight into scripts/sounds/.
+    SAVES = {"/audio-lab/save/picks": "scripts/sounds/picks.json", "/audio-lab/save/notes": "scripts/sounds/notes.json"}
+
+    def do_POST(self):
+        path = self.SAVES.get(self.path)
+        if not path:
+            return self.send_error(404)
+        body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        try:
+            data = json.loads(body)
+        except ValueError:
+            return self.send_error(400)
+        (ROOT / path).write_text(json.dumps(data, indent=1) + "\n")
+        self.send_response(204)
+        self.end_headers()
 
 
 def main():

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sound Lab</title>
+<style>
+:root{--bg:#121B17;--surface:#1A2621;--ink:#E8EEE9;--muted:#98A89F;--line:#2B3A33;--soft:#24332C;--accent:#5CC08A;--bad:#FF7A70;--warn:#E6B450;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 16px}
+h1{font-size:18px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 10px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer}
+.chip b{color:var(--accent);margin-left:4px}
+.chip.none b{color:var(--bad)}
+.chip.on{border-color:var(--accent)}
+.status{margin-left:auto;font-size:12px;color:var(--muted)}
+label.tog{font-size:12px;color:var(--muted);display:flex;gap:5px;align-items:center}
+main{padding:8px 16px 80px;max-width:1100px;margin:0 auto}
+section{margin:22px 0}
+section h2{font-size:16px;margin:0}
+section .desc{color:var(--muted);margin:2px 0 8px}
+section textarea{width:100%;min-height:34px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-top:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.card.use{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card.no{opacity:.45}
+.spec{position:relative;cursor:pointer;background:#000}
+.spec img{display:block;width:100%;height:90px;object-fit:fill}
+.spec .ph{position:absolute;top:0;bottom:0;width:2px;background:#fff;left:0;display:none}
+.row{display:flex;gap:6px;align-items:center;padding:6px 8px;flex-wrap:wrap}
+.meta{font-size:12px;color:var(--muted)}
+.meta a{color:var(--muted)}
+button.b{border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:6px;padding:4px 9px;font:inherit;font-size:12px;cursor:pointer}
+button.b.use.on{background:var(--accent);color:#0E1A14;border-color:var(--accent)}
+button.b.no.on{background:var(--bad);color:#2a0d0b;border-color:var(--bad)}
+.gain{font-variant-numeric:tabular-nums;font-size:12px;min-width:44px;text-align:center}
+.card input{flex:1;min-width:0;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font:inherit;font-size:12px}
+.empty{color:var(--muted);font-style:italic}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sound Lab</h1>
+  <p class="sub">Play each clip and press <b>Use</b> on the ones that belong in the game (pick 2–4 per slot so it doesn't repeat) or <b>✗</b> on bad ones. Notes help: "too tinny", "cut off", "too long". Clips play at the level the game will use. Everything saves automatically.</p>
+  <div class="bar" id="nav"></div>
+  <div class="bar" style="margin-top:8px">
+    <label class="tog"><input type="checkbox" id="bed"> Play over the stadium crowd</label>
+    <span class="status" id="status"></span>
+  </div>
+</header>
+<main id="main"></main>
+<script type="module">
+const $ = s => document.querySelector(s);
+const ac = new AudioContext();
+const out = ac.createGain(); out.connect(ac.destination);
+const [slots, cands, picks0, notes0] = await Promise.all([
+  fetch('slots.json').then(r => r.json()),
+  fetch('candidates.json').then(r => r.json()),
+  fetch('../scripts/sounds/picks.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+  fetch('../scripts/sounds/notes.json').then(r => r.ok ? r.json() : {}).catch(() => ({}))
+]);
+const picks = picks0, notes = { slots: {}, clips: {}, ...notes0 };
+const bufs = new Map();
+const buf = async f => { if (!bufs.has(f)) bufs.set(f, fetch(f).then(r => r.arrayBuffer()).then(a => ac.decodeAudioData(a))); return bufs.get(f); };
+const pickOf = c => (picks[c.slot] || []).find(p => p.id === c.id);
+
+/* Playing a clip: its gain and trims applied, a playhead across its spectrogram. */
+let cur = null;
+async function play(c, card){
+  if (ac.state === 'suspended') await ac.resume();
+  if (cur){ try{ cur.src.stop(); }catch{} cur.ph.style.display = 'none'; cancelAnimationFrame(cur.raf); const same = cur.c === c; cur = null; if (same) return; }
+  const b = await buf(c.file), p = pickOf(c) || {}, s = ac.createBufferSource(), g = ac.createGain();
+  const off = Math.max(0, p.trimStart || 0), end = b.duration + Math.min(0, p.trimEnd || 0);
+  g.gain.value = 10 ** ((p.gain || 0) / 20); s.buffer = b; s.connect(g); g.connect(out);
+  const t0 = ac.currentTime; s.start(t0, off, Math.max(.05, end - off));
+  const ph = card.querySelector('.ph'); ph.style.display = 'block';
+  const me = cur = { c, src: s, ph, raf: 0 };
+  const tick = () => { if (cur !== me) return; ph.style.left = `${Math.min(100, (off + ac.currentTime - t0) / b.duration * 100)}%`; me.raf = requestAnimationFrame(tick); };
+  tick();
+  s.onended = () => { if (cur === me){ ph.style.display = 'none'; cur = null; } };
+}
+
+/* The stadium bed underneath, at about the level the game plays it, to judge clips in context. */
+let bed = null;
+$('#bed').onchange = async e => {
+  if (bed){ bed.stop(); bed = null; }
+  if (!e.target.checked) return;
+  const c = cands.find(c => c.slot === 'crowd' && pickOf(c)) || cands.find(c => c.slot === 'crowd');
+  if (!c) return;
+  if (ac.state === 'suspended') await ac.resume();
+  const g = ac.createGain(); g.gain.value = .5; g.connect(out);
+  bed = ac.createBufferSource(); bed.buffer = await buf(c.file); bed.loop = true; bed.connect(g); bed.start();
+};
+
+/* Saving: straight into scripts/sounds/ through the dev server. */
+let saveT = 0;
+function save(){
+  clearTimeout(saveT); $('#status').textContent = 'Saving…';
+  saveT = setTimeout(async () => {
+    try{
+      const r = await Promise.all([['picks', picks], ['notes', notes]].map(([k, v]) => fetch(`save/${k}`, { method: 'POST', body: JSON.stringify(v) })));
+      if (r.some(x => !x.ok)) throw 0;
+      $('#status').textContent = `Saved ${new Date().toLocaleTimeString()}`;
+    }catch{ $('#status').textContent = 'Not saved: run python3 scripts/serve.py and open this page from it'; }
+  }, 400);
+  nav();
+}
+
+function nav(){
+  $('#nav').innerHTML = Object.keys(slots).map(s => { const n = (picks[s] || []).length; return `<button class="chip ${n ? '' : 'none'}" data-go="${s}">${s}<b>${n}</b></button>`; }).join('');
+}
+$('#nav').onclick = e => { const s = e.target.closest('[data-go]')?.dataset.go; if (s) document.getElementById(`s-${s}`).scrollIntoView({ behavior: 'smooth' }); };
+
+function render(){
+  $('#main').innerHTML = Object.entries(slots).map(([s, d]) => {
+    const cs = cands.filter(c => c.slot === s);
+    return `<section id="s-${s}"><h2>${s}</h2><p class="desc">${d.desc}</p>
+      <textarea data-slotnote="${s}" placeholder="Notes on ${s} overall (what's missing, what it should sound like)">${notes.slots[s] || ''}</textarea>
+      <div class="grid">${cs.length ? cs.map(card).join('') : '<p class="empty">No candidates yet.</p>'}</div></section>`;
+  }).join('');
+}
+function card(c){
+  const p = pickOf(c), n = notes.clips[c.id] || {}, t = Math.floor(c.start);
+  return `<div class="card ${p ? 'use' : ''} ${n.no ? 'no' : ''}" data-id="${c.id}">
+    <div class="spec" data-act="play"><img src="${c.png}" loading="lazy" alt=""><div class="ph"></div></div>
+    <div class="row">
+      <button class="b" data-act="play">▶</button>
+      <button class="b use ${p ? 'on' : ''}" data-act="use">Use</button>
+      <button class="b no ${n.no ? 'on' : ''}" data-act="no">✗</button>
+      <button class="b" data-act="g-">−</button><span class="gain">${p?.gain ? `${p.gain > 0 ? '+' : ''}${p.gain} dB` : '0 dB'}</span><button class="b" data-act="g+">+</button>
+      <span class="meta">${c.dur}s${c.clip > .05 ? ` · <span style="color:var(--warn)" title="Share of samples at full scale: likely distorted">⚠ clipped ${c.clip}%</span>` : ''} · <a href="https://youtu.be/${c.src}?t=${t}" target="_blank" rel="noopener">source</a></span>
+    </div>
+    <div class="row">
+      <button class="b" data-act="ts" title="Start 0.1s later">⇥ start</button>
+      <button class="b" data-act="te" title="End 0.1s sooner">end ⇤</button>
+      <button class="b" data-act="tr" title="Undo trims">↺</button>
+      <input data-note placeholder="Note" value="${(n.note || '').replace(/"/g, '&quot;')}">
+    </div></div>`;
+}
+$('#main').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]')?.dataset.act, el = e.target.closest('.card'); if (!a || !el) return;
+  const c = cands.find(x => x.id === el.dataset.id), list = picks[c.slot] ||= [];
+  let p = pickOf(c);
+  if (a === 'play') return play(c, el);
+  if (a === 'use'){ if (p) list.splice(list.indexOf(p), 1); else { list.push({ id: c.id }); if (notes.clips[c.id]) notes.clips[c.id].no = false; } }
+  else if (a === 'no'){ const n = notes.clips[c.id] ||= {}; n.no = !n.no; if (n.no && p) list.splice(list.indexOf(p), 1); }
+  else {
+    if (!p){ p = { id: c.id }; list.push(p); }
+    if (a === 'g-') p.gain = (p.gain || 0) - 2; if (a === 'g+') p.gain = (p.gain || 0) + 2;
+    if (a === 'ts') p.trimStart = +((p.trimStart || 0) + .1).toFixed(2);
+    if (a === 'te') p.trimEnd = +((p.trimEnd || 0) - .1).toFixed(2);
+    if (a === 'tr'){ delete p.trimStart; delete p.trimEnd; }
+  }
+  el.outerHTML = card(c); save();
+});
+$('#main').addEventListener('input', e => {
+  if (e.target.dataset.slotnote) notes.slots[e.target.dataset.slotnote] = e.target.value;
+  else if (e.target.matches('[data-note]')){ const id = e.target.closest('.card').dataset.id; (notes.clips[id] ||= {}).note = e.target.value; }
+  else return;
+  save();
+});
+render(); nav();
+</script>
+</body>
+</html>

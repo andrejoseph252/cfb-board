@@ -68,7 +68,7 @@ function renderHeader(){
   }
   renderWeekPicker();
   renderStale();
-  news();   // keeps the league feed fresh for the news button's dot
+  if (!state.loading) news();   // keeps the league feed fresh for the news button's dot (once the slate is in)
   $('#newsDot').hidden = !hasUnseen();
 }
 
@@ -80,7 +80,8 @@ $('.tabs').append(staleEl);
 function renderStale(){
   const age = state.updated ? Date.now() - state.updated : 0;
   const offline = navigator.onLine === false;
-  const show = anyLive() && (offline || age > 3 * LIVE_POLL + 5e3);
+  // Not while the visit's first scoreboard is still on its way (the board may be showing the last visit's copy).
+  const show = anyLive() && !state.loading && (offline || age > 3 * LIVE_POLL + 5e3);
   staleEl.hidden = !show;
   if (!show) return;
   const s = Math.round(age / 1000), ago = s < 90 ? `${s}s ago` : `${Math.round(s / 60)} min ago`;
@@ -212,6 +213,8 @@ function exitGame(){
 }
 function syncGame(){
   const want = location.hash === '#play';
+  // The game builds its teams from the standings and rankings: start those now rather than when the slate is in.
+  if (want && !pb?.isOpen()){ refreshStandings(); refreshRankings(); refreshFpi(); }
   if (want && !pb?.isOpen()) import('./game/pixelbowl.js').then(m => { pb = m; m.open({ prefill: pbPrefill, exit: exitGame }); pbPrefill = null; }).catch(e => console.error(e));
   else if (!want && pb?.isOpen()) pb.close();
 }
@@ -257,7 +260,17 @@ initWeekPicker(goWeek);
 syncGame();
 initHistory();
 invalidate();
+// Standings, FPI and rankings load once the slate is on screen (loadBoard asks for them), not alongside it.
 loadBoard();
-refreshFpi();
-refreshStandings();
-refreshRankings();
+
+// Keep the app's files on this device for the next visit (sw.js). It downloads the game's files as it installs, so it
+// starts a few seconds after the slate is on screen, never alongside it.
+if ('serviceWorker' in navigator){
+  const sw = () => { if (state.loading) return setTimeout(sw, 1000); setTimeout(() => navigator.serviceWorker.register('sw.js').catch(() => {}), 3000); };
+  sw();
+  // Then, once things are quiet, it fetches the game's modules (from the import map) so the game opens instantly later.
+  navigator.serviceWorker.ready.then(reg => setTimeout(() => {
+    const map = JSON.parse(document.querySelector('script[type="importmap"]')?.textContent || '{}').imports || {};
+    reg.active?.postMessage({ warm: Object.values(map).filter(u => u.includes('/game/')) });
+  }, 10e3)).catch(() => {});
+}

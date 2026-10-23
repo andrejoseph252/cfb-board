@@ -1,3 +1,8 @@
 .DS_Store
 .claude/
 data/*.tmp
+.cache/
+audio-lab/cand/
+audio-lab/candidates.json
+audio-lab/slots.json
+__pycache__/

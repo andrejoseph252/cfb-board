@@ -8,6 +8,19 @@ pregame excitement scores, themes (gear button; dark Mono by default), and pins 
     python3 scripts/serve.py
 then open http://localhost:8000.
 
+## Speed test
+    node scripts/speed.mjs            # Speed Score (0-100) and each measure as % faster than the baseline
+    node scripts/speed.mjs --trace    # what a first visit downloads, and when
+Serves the site the way GitHub Pages does and loads it in headless Chrome on throttled phone connections: first
+visit, return visit, opening the game and the game's sounds being ready. About 4 minutes. `--save` makes a run the
+new baseline (`scripts/speed-baseline.json`).
+
+What keeps it fast: index.html starts the scoreboard download before any script loads; the board draws the slate
+kept from the last visit (or, for someone new, `data/slate.json` saved by the GitHub Action, when no game can have
+changed since) while ESPN's fresh copy downloads; a service worker (`sw.js`) keeps the app's files and fonts on the
+device; fonts are served from the site; the game's sounds load the ones a play needs first and decode music only
+when it plays.
+
 ## Smoke test
     node scripts/smoke.mjs
 Loads the board in headless Chrome (Node 22+, Chrome and Python needed) and checks that games render, every tab
@@ -67,6 +80,12 @@ Adding a tab means adding a file in `js/views/` and one line in the `TABS` list 
   "Find postgame thread" search link.
 
 None of these need an API key.
+
+- Game sound: real recordings in `audio/` (clips plus `manifest.json`), made by `scripts/sounds.py` from the sources
+  in `scripts/sounds/sources.json`. To change a sound: `python3 scripts/sounds.py fetch` and `cands`, then run
+  `python3 scripts/serve.py` and open http://localhost:8000/audio-lab/ to audition every candidate and pick (it saves
+  to `scripts/sounds/picks.json` and `notes.json`), then `python3 scripts/sounds.py build`. Needs
+  `brew install ffmpeg yt-dlp`.
 
 ## Using it
 - Tap any game card to open its box score or preview. Before kickoff, tap a team's odds to pick it.

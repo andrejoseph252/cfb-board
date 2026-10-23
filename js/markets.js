@@ -1,5 +1,5 @@
 import { norm } from './util.js';
-import { withTimeout } from './api.js';
+import { withTimeout, takeEarly, keep, kept } from './api.js';
 
 const KALSHI = 'https://api.elections.kalshi.com/trade-api/v2/markets';
 const POLY = 'https://gamma-api.polymarket.com/events';
@@ -53,13 +53,17 @@ async function fetchPoly(){
 let data = null, loadedAt = 0;
 const matchCache = new Map();
 
+const MARKETS = new URL('data/markets.json', location.href).href;
+/* The prices kept from the last visit, so a board drawn from its kept slate has its odds too. */
+export async function loadKeptMarkets(){ if (!data){ const k = await kept(MARKETS); if (k && !data) data = k.data; } }
 export async function loadMarkets(force){
   if (!force && Date.now() - loadedAt < 5 * 60e3) return false;
   matchCache.clear();
   try{
-    const r = await fetch('data/markets.json', {cache:'no-store', ...withTimeout()});
+    const r = await (takeEarly(MARKETS) || fetch(MARKETS, {cache:'no-store', ...withTimeout()}));
     if (r.ok){
-      const j = await r.json();
+      const text = await r.text(), j = JSON.parse(text);
+      keep(MARKETS, text);
       if ((j.kalshi?.length || 0) + (j.polymarket?.length || 0) > 0){
         data = j; loadedAt = Date.now();
         return true;

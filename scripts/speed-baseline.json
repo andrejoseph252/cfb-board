@@ -1,0 +1,10 @@
+{
+ "label": "v3.0.8 before the speed work, measured 2026-10-23 (sounds: the first real-audio build, which loaded every clip up front)",
+ "m": {
+  "firstSlow": 3420,
+  "first4g": 808,
+  "returnSlow": 3390,
+  "gameSlow": 3650,
+  "sound4g": 5835
+ }
+}

@@ -153,10 +153,6 @@ export function open({ prefill = null, exit = () => {} } = {}){
   if (Array.isArray(prefill) === false) prefill = null;
   if (root){ if (chal) startChallenge(chal); else if (prefill && phase === 'setup'){ pick = defaults(prefill); setup(); } return; }
   seasonCtx.icon = ICON; SV.init(seasonCtx);
-  if (!document.getElementById('pb-font')){
-    const l = Object.assign(document.createElement('link'), { id: 'pb-font', rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Big+Shoulders+Display:wght@700;800;900&display=swap' });
-    document.head.append(l);
-  }
   if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS + hdUI.CSS }));
   root = document.createElement('div');
   root.className = 'pb hd'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");

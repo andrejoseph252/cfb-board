@@ -1,0 +1,276 @@
+{
+ "whistle": [
+  {
+   "f": "whistle-0.8a797576.mp3",
+   "dur": 0.43
+  },
+  {
+   "f": "whistle-1.10dc47e8.mp3",
+   "dur": 0.68
+  }
+ ],
+ "hike": [
+  {
+   "f": "hike-0.551763ae.mp3",
+   "dur": 0.57
+  },
+  {
+   "f": "hike-1.f14e833e.mp3",
+   "dur": 0.64
+  },
+  {
+   "f": "hike-2.a217fd99.mp3",
+   "dur": 0.61
+  }
+ ],
+ "throw": [
+  {
+   "f": "throw-0.ef44da86.mp3",
+   "dur": 0.42
+  },
+  {
+   "f": "throw-1.c30da8ec.mp3",
+   "dur": 0.64
+  },
+  {
+   "f": "throw-2.49b50ca4.mp3",
+   "dur": 0.53
+  }
+ ],
+ "catch": [
+  {
+   "f": "catch-0.dd4f57c3.mp3",
+   "dur": 0.44
+  },
+  {
+   "f": "catch-1.9c03f9b0.mp3",
+   "dur": 0.4
+  },
+  {
+   "f": "catch-2.ca0d61c3.mp3",
+   "dur": 0.4
+  }
+ ],
+ "tackle": [
+  {
+   "f": "tackle-0.a990dbca.mp3",
+   "dur": 0.57
+  },
+  {
+   "f": "tackle-1.659c37c0.mp3",
+   "dur": 0.57
+  },
+  {
+   "f": "tackle-2.f06a5f06.mp3",
+   "dur": 0.56
+  },
+  {
+   "f": "tackle-3.d029a4cb.mp3",
+   "dur": 0.8
+  }
+ ],
+ "juke": [
+  {
+   "f": "juke-0.3aa6448a.mp3",
+   "dur": 0.32
+  },
+  {
+   "f": "juke-1.68ae5a1c.mp3",
+   "dur": 0.31
+  },
+  {
+   "f": "juke-2.1c19cbe6.mp3",
+   "dur": 0.31
+  }
+ ],
+ "kick": [
+  {
+   "f": "kick-0.dce722c4.mp3",
+   "dur": 0.4
+  },
+  {
+   "f": "kick-1.58ca5b75.mp3",
+   "dur": 0.4
+  },
+  {
+   "f": "kick-2.cf2bd590.mp3",
+   "dur": 0.43
+  },
+  {
+   "f": "kick-3.dce61b40.mp3",
+   "dur": 0.79
+  }
+ ],
+ "blip": [
+  {
+   "f": "blip-0.461b71a5.mp3",
+   "dur": 0.15
+  }
+ ],
+ "aww": [
+  {
+   "f": "aww-0.f2dbacd5.mp3",
+   "dur": 1.56
+  },
+  {
+   "f": "aww-1.c9987772.mp3",
+   "dur": 1.55
+  },
+  {
+   "f": "aww-2.d731b011.mp3",
+   "dur": 1.67
+  }
+ ],
+ "gasp": [
+  {
+   "f": "gasp-0.fe2d775e.mp3",
+   "dur": 3.0
+  },
+  {
+   "f": "gasp-1.620c6236.mp3",
+   "dur": 2.11
+  },
+  {
+   "f": "gasp-2.ace99084.mp3",
+   "dur": 1.15
+  }
+ ],
+ "cheer": [
+  {
+   "f": "cheer-0.b5407372.mp3",
+   "dur": 7.0
+  },
+  {
+   "f": "cheer-1.fb7e862f.mp3",
+   "dur": 7.0
+  },
+  {
+   "f": "cheer-2.0cb37c69.mp3",
+   "dur": 7.0
+  }
+ ],
+ "firstdown": [
+  {
+   "f": "firstdown-0.e046da78.mp3",
+   "dur": 4.0
+  },
+  {
+   "f": "firstdown-1.1da7ae55.mp3",
+   "dur": 4.0
+  },
+  {
+   "f": "firstdown-2.c72f8b0c.mp3",
+   "dur": 4.0
+  }
+ ],
+ "boo": [
+  {
+   "f": "boo-0.850c202d.mp3",
+   "dur": 5.0
+  },
+  {
+   "f": "boo-1.4cb8a31d.mp3",
+   "dur": 5.0
+  }
+ ],
+ "charge": [
+  {
+   "f": "charge-0.b0d8376a.mp3",
+   "dur": 4.4
+  },
+  {
+   "f": "charge-1.b74d75a3.mp3",
+   "dur": 4.2
+  },
+  {
+   "f": "charge-2.46985f9d.mp3",
+   "dur": 4.67
+  },
+  {
+   "f": "charge-3.cbe7867c.mp3",
+   "dur": 5.0
+  }
+ ],
+ "warchant": [
+  {
+   "f": "warchant-0.7aac8b9a.mp3",
+   "dur": 20.0
+  },
+  {
+   "f": "warchant-1.eaed4837.mp3",
+   "dur": 20.0
+  },
+  {
+   "f": "warchant-2.18befa75.mp3",
+   "dur": 20.0
+  }
+ ],
+ "fsufight": [
+  {
+   "f": "fsufight-0.2f6c538f.mp3",
+   "dur": 20.0
+  },
+  {
+   "f": "fsufight-1.a2f67035.mp3",
+   "dur": 20.0
+  }
+ ],
+ "band": [
+  {
+   "f": "band-0.5636f764.mp3",
+   "dur": 16.0
+  },
+  {
+   "f": "band-1.853b271c.mp3",
+   "dur": 16.0
+  },
+  {
+   "f": "band-2.3876b4cf.mp3",
+   "dur": 16.0
+  }
+ ],
+ "defense": [
+  {
+   "f": "defense-0.d5d33096.mp3",
+   "dur": 14.0
+  },
+  {
+   "f": "defense-1.38842cd1.mp3",
+   "dur": 14.0
+  },
+  {
+   "f": "defense-2.05814a41.mp3",
+   "dur": 14.0
+  }
+ ],
+ "drumline": [
+  {
+   "f": "drumline-0.34a439ac.mp3",
+   "dur": 14.0
+  },
+  {
+   "f": "drumline-1.b6ea93a4.mp3",
+   "dur": 14.0
+  }
+ ],
+ "crowd": [
+  {
+   "f": "crowd-0.09d51e8d.mp3",
+   "dur": 28.0
+  },
+  {
+   "f": "crowd-1.876353de.mp3",
+   "dur": 28.0
+  }
+ ],
+ "crowdhype": [
+  {
+   "f": "crowdhype-0.450dfd5f.mp3",
+   "dur": 28.0
+  },
+  {
+   "f": "crowdhype-1.0ca5785c.mp3",
+   "dur": 28.0
+  }
+ ]
+}

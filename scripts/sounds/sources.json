@@ -1,0 +1,128 @@
+{
+  "_doc": "Where every game sound comes from. scripts/sounds.py fetches each source, cuts candidate clips for its slot, and the sound lab (audio-lab/) is where they get auditioned and picked. cut: 'events' splits a short sound-effect video at its silences; 'windows' takes the best-sounding stretches of a long recording at the slot's length. section limits the download of long videos.",
+  "slots": {
+    "whistle":   { "desc": "Referee whistle: end of a play, a flag, a timeout", "len": [0.3, 1.6], "cut": "events" },
+    "hike":      { "desc": "The snap: ball slapping into the quarterback's hands (no voice)", "len": [0.08, 0.7], "cut": "events" },
+    "throw":     { "desc": "The pass leaving the hand", "len": [0.2, 1.2], "cut": "events" },
+    "catch":     { "desc": "Ball into the hands", "len": [0.08, 0.8], "cut": "events" },
+    "tackle":    { "desc": "Pads colliding on a tackle or a sack", "len": [0.15, 1.4], "cut": "events" },
+    "juke":      { "desc": "A cut, spin or jump: cleats digging in", "len": [0.1, 0.8], "cut": "events" },
+    "kick":      { "desc": "Foot on the ball: kickoffs, punts, field goals", "len": [0.1, 1.0], "cut": "events" },
+    "blip":      { "desc": "Menu button tap", "len": [0.03, 0.35], "cut": "events" },
+    "cheer":     { "desc": "Crowd erupting: touchdowns, big stops, wins", "len": [2.5, 7], "cut": "windows" },
+    "firstdown": { "desc": "Short crowd/band burst on a first down", "len": [1.2, 4], "cut": "windows" },
+    "boo":       { "desc": "Crowd booing: an opponent score, a pick six", "len": [1.5, 5], "cut": "windows" },
+    "aww":       { "desc": "Crowd groan: incomplete pass, missed kick", "len": [0.6, 3], "cut": "events" },
+    "gasp":      { "desc": "Crowd gasp: interception, fumble", "len": [0.5, 3], "cut": "events" },
+    "charge":    { "desc": "\"Charge!\" on a big gain, played by a band's brass (not a ballpark organ)", "len": [3, 10], "cut": "windows" },
+    "warchant":  { "desc": "FSU War Chant: FSU scores, defensive stands, wins, the opening kickoff at Doak", "len": [8, 20], "cut": "windows" },
+    "fsufight":  { "desc": "FSU fight song after an FSU touchdown", "len": [8, 20], "cut": "windows" },
+    "band":      { "desc": "Home band after a touchdown (non-FSU teams)", "len": [6, 16], "cut": "windows" },
+    "defense":   { "desc": "Stadium chant on a key defensive stand (non-FSU): Seven Nation Army, DE-FENSE", "len": [5, 14], "cut": "windows" },
+    "drumline":  { "desc": "Drumline cadence between plays, from across the stadium", "len": [6, 14], "cut": "windows" },
+    "crowd":     { "desc": "Stadium bed that loops under the whole game", "len": [20, 30], "cut": "windows" },
+    "crowdhype": { "desc": "Louder, excited stadium bed for tense moments, crossfaded with the calm one", "len": [20, 30], "cut": "windows" }
+  },
+  "sources": [
+    { "yt": "-E0qroCDruk", "slot": "whistle" },
+    { "yt": "B0fBgV3fbKg", "slot": "whistle" },
+    { "yt": "0IX7k5yQ9E8", "slot": "whistle" },
+    { "yt": "OzPkiXq7lzM", "slot": "whistle" },
+
+    { "yt": "B5N1POqWTEs", "slot": "hike" },
+    { "yt": "VlQSItIJxD8", "slot": "hike" },
+    { "yt": "00uB9KyMezc", "slot": "hike" },
+
+    { "yt": "UyeOjCprU8k", "slot": "throw" },
+    { "yt": "c3R-MfTFXGM", "slot": "throw" },
+    { "yt": "gFP21MGRrbI", "slot": "throw" },
+    { "yt": "Srdkz8CnLd0", "slot": "throw" },
+
+    { "yt": "fABiEXRgUXQ", "slot": "catch" },
+    { "yt": "ftlXq3POKPg", "slot": "catch" },
+    { "yt": "2mVSuIn7ddA", "slot": "catch" },
+    { "yt": "WwNinzYANHQ", "slot": "catch" },
+
+    { "yt": "ufwQqeAYplU", "slot": "tackle" },
+    { "yt": "Hf57Bjkqdgc", "slot": "tackle" },
+    { "yt": "4psZgadrg2o", "slot": "tackle" },
+    { "yt": "oCvAaZmB0Cw", "slot": "tackle", "cuts": [[0.21, 0.78], [0.84, 1.18], [2.86, 3.42]] },
+    { "yt": "uuaWslCy9Tg", "slot": "tackle" },
+
+    { "yt": "atUwAM7kVWA", "slot": "juke", "cuts": [[0.53, 0.83], [1.1, 1.42], [2.37, 2.68], [3.35, 3.66]] },
+
+    { "yt": "UR1N66P6X9o", "slot": "kick" },
+    { "yt": "a5MndnpEbQU", "slot": "kick" },
+    { "yt": "8lDqbuylRT8", "slot": "kick" },
+    { "yt": "M70X9W5CSFk", "slot": "kick" },
+
+    { "yt": "xa7itxNRWhw", "slot": "blip" },
+    { "yt": "PJD1Mf8T-OU", "slot": "blip" },
+
+    { "yt": "0M474xJ-XMM", "slot": "cheer" },
+    { "yt": "aNxw6hYgBuo", "slot": "cheer" },
+    { "yt": "7JidyzpDH6U", "slot": "cheer" },
+    { "yt": "_NVgqhJj_PM", "slot": "cheer" },
+    { "yt": "4MNylx-YNWE", "slot": "cheer" },
+
+    { "yt": "6wZeO2_Ghmk", "slot": "firstdown" },
+    { "yt": "OEo4VI88OhI", "slot": "firstdown" },
+    { "yt": "te6XAN3JZAk", "slot": "firstdown" },
+    { "yt": "SCdiw4Qfu6Y", "slot": "firstdown" },
+    { "yt": "RaFA8aDlG6Y", "slot": "firstdown" },
+
+    { "yt": "u0D718AmYTs", "slot": "boo" },
+    { "yt": "hJlxgWYqvR0", "slot": "boo" },
+    { "yt": "EcxeVF0mWyI", "slot": "boo" },
+    { "yt": "PfriI_DDifE", "slot": "boo" },
+
+    { "yt": "bR_wr5HRdl4", "slot": "aww" },
+    { "yt": "yn8OSgLQ_ls", "slot": "aww" },
+    { "yt": "F-MKsjQC4NQ", "slot": "aww" },
+    { "yt": "ij765JvqpzQ", "slot": "aww" },
+
+    { "yt": "miQKTNjll3E", "slot": "gasp" },
+    { "yt": "GrEJ0ccLDII", "slot": "gasp" },
+    { "yt": "Ds-LArTLlgI", "slot": "gasp" },
+    { "yt": "SP6T_RjPBZg", "slot": "gasp" },
+
+    { "yt": "84GfUvD2WHE", "slot": "charge" },
+    { "yt": "guZcZRkmNf8", "slot": "charge", "cuts": [[0.0, 5.0]] },
+    { "yt": "XiN1S71H3_Q", "slot": "charge", "cuts": [[0.0, 3.2], [9.3, 13.3]] },
+    { "yt": "wRjFsiWhAac", "slot": "charge", "cuts": [[14.2, 19.2], [19.2, 24.2]] },
+    { "yt": "cY0IWHtzL3Y", "slot": "charge", "cuts": [[0.0, 5.0], [5.8, 9.6]] },
+    { "yt": "UP-ha3s1OWk", "slot": "charge", "cuts": [[8.4, 13.4]] },
+    { "yt": "SVR4NVTrilA", "slot": "charge", "cuts": [[0.0, 4.4]] },
+    { "yt": "Cy-LwT3xemo", "slot": "charge", "cuts": [[0.4, 4.6]] },
+
+    { "yt": "hikOUuuorpU", "slot": "warchant" },
+    { "yt": "s0HcR2a4-kc", "slot": "warchant" },
+    { "yt": "LpOXvDUr8cQ", "slot": "warchant" },
+    { "yt": "zhlGTBLlDRc", "slot": "warchant" },
+    { "yt": "BV0YBV1KNRs", "slot": "warchant" },
+
+    { "yt": "t_U37B-DWBk", "slot": "fsufight" },
+    { "yt": "Q1ocGax7UF0", "slot": "fsufight" },
+    { "yt": "pEZHSsCyuuY", "slot": "fsufight" },
+
+    { "yt": "Y9Dp6TS9gsA", "slot": "band" },
+    { "yt": "pQvp350Zwpk", "slot": "band" },
+    { "yt": "k8PP7CWN4zQ", "slot": "band" },
+    { "yt": "SUJtz8v1UHg", "slot": "band" },
+
+    { "yt": "6HIFsIGQOxY", "slot": "defense" },
+    { "yt": "fZC6sMPG4l0", "slot": "defense" },
+    { "yt": "xQfYcqcacfk", "slot": "defense" },
+    { "yt": "MGqVc0uzvZc", "slot": "defense" },
+
+    { "yt": "FBFfcOg6XTg", "slot": "drumline", "section": "0:00-3:00" },
+    { "yt": "fI0H5GEIWYk", "slot": "drumline" },
+
+    { "yt": "-FLgShtdxQ8", "slot": "crowd", "section": "5:00-9:00" },
+    { "yt": "y6kOcKweQwA", "slot": "crowd", "section": "10:00-14:00" },
+    { "yt": "csZ9YRWjj3c", "slot": "crowd", "section": "10:00-14:00" },
+    { "yt": "YcGcMxY1ECY", "slot": "crowdhype", "section": "5:00-9:00" },
+    { "yt": "FYDhqCi4Oto", "slot": "crowdhype", "section": "5:00-9:00" },
+    { "yt": "6JT9__5eKys", "slot": "crowdhype" }
+  ]
+}

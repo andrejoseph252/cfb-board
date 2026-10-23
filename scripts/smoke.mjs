@@ -6,7 +6,7 @@
 
    Checks: the board renders games; every tab renders without an error; game cards open with their details; the
    news drawer opens; the game plays a Quick game to the final whistle; practice runs a session; My Playbook opens;
-   both defense drills (cover, pass rush) run a session; the game draws frame by frame.
+   both defense drills (cover, pass rush) run a session; the game draws frame by frame; every game sound loads.
    Any uncaught error or console.error on the page fails the run. If ESPN can't be reached (offline), the checks
    that need its data are skipped with a warning instead of failing, since that isn't the code's fault. */
 import { spawn } from 'node:child_process';
@@ -95,6 +95,37 @@ if (online){
   });
   const bad = tabsOut.filter(t => t.broken || t.empty);
   bad.length ? fail('every tab renders', bad.map(t => t.tab + (t.broken ? ' shows an error' : ' is empty')).join(', ')) : pass('every tab renders', tabsOut.map(t => t.tab).join(', '));
+
+  // Speed: the downloads index.html starts early were picked up by the app (their addresses match), the service
+  // worker is running, and with the network off a reload still draws the board from what this device kept.
+  const fast = await run(async () => {
+    const reg = await Promise.race([navigator.serviceWorker?.ready, new Promise(r => setTimeout(r, 8000))]);
+    return { early: Object.keys(window.__early || {}), sw: !!reg?.active };
+  });
+  fast.early.length ? fail('early downloads are used', `never picked up: ${fast.early.join(', ')}`) : pass('early downloads are used');
+  // data/slate.json (scripts/slate.py) must give the board exactly the games ESPN's scoreboard does.
+  const slate = await run(async () => {
+    const { parseEvent } = await import('./js/models.js'), api = await import('./js/api.js');
+    const full = await api.scoreboard(null, null, 6e5), s = await (await fetch('data/slate.json', { cache: 'no-store' })).json();
+    const a = Object.fromEntries(full.events.map(e => [e.id, JSON.stringify(parseEvent(e))]));
+    const b = s.sb.events.map(parseEvent), same = b.filter(g => a[g.id] === JSON.stringify(g)).length;
+    return { n: b.length, same, at: s.at };
+  }).catch(e => ({ err: e.message }));
+  slate.err ? fail('saved slate matches ESPN', slate.err)
+    : slate.same === slate.n ? pass('saved slate matches ESPN', `${slate.n} games, saved ${slate.at}`)
+    : skip('saved slate matches ESPN', `${slate.n - slate.same} of ${slate.n} games changed since ${slate.at} (scores move; run scripts/slate.py)`);
+  fast.sw ? pass('service worker installs') : fail('service worker installs', 'not active after 8s');
+  await send('Network.enable');
+  await send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  await load(`http://127.0.0.1:${SERVE}/?offline`);
+  const off = await run(async () => {
+    for (let i = 0; i < 50 && !document.querySelector('.game[data-id]'); i++) await new Promise(r => setTimeout(r, 100));
+    return document.querySelectorAll('.game[data-id]').length;
+  }).catch(() => 0);
+  await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  off ? pass('opens offline', `${off} games kept on this device`) : fail('opens offline', 'no game cards with the network off');
+  await load(`http://127.0.0.1:${SERVE}/`);
+  await run(async () => { for (let i = 0; i < 100 && !document.querySelector('.game[data-id]'); i++) await new Promise(r => setTimeout(r, 100)); });
 
   const cards = await run(async () => {
     const w = ms => new Promise(r => setTimeout(r, ms)), $ = s => document.querySelector(s), out = [];
@@ -193,11 +224,20 @@ const game = await run(async () => {
     P.R.draw(P.G, 1 / 30, { routes: P.phase === 'presnap', handoff: P.phase === 'presnap' }); frames++;
   }
   out.hd = P.G.stats.plays >= 8 || vis('[data-pb="rematch"]') ? `${P.G.stats.plays} plays, ${frames} frames` : `stalled after ${P.G.stats.plays} plays (phase ${P.phase}, card: ${$('.pb-modal.on') ? [...document.querySelectorAll('.pb-modal [data-pb]')].map(b => b.dataset.pb).join(' ') || 'no buttons' : 'none'})`;
+  // Sound: every clip in audio/manifest.json decoded, and every sound the games above asked for had a clip.
+  const { audioStatus } = await import('./js/game/sfx.js');
+  for (let i = 0; i < 100 && !audioStatus().done; i++) await w(100);
+  out.sound = audioStatus();
   return out;
 }).catch(e => ({ err: e.message }));
 if (game.err) fail('game opens', game.err);
 else {
   game.final ? pass('game plays to the final', game.final) : fail('game plays to the final', 'never reached the final screen');
+  const snd = game.sound;
+  !snd ? fail('game sounds load', 'not reached')
+    : snd.failed.length || !snd.want || snd.loaded < snd.want ? fail('game sounds load', `${snd.loaded}/${snd.want} clips${snd.failed.length ? `, failed: ${snd.failed.slice(0, 3).join(', ')}` : ''}`)
+    : snd.missing.length ? fail('game sounds load', `no clips for: ${snd.missing.join(', ')}`)
+    : pass('game sounds load', `${snd.loaded} clips, every sound played had one`);
   game.recorded === 1 ? pass('a finished game counts once', '1 result saved') : fail('a finished game counts once', `${game.recorded} results saved`);
   game.practice ? pass('practice session completes', `grade ${game.practice}`) : fail('practice session completes', 'no summary');
   game.designer === 5 ? pass('My Playbook designer opens', '5 receiver rows') : fail('My Playbook designer opens', `${game.designer} receiver rows`);

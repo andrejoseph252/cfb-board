@@ -36,6 +36,9 @@ jobs:
       # Every AP voter's ballot (Sunday to Tuesday, once a week's are out).
       - run: python scripts/ballots.py
         if: ${{ !cancelled() }}
+      # This week's slate, trimmed, so a first visit can draw the board before ESPN answers (when it's safe to).
+      - run: python scripts/slate.py
+        if: ${{ !cancelled() }}
       # Every team's colors and logo for the game (ESPN's team list can't be read from a web page). Changes rarely.
       - run: python scripts/teams.py
         if: ${{ !cancelled() }}
@@ -44,7 +47,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add data/markets.json data/threads.json data/lines.json data/spreads.json data/ballots.json data/teams.json
+          git add data/markets.json data/threads.json data/lines.json data/spreads.json data/ballots.json data/teams.json data/slate.json
           git diff --cached --quiet && exit 0
           git commit -m "Update market odds and game threads"
           # Someone may have pushed while this ran; replay the data commit on top and try again.
