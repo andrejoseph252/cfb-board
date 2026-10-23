@@ -1,6 +1,61 @@
 {
- "updated": "2026-10-23T20:58:08+00:00",
+ "updated": "2026-10-23T23:43:37+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Army @ Tulsa (8:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdteee/game_thread_army_tulsa_830_pm_et/",
+   "published": "2026-10-23T23:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Army",
+    "Tulsa"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Yale @ Penn (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdre54/game_thread_yale_penn_700_pm_et/",
+   "published": "2026-10-23T22:00:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Yale",
+    "Penn"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] UMass @ UConn (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdre46/game_thread_umass_uconn_700_pm_et/",
+   "published": "2026-10-23T22:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "UMass",
+    "UConn"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Duke @ Virginia (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdre32/game_thread_duke_virginia_700_pm_et/",
+   "published": "2026-10-23T22:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Duke",
+    "Virginia"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Gettysburg @ Johns Hopkins (6:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdpxds/game_thread_gettysburg_johns_hopkins_600_pm_et/",
+   "published": "2026-10-23T21:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Gettysburg",
+    "Johns Hopkins"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] NCCU @ Delaware State (5:00 PM ET)",
@@ -1585,28 +1640,6 @@
    "teams": [
     "Middle Tennessee",
     "Delaware"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] FIU @ Jacksonville State (8:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x5bf8d/game_thread_fiu_jacksonville_state_800_pm_et/",
-   "published": "2026-10-13T23:00:06+00:00",
-   "gameId": null,
-   "teams": [
-    "FIU",
-    "Jacksonville State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Delaware @ Middle Tennessee (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x5a2cp/game_thread_delaware_middle_tennessee_700_pm_et/",
-   "published": "2026-10-13T22:00:11+00:00",
-   "gameId": null,
-   "teams": [
-    "Delaware",
-    "Middle Tennessee"
    ]
   }
  ],
