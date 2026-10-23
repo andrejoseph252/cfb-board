@@ -6,14 +6,17 @@ const MODES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 const TABPOS = [['top', 'Top'], ['bottom', 'Bottom']];
 export const PALETTES = [['field', 'Field', '#1F6F43'], ['stadium', 'Stadium', '#C44E14'], ['paper', 'Paper', '#8A4B1C'], ['mono', 'Mono', '#111111']];
 
-// Defaults are dark Mono; the pre-paint script in index.html and demo.html uses the same defaults.
-const settings = { mode: 'dark', palette: 'mono', tabs: 'top', ...store.get('settings', {}) };
+// Defaults are dark Mono with the tabs at the bottom on phones; the pre-paint script in index.html and demo.html uses
+// the same defaults. Settings are saved whole, so a saved "top" from before bottom became the default only counts
+// if it was picked since (tabsPicked).
+const saved = store.get('settings', {});
+const settings = { mode: 'dark', palette: 'mono', ...saved, tabs: saved.tabsPicked ? saved.tabs : 'bottom' };
 
 function apply(){
   const root = document.documentElement;
   if (settings.mode === 'system') delete root.dataset.theme; else root.dataset.theme = settings.mode;
   if (settings.palette === 'field') delete root.dataset.palette; else root.dataset.palette = settings.palette;
-  // Phones: tabs along the top (the original) or as a bar at the bottom.
+  // Phones: tabs as a bar at the bottom (the default) or along the top.
   if (settings.tabs === 'bottom') root.dataset.tabs = 'bottom'; else delete root.dataset.tabs;
   // Match the phone's browser bar to the page background of whatever theme is showing.
   const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
@@ -61,7 +64,8 @@ export function initSettings(){
   panel.addEventListener('click', e => {
     if (e.target.closest('[data-clearmine]')){ setMyTeam(null); panel.innerHTML = panelHTML(); return; }
     const b = e.target.closest('[data-set]'); if (!b) return;
-    settings[b.dataset.set] = b.dataset.val; store.set('settings', settings); apply();
+    settings[b.dataset.set] = b.dataset.val; if (b.dataset.set === 'tabs') settings.tabsPicked = true;
+    store.set('settings', settings); apply();
     for (const x of panel.querySelectorAll(`[data-set="${b.dataset.set}"]`)) x.setAttribute('aria-pressed', String(x === b));
   });
   document.addEventListener('click', e => { if (!panel.hidden && !e.target.closest('.settings')) close(); });

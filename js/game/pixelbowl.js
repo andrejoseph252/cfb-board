@@ -185,9 +185,17 @@ export function open({ prefill = null, exit = () => {} } = {}){
   window.addEventListener('resize', onResize); window.addEventListener('orientationchange', onResize); window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
   document.addEventListener('visibilitychange', onHide);
   pick = defaults(prefill);
-  setup();
-  // Opened from a game's "Play this moment": straight to that challenge once team colors are in.
-  loadColors().then(() => { if (!root) return; if (chal) startChallenge(chal); else if (phase === 'setup' && !document.querySelector('.sz-hub,.sz-gw,.sz-new,.sz-load')) setup(); });
+  // The menu waits for the team colors (a moment; at most 0.7s) so it slides in once with the real teams, instead of
+  // with placeholders and then again. Opened from a game's "Play this moment": straight to that challenge.
+  let drawn = false;
+  const draw = () => { if (!root || drawn) return; drawn = true; pick = defaults(prefill); setup(); };
+  setTimeout(draw, 700);
+  loadColors().then(() => {
+    if (!root) return;
+    if (chal){ drawn = true; return startChallenge(chal); }
+    if (!drawn) return draw();
+    if (phase === 'setup' && !document.querySelector('.sz-hub,.sz-gw,.sz-new,.sz-load')) setup();
+  });
   last = 0; raf = requestAnimationFrame(loop);
 }
 export function close(){
@@ -296,7 +304,7 @@ function setup(){
     <div class="pb-btns pb-menu2"><button class="pb-go alt" type="button" data-pb="practice">PRACTICE</button><button class="pb-go alt" type="button" data-pb="playbook">MY PLAYBOOK</button></div>
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
-  </div>`);
+  </div>`, false, 'setup');   // 'setup': redrawn in place (teams arriving, an option changed) without sliding in again
 }
 
 function teamPicker(which){
