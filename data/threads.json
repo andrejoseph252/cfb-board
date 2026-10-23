@@ -1,6 +1,17 @@
 {
- "updated": "2026-10-23T17:59:06+00:00",
+ "updated": "2026-10-23T20:58:08+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] NCCU @ Delaware State (5:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdoej9/game_thread_nccu_delaware_state_500_pm_et/",
+   "published": "2026-10-23T20:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "NCCU",
+    "Delaware State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Memphis Defeats ECU 41-34",
