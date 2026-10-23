@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-23T02:07:49+00:00",
+ "updated": "2026-10-23T07:59:22+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Memphis Defeats ECU 41-34",
+   "url": "https://www.reddit.com/r/CFB/comments/1xd3f4n/postgame_thread_memphis_defeats_ecu_4134/",
+   "published": "2026-10-23T03:41:36+00:00",
+   "gameId": "401862807",
+   "teams": [
+    "Memphis",
+    "ECU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Appalachian State Defeats James Madison 34-31",
+   "url": "https://www.reddit.com/r/CFB/comments/1xd2pt3/postgame_thread_appalachian_state_defeats_james/",
+   "published": "2026-10-23T03:05:43+00:00",
+   "gameId": "401869845",
+   "teams": [
+    "Appalachian State",
+    "James Madison"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Liberty Defeats Kennesaw State 34-6",
+   "url": "https://www.reddit.com/r/CFB/comments/1xd1qmh/postgame_thread_liberty_defeats_kennesaw_state_346/",
+   "published": "2026-10-23T02:17:31+00:00",
+   "gameId": "401871056",
+   "teams": [
+    "Liberty",
+    "Kennesaw State"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] ECU @ Memphis (7:30 PM ET)",
