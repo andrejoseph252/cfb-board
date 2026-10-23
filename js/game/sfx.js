@@ -84,7 +84,7 @@ async function load(){
   status.done = true;
 }
 /* For the smoke test: what loaded, and any sound the game asked for (after loading) that had no clip. */
-export const audioStatus = () => ({ ...status, missing: [...status.missing] });
+export const audioStatus = () => ({ ...status, missing: [...status.missing], playing: playing.size + (C ? C.beds.length : 0) });
 
 /* The stadium around every sound: most effects are recorded close and dry, so each sends a little into a big open
    reverb (decaying noise that darkens as it fades, after a short pre-delay off the far stands). */
@@ -120,6 +120,7 @@ function pick(slot){
 }
 /* One clip from a slot. vary nudges its pitch a little so repeats don't sound copy-pasted. */
 const play = (slot, o) => playBuf(pick(slot), o);
+const playing = new Set();   // every clip started and not yet over, so leaving the game can stop them all
 function playBuf(b, { vol = 1, at = 0, vary = .04, pan = 0, dest = fxBus, fadeIn = 0, verb = .15 } = {}){
   if (!b) return null;
   const t = now() + at, s = ac.createBufferSource(), g = ac.createGain();
@@ -130,7 +131,9 @@ function playBuf(b, { vol = 1, at = 0, vary = .04, pan = 0, dest = fxBus, fadeIn
   n.connect(dest);
   if (verb && verbIn){ const v = ac.createGain(); v.gain.value = verb; n.connect(v); v.connect(verbIn); }
   s.start(t);
-  return { s, g, end: t + b.duration / s.playbackRate.value };
+  const c = { s, g, end: t + b.duration / s.playbackRate.value };
+  playing.add(c); s.onended = () => playing.delete(c);
+  return c;
 }
 /* Fades a playing clip out from time t (now by default) and stops it. */
 function release(c, sec, t = now()){ if (c && c.end > t){ ramp(c.g.gain, 0, sec, t); c.s.stop(t + sec + .05); } }
@@ -161,6 +164,16 @@ async function music(slot, { vol = .85, at = 0 } = {}){
   if (crowdBus){ ramp(crowdBus.gain, .5, .4, now() + at); ramp(crowdBus.gain, 1, 1.5, Math.max(now() + at + .4, c.end - 1)); }
 }
 const musicPlaying = () => cue && cue.end > now();
+
+/* Leaving the game: everything fades out together, including clips scheduled to start later (a boo after a gasp) and
+   a music cue still being decoded (cueSeq makes it drop itself when it's ready). The crowd stops with them. */
+export function silence(fade = .35){
+  if (!ac) return;
+  cueSeq++;
+  for (const c of playing) release(c, fade);
+  playing.clear(); cue = react = null;
+  stopCrowd(fade);
+}
 
 /* Whose game it is, for the home band and Florida State's chant (pixelbowl.js binds it). */
 let teams = () => null;
@@ -208,14 +221,14 @@ let C = null, cl = 0, lastT = 0, lastCall = 0, watchdog = 0, nextDrums = 0;
 function startCrowd(){
   // Both beds, once they've arrived (a moment after the short effects); until then the game is just quieter.
   if (!beds.crowd || !beds.crowdhype && !status.done){ if (status.done) status.missing.add('crowd'); return null; }
-  const t = now(), playing = [];
+  const t = now(), started = [];
   for (const slot of ['crowd', 'crowdhype']){
     const b = beds[slot]; if (!b) continue;
     const s = ac.createBufferSource(), g = ac.createGain();
     s.buffer = b; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(crowdBus); s.start(t, rnd(0, b.duration));
-    playing.push({ slot, s, g });
+    started.push({ slot, s, g });
   }
-  return { beds: playing };
+  return { beds: started };
 }
 function stopCrowd(fade){
   if (!C) return;

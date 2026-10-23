@@ -225,9 +225,14 @@ const game = await run(async () => {
   }
   out.hd = P.G.stats.plays >= 8 || vis('[data-pb="rematch"]') ? `${P.G.stats.plays} plays, ${frames} frames` : `stalled after ${P.G.stats.plays} plays (phase ${P.phase}, card: ${$('.pb-modal.on') ? [...document.querySelectorAll('.pb-modal [data-pb]')].map(b => b.dataset.pb).join(' ') || 'no buttons' : 'none'})`;
   // Sound: every clip in audio/manifest.json decoded, and every sound the games above asked for had a clip.
-  const { audioStatus } = await import('./js/game/sfx.js');
+  const { audioStatus, sfx } = await import('./js/game/sfx.js');
   for (let i = 0; i < 100 && !audioStatus().done; i++) await w(100);
   out.sound = audioStatus();
+  // Leaving the game stops its music and the crowd: a win's band and cheer, then back to the board.
+  sfx('win'); sfx('td'); await w(1500);
+  const before = audioStatus().playing;
+  location.hash = ''; await w(1200);
+  out.silence = { before, after: audioStatus().playing, open: !!document.querySelector('.pb') };
   return out;
 }).catch(e => ({ err: e.message }));
 if (game.err) fail('game opens', game.err);
@@ -238,6 +243,11 @@ else {
     : snd.failed.length || !snd.want || snd.loaded < snd.want ? fail('game sounds load', `${snd.loaded}/${snd.want} clips${snd.failed.length ? `, failed: ${snd.failed.slice(0, 3).join(', ')}` : ''}`)
     : snd.missing.length ? fail('game sounds load', `no clips for: ${snd.missing.join(', ')}`)
     : pass('game sounds load', `${snd.loaded} clips, every sound played had one`);
+  const si = game.silence;
+  !si ? fail('sound stops when the game closes', 'not reached')
+    : !si.before ? fail('sound stops when the game closes', 'nothing was playing to begin with')
+    : si.after || si.open ? fail('sound stops when the game closes', `${si.after} clips still playing${si.open ? ', game still open' : ''}`)
+    : pass('sound stops when the game closes', `${si.before} clips stopped`);
   game.recorded === 1 ? pass('a finished game counts once', '1 result saved') : fail('a finished game counts once', `${game.recorded} results saved`);
   game.practice ? pass('practice session completes', `grade ${game.practice}`) : fail('practice session completes', 'no summary');
   game.designer === 5 ? pass('My Playbook designer opens', '5 receiver rows') : fail('My Playbook designer opens', `${game.designer} receiver rows`);

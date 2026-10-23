@@ -15,7 +15,7 @@ import { attachNames } from './names.js';
 import { weekChallenges, challengeById } from '../challenges.js';
 import { createRenderer } from './drawhd.js';
 import * as hdUI from './hdui.js';
-import { initAudio, setSound, soundOn, sfx, resume, crowd, bindTeams } from './sfx.js';
+import { initAudio, setSound, soundOn, sfx, resume, crowd, bindTeams, silence } from './sfx.js';
 import * as SV from './seasonview.js';
 import * as SC from './scout.js';
 
@@ -81,19 +81,20 @@ function withImage(t){
   if (t.logo){ t.img = new Image(); t.img.src = logoUrl(t.logo, 72); }
   return t;
 }
+/* Opponents for a game opened from the Play button: big-name Power 4 programs (ESPN ids), so the matchup always
+   feels like a marquee one. */
+const MARQUEE = ['333', '61', '194', '130', '251', '201', '99', '30', '213', '57', '52', '228', '2390', '2483', '2633', '2',
+  '245', '264', '275', '145', '158', '127', '26', '2294', '254', '2579', '8', '97', '38', '259', '2306', '197', '142', '2641'];
 function defaults(prefill){
   let me, opp;
   if (prefill?.length === 2){
     const [a, h] = prefill.map(String);
     me = myTeam && (a === myTeam.id || h === myTeam.id) ? myTeam.id : h; opp = me === a ? h : a;
   } else {
+    // Your team against a random big name (never yourself, never the team you just played).
     me = myTeam?.id || saved.lastMe || state.rankings?.ranks?.[0]?.id || Object.keys(state.standings?.byTeam || {})[0] || '333';
-    const g = state.games.find(x => String(x.home.id) === String(me) || String(x.away.id) === String(me));
-    opp = g ? (String(g.home.id) === String(me) ? g.away.id : g.home.id) : saved.lastOpp;
-    if (!opp || String(opp) === String(me)){
-      const pool = state.rankings?.ranks?.map(r => r.id) || Object.keys(state.standings?.byTeam || {});
-      opp = pool.filter(x => String(x) !== String(me))[Math.floor(Math.random() * Math.min(15, pool.length - 1))] || '61';
-    }
+    const pool = MARQUEE.filter(x => x !== String(me) && x !== String(saved.lastOpp));
+    opp = pool[Math.floor(Math.random() * pool.length)];
   }
   return { me: String(me), opp: String(opp) };
 }
@@ -205,6 +206,7 @@ export function close(){
   document.removeEventListener('visibilitychange', onHide);
   sizeWatch?.disconnect(); sizeWatch = null;
   root.remove(); root = null; document.body.classList.remove('pb-open');
+  silence();   // the band, the crowd's last reaction, anything still scheduled: all of it stops with the game
   G = null; phase = 'setup'; paused = false; keys.clear();
 }
 export const isOpen = () => !!root;
