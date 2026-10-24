@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-24T21:50:58+00:00",
+ "updated": "2026-10-24T22:01:29+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Virginia Tech @ Clemson (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xel42n/game_thread_virginia_tech_clemson_700_pm_et/",
+   "published": "2026-10-24T22:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Virginia Tech",
+    "Clemson"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Colorado @ Oklahoma State (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xel41g/game_thread_colorado_oklahoma_state_700_pm_et/",
+   "published": "2026-10-24T22:00:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Colorado",
+    "Oklahoma State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Georgia State @ Arkansas State (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xel40j/game_thread_georgia_state_arkansas_state_700_pm_et/",
+   "published": "2026-10-24T22:00:11+00:00",
+   "gameId": null,
+   "teams": [
+    "Georgia State",
+    "Arkansas State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] South Dakota Defeats North Dakota 26-23",
