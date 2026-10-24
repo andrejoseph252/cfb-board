@@ -1,6 +1,28 @@
 {
- "updated": "2026-10-24T19:06:39+00:00",
+ "updated": "2026-10-24T19:31:38+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Northwestern Defeats Rutgers 42-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xehht3/postgame_thread_northwestern_defeats_rutgers_4214/",
+   "published": "2026-10-24T19:26:45+00:00",
+   "gameId": "401858498",
+   "teams": [
+    "Northwestern",
+    "Rutgers"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] West Virginia Defeats TCU 24-20",
+   "url": "https://www.reddit.com/r/CFB/comments/1xehcjz/postgame_thread_west_virginia_defeats_tcu_2420/",
+   "published": "2026-10-24T19:20:47+00:00",
+   "gameId": "401856841",
+   "teams": [
+    "West Virginia",
+    "TCU"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] ULM @ Troy (4:00 PM ET)",
