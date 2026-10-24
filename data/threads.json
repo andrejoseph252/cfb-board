@@ -1,6 +1,176 @@
 {
- "updated": "2026-10-24T12:16:27+00:00",
+ "updated": "2026-10-24T16:18:36+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Assumption Defeats St. Anselm 56-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xech3s/postgame_thread_assumption_defeats_st_anselm_567/",
+   "published": "2026-10-24T16:05:42+00:00",
+   "gameId": "401907489",
+   "teams": [
+    "Assumption",
+    "St. Anselm"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Assumption @ St. Anselm (6:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xecbvb/game_thread_assumption_st_anselm_600_pm_et/",
+   "published": "2026-10-24T16:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Assumption",
+    "St. Anselm"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Baylor @ Kansas (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xecbup/game_thread_baylor_kansas_100_pm_et/",
+   "published": "2026-10-24T16:00:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Baylor",
+    "Kansas"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Miami (OH) @ Central Michigan (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xecbu0/game_thread_miami_oh_central_michigan_100_pm_et/",
+   "published": "2026-10-24T16:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "Miami (OH)",
+    "Central Michigan"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Akron @ Kent State (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xecbsz/game_thread_akron_kent_state_100_pm_et/",
+   "published": "2026-10-24T16:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Akron",
+    "Kent State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Rice @ FAU (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauzs/game_thread_rice_fau_1200_pm_et/",
+   "published": "2026-10-24T15:00:20+00:00",
+   "gameId": null,
+   "teams": [
+    "Rice",
+    "FAU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Rutgers @ Northwestern (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauz2/game_thread_rutgers_northwestern_1200_pm_et/",
+   "published": "2026-10-24T15:00:19+00:00",
+   "gameId": null,
+   "teams": [
+    "Rutgers",
+    "Northwestern"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] West Virginia @ TCU (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauye/game_thread_west_virginia_tcu_1200_pm_et/",
+   "published": "2026-10-24T15:00:18+00:00",
+   "gameId": null,
+   "teams": [
+    "West Virginia",
+    "TCU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] California @ SMU (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauxd/game_thread_california_smu_1200_pm_et/",
+   "published": "2026-10-24T15:00:16+00:00",
+   "gameId": null,
+   "teams": [
+    "California",
+    "SMU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Texas Tech @ Cincinnati (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauwj/game_thread_texas_tech_cincinnati_1200_pm_et/",
+   "published": "2026-10-24T15:00:15+00:00",
+   "gameId": null,
+   "teams": [
+    "Texas Tech",
+    "Cincinnati"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Pittsburgh @ Miami (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauvg/game_thread_pittsburgh_miami_1200_pm_et/",
+   "published": "2026-10-24T15:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Pittsburgh",
+    "Miami"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Indiana @ Michigan (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauur/game_thread_indiana_michigan_1200_pm_et/",
+   "published": "2026-10-24T15:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "Indiana",
+    "Michigan"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] FCS Games \u2014 Saturday, October 24",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeauu9/game_thread_fcs_games_saturday_october_24/",
+   "published": "2026-10-24T15:00:11+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Western Michigan @ Toledo (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeautk/game_thread_western_michigan_toledo_1200_pm_et/",
+   "published": "2026-10-24T15:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Western Michigan",
+    "Toledo"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] LSU @ Auburn (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeaust/game_thread_lsu_auburn_1200_pm_et/",
+   "published": "2026-10-24T15:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "LSU",
+    "Auburn"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Non-D1 Games \u2014 Saturday, October 24",
+   "url": "https://www.reddit.com/r/CFB/comments/1xe9ete/game_thread_nond1_games_saturday_october_24/",
+   "published": "2026-10-24T14:00:08+00:00",
+   "gameId": null,
+   "teams": null
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Stanford Defeats NC State 31-28",
