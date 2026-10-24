@@ -68,8 +68,8 @@ function shadowEdge(x){
 /* Only the late-afternoon sun throws the stands' shadow: at noon and under the lights there is none. */
 let shaded = true;
 export const setShade = on => { shaded = !!on; };
-export function inShadow(x, y, i = 0, j = 0){
-  if (!shaded) return false;
+export const inShadow = (x, y, i = 0, j = 0) => shaded && shadowAt(x, y, i, j);
+function shadowAt(x, y, i, j){
   const e = shadowEdge(x);
   if (Math.abs(y - e) < .12) return ((i + j) & 1) === 0;
   return y < e;
@@ -603,6 +603,14 @@ function snowTurf(col, x, y, chalk, hs){
 /* home: your team (its end zone behind you, its fans and wall); away: theirs. sky: the weather (weather.js), for
    rain or snow on the turf. Returns { tex, mask }: the field, and where the stadium shadow falls on it (alpha). */
 export function buildField(home, away, sky = 'clear'){
+  const steps = buildFieldSteps(home, away, sky, shaded); let r;
+  do r = steps.next(); while (!r.done);
+  return r.value;
+}
+/* The same, a few rows at a time (a generator: each next() paints some more), so the game can bake a new field over
+   several frames instead of freezing for the second or more a whole one takes. `shade` is fixed for the whole bake
+   (the stadium shadow, or none), whatever the game does in between. */
+export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
   const tex = canvas(TW, TH), tx = tex.getContext('2d'), img = tx.createImageData(TW, TH), d = img.data;
   const mask = canvas(TW, TH), mx = mask.getContext('2d'), mimg = mx.createImageData(TW, TH), md = mimg.data;
   const paint = new Uint8Array(TW * TH);
@@ -659,6 +667,7 @@ export function buildField(home, away, sky = 'clear'){
   const wallCol = (i, w) => paint[i] === 7 ? wallT : w === 0 ? mix(wallC, [255, 255, 255], .18) : w === 2 ? wallC.map(v => v * .45) : wallC.map(v => v * .7);
 
   for (let j = 0; j < TH; j++){
+    if (j && (j & 3) === 0) yield j / TH;
     const y = FY0 + (j + .5) / S;
     for (let i = 0; i < TW; i++){
       const x = FX0 + (i + .5) / S, k = j * TW + i, bay = bayer(i, j), hs = hash2(i, j);
@@ -717,7 +726,7 @@ export function buildField(home, away, sky = 'clear'){
         if (sky === 'rain') col = rainTurf(col, x, y, chalk, ez && y >= 0 && y <= FW ? pc : 0, w, hs);
         else if (sky === 'snow') col = snowTurf(col, x, y, chalk, hs);
       }
-      const dark = inShadow(x, y, i, j);
+      const dark = shade && shadowAt(x, y, i, j);
       col = dark ? SHD(col) : LIT(col);
       d[k * 4] = col[0]; d[k * 4 + 1] = col[1]; d[k * 4 + 2] = col[2]; d[k * 4 + 3] = 255;
       if (dark) md[k * 4 + 3] = 255;

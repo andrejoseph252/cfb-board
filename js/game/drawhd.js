@@ -154,7 +154,9 @@ export function createRenderer(canvas){
 
   /* ---------- teams: the field, the stands, uniforms, the logo ---------- */
   let teamsKey = '', fieldKey = '', art = null, crowd = null, crowdKey = '', uniOff = null, uniDef = null, logo = null, logoSrc = '';
-  let home = null, away = null, building = 0, turf = 'clear';
+  let home = null, away = null, turf = 'clear', bake = null;
+  /* The last few fields and stands baked (by matchup, light and weather), so flipping back to one is instant. */
+  const baked = new Map(), KEEP = 3;
   function prepare(G){
     const C = G.cond || {}, sky = C.sky || 'clear';
     const key = `${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${C.time === 'afternoon' || !C.time ? 'sun' : 'flat'}${sky}|${G.youDefend ? 'D' : ''}`;
@@ -165,16 +167,31 @@ export function createRenderer(canvas){
       const fk = key.slice(0, key.lastIndexOf('|'));
       if (fk !== fieldKey){
         fieldKey = fk; home = { name: G.me.name, color: G.me.color, alt: G.me.alt }; away = { name: G.opp.name, color: G.opp.color, alt: G.opp.alt };
-        turf = sky; A.setShade(!C.time || C.time === 'afternoon');
-        // Baking the field and the stands takes a moment: do it off this frame, keeping the old ones up meanwhile.
-        const job = ++building, h = home, a = away;
-        setTimeout(() => { if (job !== building) return; art = A.buildField(h, a, sky); crowd = A.buildCrowd(portrait, h, a, sky); crowdKey = `${fk}|${portrait}`; }, 0);
+        const shade = !C.time || C.time === 'afternoon';
+        turf = sky; A.setShade(shade);
+        const hit = baked.get(fk);
+        if (hit){ baked.delete(fk); baked.set(fk, hit); art = hit.art; crowd = hit.crowd[portrait] ||= A.buildCrowd(portrait, home, away, sky); crowdKey = `${fk}|${portrait}`; bake = null; }
+        // Baking a field takes a while (most of a second on a phone): it's done a little each frame (pumpBake), the
+        // old one staying up meanwhile, and only once the choice has settled for a moment.
+        else bake = { fk, h: home, a: away, sky, shade, steps: null, at: performance.now() + (art ? 220 : 0) };
       }
       loadLogo(G.youDefend ? G.opp.img : G.me.img);
     }
     const ck = `${fieldKey}|${portrait}`;
     // Turned the phone: the fans stand upright the other way.
-    if (art && crowdKey && ck !== crowdKey){ crowdKey = ck; crowd = A.buildCrowd(portrait, home, away, turf); }
+    if (art && crowdKey && ck !== crowdKey && !bake){ crowdKey = ck; const e = baked.get(fieldKey); crowd = e ? (e.crowd[portrait] ||= A.buildCrowd(portrait, home, away, turf)) : A.buildCrowd(portrait, home, away, turf); }
+  }
+  /* A slice of the waiting bake: about 5 ms a frame, so the game keeps running (the first field of a game bakes all at
+     once, there being nothing to show meanwhile). */
+  function pumpBake(){
+    const B = bake; if (!B || performance.now() < B.at) return;
+    B.steps ||= A.buildFieldSteps(B.h, B.a, B.sky, B.shade);
+    const end = performance.now() + (art ? 5 : 1e9);
+    let r; do r = B.steps.next(); while (!r.done && performance.now() < end);
+    if (!r.done) return;
+    bake = null; art = r.value; crowd = A.buildCrowd(portrait, B.h, B.a, B.sky); crowdKey = `${B.fk}|${portrait}`;
+    baked.set(B.fk, { art, crowd: { [portrait]: crowd } });
+    while (baked.size > KEEP) baked.delete(baked.keys().next().value);
   }
   function loadLogo(img){
     const src = img?.src || ''; if (src === logoSrc) return;
@@ -845,18 +862,22 @@ export function createRenderer(canvas){
   }
   const pops = [];
   /* Bloom: the bright parts of the pixel art (lines, jerseys, lights, snow) glowing softly into the air. The buffer
-     shrunk twice with smoothing, cubed against itself so only the brights survive, and laid back over the screen. */
+     shrunk twice with smoothing, cubed against itself so only the brights survive, and laid back over the screen.
+     The shrunken grids are pinned to the field, not the screen (shifted by where the field's origin sits, mod 12):
+     pinned to the screen, every line and jersey fell on a different texel as the camera moved, and the glow shimmered. */
   const bl1 = A.canvas(8, 8), bl2 = A.canvas(8, 8), b1 = bl1.getContext('2d'), b2 = bl2.getContext('2d');
   function bloom(a, ox, oy){
-    const w1 = Math.ceil(Wb / 4), h1 = Math.ceil(Hb / 4), w2 = Math.ceil(Wb / 12), h2 = Math.ceil(Hb / 12);
+    const [wx0, wy0] = toBuf(0, 0), px = ((-wx0) % 12 + 12) % 12, py = ((-wy0) % 12 + 12) % 12;   // buffer px -> grid: +px, +py
+    const w1 = Math.ceil((Wb + 12) / 4), h1 = Math.ceil((Hb + 12) / 4), w2 = Math.ceil(w1 / 3), h2 = Math.ceil(h1 / 3);
     if (bl1.width !== w1 || bl1.height !== h1){ bl1.width = w1; bl1.height = h1; bl2.width = w2; bl2.height = h2; }
     b1.imageSmoothingEnabled = b2.imageSmoothingEnabled = true;
-    b1.globalCompositeOperation = 'copy'; b1.drawImage(buf, 0, 0, Wb, Hb, 0, 0, w1, h1);
+    b1.globalCompositeOperation = 'copy'; b1.drawImage(buf, 0, 0, Wb, Hb, px / 4, py / 4, Wb / 4, Hb / 4);
     b1.globalCompositeOperation = 'multiply'; b1.drawImage(bl1, 0, 0); b1.drawImage(bl1, 0, 0);
-    b2.globalCompositeOperation = 'copy'; b2.drawImage(bl1, 0, 0, w1, h1, 0, 0, w2, h2);
+    b2.globalCompositeOperation = 'copy'; b2.drawImage(bl1, 0, 0, w2 * 3, h2 * 3, 0, 0, w2, h2);
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = a * .55; ctx.drawImage(bl1, 0, 0, w1, h1, ox * k, oy * k, w1 * 4 * bs, h1 * 4 * bs);
-    ctx.globalAlpha = a; ctx.drawImage(bl2, 0, 0, w2, h2, ox * k, oy * k, w2 * 12 * bs, h2 * 12 * bs);
+    const x0 = ox * k - px * bs, y0 = oy * k - py * bs;
+    ctx.globalAlpha = a * .55; ctx.drawImage(bl1, 0, 0, w1, h1, x0, y0, w1 * 4 * bs, h1 * 4 * bs);
+    ctx.globalAlpha = a; ctx.drawImage(bl2, 0, 0, w2, h2, x0, y0, w2 * 12 * bs, h2 * 12 * bs);
     ctx.restore();
   }
   /* Rain, snow, wind and fog in the air, the haze of the lights at night, and lightning in a storm (UI pixels, over
@@ -1230,6 +1251,7 @@ export function createRenderer(canvas){
     t += dt;
     if (G.play && !G.play.live && !G.play.result && !G.kick) routesOn = !!view.routes;
     prepare(G);
+    pumpBake();
     lit = flash > .55 ? BOLT : LIGHT[G.cond?.time] || LIGHT.afternoon; curG = G;
     fsuTrack(G, dt);
     impacts(G, dt);
