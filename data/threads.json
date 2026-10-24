@@ -1,6 +1,17 @@
 {
- "updated": "2026-10-24T16:18:36+00:00",
+ "updated": "2026-10-24T17:09:02+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] North Dakota @ South Dakota (2:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xedts8/game_thread_north_dakota_south_dakota_200_pm_et/",
+   "published": "2026-10-24T17:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "North Dakota",
+    "South Dakota"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Assumption Defeats St. Anselm 56-7",
