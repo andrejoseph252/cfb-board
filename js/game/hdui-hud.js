@@ -6,6 +6,7 @@
 import { esc } from '../util.js';
 import { logoUrl as boardLogo } from '../views/components.js';
 import { teamTone, teamPaint, inkOn, vars, YELLOW } from './hdkit.js';
+import * as W from './weather.js';
 
 const logo = (src, px = 72) => boardLogo(src, px, 'light');
 export const FSU = '52';
@@ -43,6 +44,9 @@ export const clockInner = st => `<i class="${st.running ? 'on' : ''}"></i><em>${
 export function dd({ text, goal, spot, side, tell }){
   return `<div class="hb-dd"><span class="dn${goal ? ' goal' : ''}">${esc(text)}</span><span class="sp" style="--oc:${esc(side || '#888')}"><i></i>${esc(spot)}</span>${tell ? `<span class="tell">${esc(tell)}</span>` : ''}</div>`;
 }
+
+/* ---------- the conditions tab (weather.js): its mark, the temperature, the wind and which way it blows ---------- */
+export const wx = (c, portrait) => `<div class="hb-wx" title="${esc(W.describe(c))}">${W.mark(c)}<b>${c.temp}°</b>${c.wind ? `<span><i style="--r:${W.windTurn(c, portrait)}deg">${W.ARROW}</i>${Math.abs(c.wind)}</span>` : ''}</div>`;
 
 /* ---------- the bottom bar: the play call (yellow) and the glass chips ---------- */
 export const callBtn = name => `<button type="button" data-pb="call" class="pb-call"><span><small>PLAY</small><b>${esc(name)}</b></span><i class="chev">${CHEV}</i></button>`;
@@ -124,6 +128,15 @@ export const CSS = `
 .pb.hd .hb-dd .sp{background:var(--hd-glass2);-webkit-backdrop-filter:var(--hd-blur);backdrop-filter:var(--hd-blur)}
 .pb.hd .hb-dd .sp i{width:8px;height:8px;border-radius:1px;background:var(--oc);margin-right:6px;box-shadow:0 0 0 1px rgba(255,255,255,.55)}
 .pb.hd .hb-dd .tell{background:#6fe3ff;color:#04212b;font-size:14px;font-weight:800}
+.pb.hd .pb-bugw{position:relative;z-index:2}
+.pb.hd .pb-wxhud{position:absolute;right:0;top:100%;pointer-events:none}
+.pb.hd .pb-hud:has(.hb-dd .tell) .pb-wxhud{display:none}
+.pb.hd .hb-wx{display:flex;align-items:center;gap:5px;height:25px;padding:0 9px 0 6px;border-radius:0 0 7px 7px;background:var(--hd-glass2);-webkit-backdrop-filter:var(--hd-blur);backdrop-filter:var(--hd-blur);
+  box-shadow:0 6px 14px rgba(0,0,0,.4);color:#fff;transform:translateY(-105%);animation:hbDdIn .45s cubic-bezier(.2,.9,.25,1.15) .3s forwards}
+.pb.hd .hb-wx .wxi{width:18px;height:18px}
+.pb.hd .hb-wx b,.pb.hd .hb-wx span{font:700 15px/1 var(--hd-display);letter-spacing:.03em;font-variant-numeric:tabular-nums}
+.pb.hd .hb-wx span{display:flex;align-items:center;gap:3px;padding-left:5px;border-left:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85)}
+.pb.hd .hb-wx i{display:block;width:12px;height:12px;color:var(--hd-cyan,#7dd8f0)}
 .pb.hd .pb-dd>span{display:inline-flex;align-items:center;height:25px;margin:6px 6px 0 0;padding:0 10px;border-radius:13px;background:var(--hd-glass);-webkit-backdrop-filter:var(--hd-blur);backdrop-filter:var(--hd-blur);
   border:1px solid var(--hd-line);font:700 14px/1 var(--hd-display);letter-spacing:.06em;color:#fff}
 
@@ -258,5 +271,5 @@ export const CSS = `
 .pb.hd .hb-big.fsu .hb-bsub{top:158px;background:${GARNET};color:${GOLD};box-shadow:inset 0 0 0 1.5px ${GOLD},0 8px 20px rgba(0,0,0,.5);animation-delay:1.25s}
 @media (max-width:360px){.pb.hd .hb-spear{width:250px;margin-left:-125px}.pb.hd .hb-spark{left:calc(50% + 125px)}}
 
-@media (prefers-reduced-motion:reduce){.pb.hd .pb-banner *,.pb.hd .hb-dd,.pb.hd .hb-sc,.pb.hd .pb-mv,.pb.hd .pb-jump,.pb.hd .hb-tm.fsu::before{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+@media (prefers-reduced-motion:reduce){.pb.hd .pb-banner *,.pb.hd .hb-dd,.pb.hd .hb-wx,.pb.hd .hb-sc,.pb.hd .pb-mv,.pb.hd .pb-jump,.pb.hd .hb-tm.fsu::before{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
 `;

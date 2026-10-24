@@ -6,7 +6,7 @@
    is the zoom. Markers, labels, meters and text go on top in "UI pixels" (about 290 on the screen's short side, the
    game's original resolution), so everything the page measures feels the same at any zoom: R.W / R.H, toScreen, toWorld and dragToWorld all work in
    UI pixels, and a drag is worth as many yards as it always was. */
-import { FW, MID, GOAL_HALF, BAR, canThrow, clamp, trajectory, throwSpread } from './sim.js';
+import { FW, MID, GOAL_HALF, BAR, NET_X, NET_HALF, canThrow, clamp, trajectory, throwSpread, kickPreview } from './sim.js';
 import * as A from './hdart.js';
 import { sfx } from './sfx.js';
 
@@ -16,6 +16,19 @@ const OLD = 5;    // UI pixels per yard for drags (the original scale, so a thro
 /* Yards across the screen's short side. */
 const CLOSE = 32, CARRY = 36, THROW = 48, COVER = 46, WIDE = 58;
 const KX = .95, KY = .38;   // the cast shadows' lean: low sun from the top left
+/* The light by kickoff time (weather.js): the cast shadows' leans and strength, and a grade over the pixel art
+   (multiply, then a lift on the field itself). Afternoon is the art as painted. Night: four light towers, four faint
+   shadows each, and the stands falling off into the dark. */
+const LIGHT = {
+  afternoon: { sh: [[KX, KY]], a: .34 },
+  noon: { sh: [[.14, .18]], a: .46, lift: 'rgba(255,248,228,.06)' },
+  night: { sh: [[.5, .42], [-.5, .42], [.5, -.42], [-.5, -.42]], a: .24, bloom: .5, rim: ['rgba(220,232,255,.5)', [[-1, -1], [1, -1]]] }
+};
+const BOLT = { sh: [[-.9, .5]], a: .55 };   // a lightning flash: one hard shadow for a blink
+/* The sky's grade, over the light's: overcast for rain and snow, a gray wash for fog; rain leaves a wet sheen on the
+   players (the light's rim, when it has one, wins). */
+const SKY = { rain: { mul: 'rgb(170,180,200)', rim: ['rgba(210,224,240,.32)', [[0, -1]]] }, snow: { mul: 'rgb(214,222,238)', lift: 'rgba(200,212,236,.08)' },
+  fog: { mul: 'rgb(214,218,226)' } };
 const POST = ['#fff3a0', '#f5d327', '#d6a812', '#8e6a0a'].map(c => A.css(A.LIT(A.hex(c))));
 const PAD = ['#3a5f94', '#16365f', '#0b2240', '#061529', '#061529'].map(c => A.css(A.LIT(A.hex(c))));
 /* Plausible jersey numbers by position. */
@@ -45,7 +58,7 @@ export function createRenderer(canvas){
   let cw = 0, ch = 0, short = 1, k = 1, Wu = UI, Hu = UI * 2, portrait = false;
   let Wb = 8, Hb = 8, bs = 1;   // the part of the buffer in use, and its scale onto the screen (device px per buffer px)
   const cam = { x: 30, y: MID, shake: 0 }, zoom = { span: CLOSE };
-  let t = 0, vig = null, motes = [];
+  let t = 0, vig = null, motes = [], drops = [], flash = 0, nextBolt = 12;
 
   /* ---------- size and zoom ---------- */
   let sized = '';
@@ -67,7 +80,7 @@ export function createRenderer(canvas){
     buf.width = sl.width = Math.ceil(cw / least) + 2; buf.height = sl.height = Math.ceil(ch / least) + 2;
     bx.imageSmoothingEnabled = false;
     setZoom(zoom.span);
-    vig = null; motes = Array.from({ length: 34 }, (_, i) => ({ x: A.hash2(i, 1) * Wu, y: A.hash2(i, 2) * Hu, vx: (A.hash2(i, 3) - .3) * 2, vy: (A.hash2(i, 4) - .6) * 1.5, ph: A.hash2(i, 5) * 6 }));
+    vig = null; fogV = null; nightV = null; snowV = null; drops = []; motes = Array.from({ length: 34 }, (_, i) => ({ x: A.hash2(i, 1) * Wu, y: A.hash2(i, 2) * Hu, vx: (A.hash2(i, 3) - .3) * 2, vy: (A.hash2(i, 4) - .6) * 1.5, ph: A.hash2(i, 5) * 6 }));
     return true;
   }
   /* A view `yards` across, nudged to a whole-number scale when one is close, so views at rest are perfectly crisp. */
@@ -141,9 +154,10 @@ export function createRenderer(canvas){
 
   /* ---------- teams: the field, the stands, uniforms, the logo ---------- */
   let teamsKey = '', fieldKey = '', art = null, crowd = null, crowdKey = '', uniOff = null, uniDef = null, logo = null, logoSrc = '';
-  let home = null, away = null, building = 0;
+  let home = null, away = null, building = 0, turf = 'clear';
   function prepare(G){
-    const key = `${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${G.youDefend ? 'D' : ''}`;
+    const C = G.cond || {}, sky = C.sky || 'clear';
+    const key = `${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${C.time === 'afternoon' || !C.time ? 'sun' : 'flat'}${sky}|${G.youDefend ? 'D' : ''}`;
     if (key !== teamsKey){
       teamsKey = key;
       // On defense your team (G.opp in those scenes) wears its colors and their offense wears road white.
@@ -151,15 +165,16 @@ export function createRenderer(canvas){
       const fk = key.slice(0, key.lastIndexOf('|'));
       if (fk !== fieldKey){
         fieldKey = fk; home = { name: G.me.name, color: G.me.color, alt: G.me.alt }; away = { name: G.opp.name, color: G.opp.color, alt: G.opp.alt };
+        turf = sky; A.setShade(!C.time || C.time === 'afternoon');
         // Baking the field and the stands takes a moment: do it off this frame, keeping the old ones up meanwhile.
         const job = ++building, h = home, a = away;
-        setTimeout(() => { if (job !== building) return; art = A.buildField(h, a); crowd = A.buildCrowd(portrait, h, a); crowdKey = `${fk}|${portrait}`; }, 0);
+        setTimeout(() => { if (job !== building) return; art = A.buildField(h, a, sky); crowd = A.buildCrowd(portrait, h, a, sky); crowdKey = `${fk}|${portrait}`; }, 0);
       }
       loadLogo(G.youDefend ? G.opp.img : G.me.img);
     }
     const ck = `${fieldKey}|${portrait}`;
     // Turned the phone: the fans stand upright the other way.
-    if (art && crowdKey && ck !== crowdKey){ crowdKey = ck; crowd = A.buildCrowd(portrait, home, away); }
+    if (art && crowdKey && ck !== crowdKey){ crowdKey = ck; crowd = A.buildCrowd(portrait, home, away, turf); }
   }
   function loadLogo(img){
     const src = img?.src || ''; if (src === logoSrc) return;
@@ -192,24 +207,44 @@ export function createRenderer(canvas){
     if (logo){ const [x, y] = toBuf(50, MID); bx.globalAlpha = .93; bx.drawImage(logo, x - (logo.width >> 1), y - (logo.height >> 1)); bx.globalAlpha = 1; }
   }
   function stands(G){
-    const C = crowd, [ox, oy] = portrait ? toBuf(A.CX0 + A.CDEPTH, A.FY0) : toBuf(A.CX0, A.FY0);
-    if (ox > Wb || oy > Hb || ox + C.c.width < 0 || oy + C.c.height < 0) return;
+    const C = crowd, [ox, oy] = standsAt(C);
+    if (ox > Wb + C.AP || oy > Hb || ox + C.c.width < 0 || oy + C.c.height + C.AP < 0) return;
     bx.drawImage(C.c, ox, oy);
+    const roar = (G.cheer || 0) > 0, B = C.bands;
+    // The cheerleaders and photographers behind the end line (pom-poms shaking faster after a score).
+    const ap = C.aprons[Math.floor(t * (roar ? 7 : 2.2)) % 2];
+    if (portrait) bx.drawImage(ap, ox, oy + C.c.height - C.UP); else bx.drawImage(ap, ox - C.AP, oy);
     bx.setTransform(1, 0, 0, 1, ox, oy);
-    // The crowd's life: fans bobbing (everyone, after a score), towels, flags, camera flashes.
-    const roar = (G.cheer || 0) > 0;
-    for (const b of C.bob) if (Math.sin(t * (roar ? 9 : b.sp) + b.ph) > (roar ? 0 : .6)) A.person(bx, b.px, b.py - 1, b.shirt, b.skin, b.hat, b.lit, b.haze, b.hz * .42, false);
+    // The crowd's life, by lifting bits of the baked crowd: fans bobbing (everyone, after a score), the student
+    // section jumping, a wave rolling around now and then; then towels, flags, camera flashes.
+    const lift = (s0, s1, b0, b1, d) => { const [x, y, w, h] = C.rect(Math.max(0, s0), Math.min(C.along, s1), b0, b1); if (w > 0 && h > 0 && d) bx.drawImage(C.c, x, y, w, h, x, y - d, w, h); };
+    const arms = (f, d) => { bx.fillStyle = f.arm; if (f.sm){ bx.fillRect(f.px - 2, f.py - 7 - d, 1, 3); bx.fillRect(f.px + 1, f.py - 7 - d, 1, 3); } else { bx.fillRect(f.px - 3, f.py - 11 - d, 1, 5); bx.fillRect(f.px + 3, f.py - 11 - d, 1, 5); } };
+    for (const b of C.bob) if (Math.sin(t * (roar ? 9 : b.sp) + b.ph) > (roar ? 0 : .6)) bx.drawImage(C.c, b.px - 2, b.py - 9, 5, 9, b.px - 2, b.py - 10, 5, 9);
+    if (roar){
+      const d = [0, 2, 3, 1][Math.floor(t * 11) % 4], top = B.LB0 + 14 * 7, gap = B.AIS0;   // the student section, either side of its aisle
+      lift(B.STU[0], gap, B.LB0 + 2, top, d); lift(gap + 8, B.STU[1], B.LB0 + 2, top, d);
+      for (const f of C.stu) arms(f, d);
+    } else if (!G.kick){
+      // The wave: every half minute or so, once around in nine seconds.
+      const ph = (t + 11) % 32;
+      if (ph < 9){
+        const sw = ph / 9 * (C.along + 80) - 40;
+        for (const [a, b, d] of [[-16, -8, 1], [-8, -3, 2], [-3, 3, 3], [3, 9, 2], [9, 15, 1]]){ lift(sw + a, sw + b, B.LB0 + 2, B.LB1, d); lift(sw + a, sw + b, B.UD0, B.UD1, Math.max(1, d - 1)); }
+        let i = lo(C.fans, sw - 4); for (; i < C.fans.length && C.fans[i].s < sw + 4; i++) arms(C.fans[i], C.fans[i].sm ? 2 : 3);
+      }
+    }
     for (const tw of C.towels){
-      const f = Math.floor(t * (roar ? 12 : 7) + tw.ph) % 4, dx = [0, 1, 0, -1][f], col = tw.lit ? A.LIT(A.hex(tw.col)) : A.SHD(A.hex(tw.col));
-      bx.fillStyle = A.css(A.mix(col, [40, 30, 50], .15)); bx.fillRect(tw.px + 2, tw.py - 9, 1, 3);
-      bx.fillStyle = A.css(col); bx.fillRect(tw.px + 1 + dx, tw.py - 12, 4, 3);
-      bx.fillStyle = A.css(A.mix(col, [255, 255, 255], .3)); bx.fillRect(tw.px + 1 + dx, tw.py - 12, 4, 1);
+      const f = Math.floor(t * (roar ? 12 : 7) + tw.ph) % 4, dx = [0, 1, 0, -1][f];
+      if (!tw.cs){ const col = tw.lit ? A.LIT(A.hex(tw.col)) : A.SHD(A.hex(tw.col)); tw.cs = [A.css(A.mix(col, [40, 30, 50], .15)), A.css(col), A.css(A.mix(col, [255, 255, 255], .3))]; }
+      bx.fillStyle = tw.cs[0]; bx.fillRect(tw.px + 2, tw.py - 9, 1, 3);
+      bx.fillStyle = tw.cs[1]; bx.fillRect(tw.px + 1 + dx, tw.py - 12, 4, 3);
+      bx.fillStyle = tw.cs[2]; bx.fillRect(tw.px + 1 + dx, tw.py - 12, 4, 1);
     }
     for (const fl of C.flags){
       const T = (c, f = 0) => A.css(A.mix(fl.lit ? A.LIT(A.hex(c)) : A.SHD(A.hex(c)), [40, 30, 20], f));
       bx.fillStyle = T('#c8ccd0'); bx.fillRect(fl.px, fl.py - 30, 1, 30); bx.fillStyle = T('#6a6e74'); bx.fillRect(fl.px + 1, fl.py - 30, 1, 30);
       for (let c = 0; c < 18; c++){
-        const s = Math.sin(t * 5 + fl.k + c * .45), wv = Math.round(s * 1.4 * (c / 18)), f = s > .4 ? .18 : 0, y0 = fl.py - 30 + wv;
+        const s = Math.sin(t * (5 + Math.abs(G.cond?.wind || 0) * .3) + fl.k + c * .45), wv = Math.round(s * 1.4 * (c / 18)), f = s > .4 ? .18 : 0, y0 = fl.py - 30 + wv;
         bx.fillStyle = T(C.colors.field, f); bx.fillRect(fl.px + 2 + c, y0, 1, 11);
         bx.fillStyle = T(C.colors.band, f); bx.fillRect(fl.px + 2 + c, y0 + 4, 1, 3);
       }
@@ -224,10 +259,52 @@ export function createRenderer(canvas){
         else bx.fillRect(c.px, c.py - 4, 2, 2);
       }
     }
-    if (Math.random() < .5){
-      const px = Math.floor(Math.random() * C.c.width), py = Math.floor(Math.random() * C.c.height);
+    // Phones going off among the fans (more of them at night, and on a kick), and the photographers' strobes.
+    const night = G.cond?.time === 'night';
+    for (let f = (night ? 4 : 1) + (G.kick ? 2 : 0) + (roar ? 3 : 0); f > 0; f--) if (Math.random() < .5){
+      let px, py;
+      if (Math.random() < .08){ const [a, b] = C.shooters[Math.floor(Math.random() * C.shooters.length)]; px = portrait ? a : a - C.AP; py = portrait ? b + C.c.height - C.UP - 9 : b - 9; }
+      else { const q = C.fans[Math.floor(Math.random() * C.fans.length)]; px = q.px; py = q.py - (q.sm ? 5 : 8); }
+      if (night){ if (ox + px >= 0 && oy + py >= 0 && ox + px < Wb && oy + py < Hb) pops.push([ox + px, oy + py]); continue; }   // popped over the dark, after the grade
       bx.fillStyle = 'rgba(255,255,240,.95)'; bx.fillRect(px, py, 1, 1); bx.fillStyle = 'rgba(255,255,230,.45)'; bx.fillRect(px - 1, py, 3, 1); bx.fillRect(px, py - 1, 1, 3);
     }
+    bx.setTransform(1, 0, 0, 1, 0, 0);
+    if (G.kick) net();
+  }
+  /* Where the stands' canvas sits on the buffer, and the first fan at or past `s` across (fans are sorted by it). */
+  const standsAt = C => portrait ? toBuf(A.CX0 + A.CDEPTH, A.FY0) : toBuf(A.CX0, A.FY0);
+  const lo = (list, s) => { let a = 0, b = list.length; while (a < b){ const m = (a + b) >> 1; if (list[m].s < s) a = m + 1; else b = m; } return a; };
+  /* The kicking net, raised behind the uprights for kicks: a mesh between two poles, baked once per orientation. */
+  let netC = null;
+  function net(){
+    const y0 = MID - NET_HALF, y1 = MID + NET_HALF, z0 = BAR + .5, z1 = BAR + 9.6, X = NET_X;   // where sim.js catches the ball
+    const P = (y, z) => portrait ? [Math.round(y * S), -Math.round(X * S) - Math.round(z * S * .8)] : [Math.round(X * S) + Math.round(z * S * .3), Math.round(y * S) - Math.round(z * S * .75)];
+    if (!netC || netC.p !== portrait){
+      const pts = [P(y0, 0), P(y1, 0), P(y0, z1 + .4), P(y1, z1 + .4)], mx = Math.min(...pts.map(p => p[0])) - 1, my = Math.min(...pts.map(p => p[1])) - 1;
+      const w = Math.max(...pts.map(p => p[0])) - mx + 2, h = Math.max(...pts.map(p => p[1])) - my + 2, c = A.canvas(w, h), x = c.getContext('2d');
+      const seen = new Set(), dot = (y, z, col) => { const [a, b] = P(y, z), q = a * 9973 + b; if (seen.has(q)) return; seen.add(q); x.fillStyle = col; x.fillRect(a - mx, b - my, 1, 1); };
+      for (const y of [y0 - .1, y1 + .1]) for (let z = 0; z <= z1 + .4; z += .05){ dot(y, z, '#3a3c46'); }   // the poles
+      for (let y = y0; y <= y1; y += .05){ dot(y, z1, 'rgba(246,246,250,.8)'); dot(y, z0, 'rgba(220,224,232,.5)'); }   // the head rope, the foot
+      for (let z = z0; z <= z1; z += .45) for (let y = y0; y <= y1; y += .05) dot(y, z, 'rgba(236,238,244,.26)');   // the cords across
+      for (let y = y0; y <= y1 + .01; y += .45) for (let z = z0; z <= z1; z += .05) dot(y, z, 'rgba(236,238,244,.26)');   // and down
+      netC = { c, p: portrait, mx, my };
+    }
+    const [ax, ay] = toBuf(0, 0);
+    bx.drawImage(netC.c, ax + netC.mx, ay + netC.my);
+  }
+  /* What the stands light themselves, laid over after the grade: at night the suites, the rigs and the step lights;
+     always the LED ribbon (the home name scrolling, inside out and racing after a score) and the video board. */
+  function standsLights(G){
+    const C = crowd; if (!C) return;
+    const [ox, oy] = standsAt(C); if (ox > Wb || oy > Hb || ox + C.c.width < 0 || oy + C.c.height < 0) return;
+    const roar = (G.cheer || 0) > 0, night = G.cond?.time === 'night';
+    if (night) bx.drawImage(C.glow, ox, oy);
+    if (portrait) bx.setTransform(1, 0, 0, 1, ox, oy); else bx.setTransform(0, 1, -1, 0, ox + C.c.width, oy);
+    const hotT = roar && Math.floor(t * 5) % 2, tape = hotT ? C.tapeHot : C.tape, seg = hotT ? C.segHot : C.seg;
+    bx.drawImage(tape, Math.floor(t * (roar ? 70 : 16)) % seg, 0, C.along, 7, 0, C.ribY, C.along, 7);
+    const hot = roar ? 1 + Math.floor(t * 3) % 2 : 0, key = `${G.score?.[0]}|${G.score?.[1]}|${G.quarter}|${hot}|${!!logo}|${C.face.width}`;
+    if (key !== C.faceKey){ C.faceKey = key; A.paintBoard(C, home || G.me, away || G.opp, G.score || [0, 0], G.quarter, logo, hot); }
+    bx.drawImage(C.face, C.faceAt[0], C.faceAt[1]);
     bx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
@@ -373,11 +450,11 @@ export function createRenderer(canvas){
     }
     // Long late-afternoon shadows, then erased where the stadium already shades the grass.
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = 'source-over'; sx.clearRect(0, 0, Wb, Hb);
-    for (const d of drawn){ if (d.down) continue; const s = d.spr; sx.setTransform(1, 0, -KX, -KY, d.gx - s.ax + KX * s.ay, d.gy + KY * s.ay); sx.drawImage(s.sil, 0, 0); }
+    for (const [kx, ky] of lit.sh) for (const d of drawn){ if (d.down) continue; const s = d.spr; sx.setTransform(1, 0, -kx, -ky, d.gx - s.ax + kx * s.ay, d.gy + ky * s.ay); sx.drawImage(s.sil, 0, 0); }
     sx.setTransform(1, 0, 0, 1, 0, 0);
     goalposts(true);
     if (art){ sx.globalCompositeOperation = 'destination-out'; worldTransform(sx, A.FX0, A.FY0); sx.drawImage(art.mask, 0, 0); sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = 'source-over'; }
-    bx.globalAlpha = .34; bx.drawImage(sl, 0, 0, Wb, Hb, 0, 0, Wb, Hb); bx.globalAlpha = 1;
+    bx.globalAlpha = lit.a; bx.drawImage(sl, 0, 0, Wb, Hb, 0, 0, Wb, Hb); bx.globalAlpha = 1;
     if (pressure){
       const { p, k } = pressure, [x, y] = toBuf(p.x, p.y), pulse = (Math.sin(t * (8 + k * 8)) + 1) / 2, rx = 15 + Math.round(pulse * 3), ry = 6 + Math.round(pulse);
       bx.fillStyle = `rgba(255,77,79,${(.25 + k * .55) * (.6 + pulse * .4)})`;
@@ -390,18 +467,28 @@ export function createRenderer(canvas){
       else { const w = Math.round(A.AO.width * Math.max(.45, 1 - d.hop / 24)); bx.drawImage(A.AO, d.gx - (w >> 1), d.gy - 3, w, A.AO.height - 2); }
     }
     drawn.sort((a, b) => a.gy - b.gy || a.gx - b.gx);
+    const rim = lit.rim || SKY[G.cond?.sky]?.rim;
     for (const d of drawn){
       if (d.fall){   // tipping over, about his feet
         bx.setTransform(1, 0, 0, 1, d.gx, d.gy); bx.rotate(d.rot); bx.drawImage(d.fall.cv, -d.fall.ax, -d.fall.ay); bx.setTransform(1, 0, 0, 1, 0, 0);
         continue;
       }
       const s = d.spr, y = d.gy - d.hop;
+      if (rim && !d.lean){ const r = rimOf(s, rim[0]); for (const [ox, oy] of rim[1]) bx.drawImage(r, d.gx - s.ax + ox, y - s.ay + oy); }
       if (d.lean){ bx.setTransform(1, 0, d.lean, 1, d.gx - s.ax - d.lean * s.ay, y - s.ay); bx.drawImage(s.cv, 0, 0); bx.setTransform(1, 0, 0, 1, 0, 0); }
       else bx.drawImage(s.cv, d.gx - s.ax, y - s.ay);
       if (d.ball != null){ const b = A.ballSprite(false, false, 0); bx.drawImage(b, d.gx + d.ball - (b.width >> 1), y - 16); }
     }
   }
-  const downAt = new WeakMap();   // when each player hit the turf (for the fall)
+  const downAt = new WeakMap();
+  /* A sprite's silhouette in one color: the rim of light the stadium lights (or the rain) put on a player. */
+  const rims = new WeakMap();
+  function rimOf(s, col){
+    let r = rims.get(s); if (r && r.col === col) return r.c;
+    const c = A.canvas(s.cv.width, s.cv.height), x = c.getContext('2d');
+    x.drawImage(s.cv, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
+    rims.set(s, { col, c }); return c;
+  }   // when each player hit the turf (for the fall)
   let pressure = null;
 
   /* Turf and dust kicked up on the field (buffer pixels, world positions): from the line's churning feet, and a big
@@ -457,8 +544,10 @@ export function createRenderer(canvas){
   function goalposts(shadow = false){
     const v = (X, Y, Z) => toBuf(X, Y, Z);
     if (shadow){
-      const sh = (X, Y, Z) => { const [gx, gy] = toBuf(X, Y, 0), hs = Z * S * (portrait ? .8 : .78); return [gx + hs * KX, gy + hs * KY]; };
-      thick(sx, sh(111.4, MID, 0), sh(111.4, MID, 2.4), ['#000', '#000', '#000'], !portrait);
+      for (const [kx, ky] of lit.sh){
+        const sh = (X, Y, Z) => { const [gx, gy] = toBuf(X, Y, 0), hs = Z * S * (portrait ? .8 : .78); return [gx + hs * kx, gy + hs * ky]; };
+        thick(sx, sh(111.4, MID, 0), sh(111.4, MID, 2.4), ['#000', '#000', '#000'], !portrait);
+      }
       return;
     }
     const [bx0, by0] = v(110, MID, BAR + 8); if (bx0 < -40 || by0 > Hb + 120 || by0 < -120 || bx0 > Wb + 40) return;
@@ -466,11 +555,18 @@ export function createRenderer(canvas){
     thick(bx, v(111.4, MID, 1.9), v(111.4, MID, 2.4), POST.slice(0, 3), true);
     thick(bx, v(111.4, MID, 2.4), v(110, MID, BAR), POST.slice(0, 3), true);
     thick(bx, v(110, MID - GOAL_HALF, BAR), v(110, MID + GOAL_HALF, BAR), POST.slice(0, 3), !portrait);
+    // The ribbons on top of the uprights stream with the wind (across the field): longer and snappier the harder it
+    // blows, hanging limp when it's calm. They're how you read the wind on a kick.
+    const wind = curG?.kick?.wind ?? curG?.cond?.wind ?? 0, ws = Math.sign(wind) || 1, wl = 3 + Math.min(10, Math.abs(wind) * .5);
+    const [d0x, d0y] = v(110, MID, BAR + 8), [d1x, d1y] = v(110, MID + 1, BAR + 8), dx = (d1x - d0x) / S, dy = (d1y - d0y) / S;
     for (const s of [-1, 1]){
       const a = v(110, MID + s * GOAL_HALF, BAR), b = v(110, MID + s * GOAL_HALF, BAR + 8);
       thick(bx, a, b, [POST[0], POST[2]], true);
-      const w = Math.sin(t * 7 + s) > 0 ? 1 : 0;
-      bx.fillStyle = A.css(A.LIT(A.hex('#ff5a3c'))); bx.fillRect(b[0] + 1, b[1] + 1, 4, 1); bx.fillRect(b[0] + 3 + w, b[1] + 2, 3, 1);
+      bx.fillStyle = A.css(A.LIT(A.hex('#ff5a3c')));
+      for (let i = 1; i <= wl; i++){
+        const wave = Math.round(Math.sin(t * (6 + Math.abs(wind) * .5) - i * .9 + s) * Math.min(1.5, i * .25)), sag = Math.abs(wind) < 3 ? i * .6 : 0;
+        bx.fillRect(Math.round(b[0] + dx * ws * i - dy * wave), Math.round(b[1] + dy * ws * i + dx * wave + sag), 1, 2);
+      }
     }
   }
   /* A holder and kicker, plus the line, for the field goal / extra point picture. */
@@ -485,7 +581,8 @@ export function createRenderer(canvas){
     list[1].x = K.spotX - (K.stage === 'flight' || K.stage === 'done' ? .5 : 2.5); list[1].y = K.spotY + .9;
     for (const p of list.slice(2)){ p.x = K.spotX + (p.team === 'off' ? 6.4 : 7.6); p.y = K.spotY + p.dy * (p.team === 'off' ? 1 : 1.05); }
     drawPlayers(G, list);
-    if (K.ball) drawBall(K.ball.x, K.ball.y, K.ball.z); else drawBall(K.spotX, K.spotY, 0);
+    // In the air the ball is drawn with the goalposts (in front of them or behind, by where it is).
+    if (!K.ball) drawBall(K.spotX, K.spotY, 0);
   }
   const kickCast = { at: null, list: null };
 
@@ -628,27 +725,347 @@ export function createRenderer(canvas){
   }
   function kickOverlay(G){
     const K = G.kick, [bxs, bys] = toScreen(K.spotX, K.spotY);
-    if (K.stage !== 'aim' && K.stage !== 'power') return;
-    const L = 14, [ax, ay] = toScreen(K.spotX + Math.cos(K.aim) * L, K.spotY + Math.sin(K.aim) * L);
-    ctx.save(); ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(bxs, bys); ctx.lineTo(ax, ay); ctx.strokeStyle = 'rgba(11,13,16,.55)'; ctx.lineWidth = 2.6; ctx.stroke();
-    ctx.setLineDash([3, 2.4]); ctx.lineDashOffset = -t * 12; ctx.strokeStyle = YEL; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
-    ctx.beginPath(); ctx.arc(ax, ay, 2.2, 0, Math.PI * 2); ctx.fillStyle = YEL; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = INK; ctx.stroke();
-    // Power meter beside the ball: a glass capsule filling from the bottom; the top sliver (over 92%) is too much.
-    const mx = bxs + (portrait ? 14 : -4), my = bys + (portrait ? -6 : 12), H = 32;
-    capsule(mx - 1.4, my - H - 1.4, 7.8, H + 2.8, INK); capsule(mx, my - H, 5, H, 'rgba(255,255,255,.14)');
-    ctx.fillStyle = 'rgba(255,77,79,.35)'; ctx.fillRect(mx, my - H, 5, Math.round(H * .08));
-    const hgt = (K.stage === 'power' ? K.power : 0) * H;
-    if (hgt > .5){ ctx.beginPath(); ctx.roundRect(mx, my - hgt, 5, hgt, 2.5); ctx.fillStyle = K.power > .92 ? BAD : GO; ctx.fill(); }
+    const live = K.stage === 'aim' || K.stage === 'power', after = K.stage === 'flight' && K.t < .9;
+    if (!live && !after) return;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (live){
+      // The aim: on the easier levels the line runs all the way to the goal line, bending with the wind, green when
+      // it would split the uprights (a kick in the green band); on the harder ones, straight, and the wind is yours to read.
+      const pv = G.diff.preview ? kickPreview(G) : null;
+      const pts = pv ? pv.pts : (() => { const L = (110 - K.spotX) / Math.cos(K.aim); return [[K.spotX, K.spotY, 0], [K.spotX + Math.cos(K.aim) * L, K.spotY + Math.sin(K.aim) * L, BAR + 1]]; })();
+      const col = pv ? (pv.good ? GO : BAD) : YEL, path = new Path2D();
+      pts.forEach(([x, y, z = 0], i) => { const [sx_, sy_] = toScreen(x, y, z); i ? path.lineTo(sx_, sy_) : path.moveTo(sx_, sy_); });
+      ctx.strokeStyle = 'rgba(11,13,16,.55)'; ctx.lineWidth = 2.8; ctx.stroke(path);
+      ctx.setLineDash([3, 2.6]); ctx.lineDashOffset = -t * 14; ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.stroke(path); ctx.setLineDash([]);
+      const [ex, ey] = toScreen(...pts[pts.length - 1]);
+      ctx.beginPath(); ctx.arc(ex, ey, 3, 0, Math.PI * 2); ctx.lineWidth = 2.4; ctx.strokeStyle = INK; ctx.stroke(); ctx.lineWidth = 1.3; ctx.strokeStyle = col; ctx.stroke();
+    }
+    // The power meter beside the ball, built for this kick: short (red), the green band that flies true, then yellow
+    // into red where the kicker over-swings and hooks it. The needle rides up and down; once kicked it stays a moment.
+    const a = after ? 1 - K.t / .9 : 1, W = 8, H = 50;
+    const mx = bxs + (portrait ? 16 : -5), my = bys + (portrait ? -4 : 16);
+    ctx.globalAlpha = a;
+    capsule(mx - 2, my - H - 2, W + 4, H + 4, INK);
+    const band = (p0, p1, fill) => { if (p1 <= p0) return; ctx.fillStyle = fill; ctx.fillRect(mx, my - p1 * H, W, (p1 - p0) * H); };
+    ctx.save(); ctx.beginPath(); ctx.roundRect(mx, my - H, W, H, W / 2); ctx.clip();
+    band(0, K.lo, 'rgba(255,77,79,.32)');
+    band(K.lo, K.hi, GO);
+    const over = ctx.createLinearGradient(0, my - K.hi * H, 0, my - H); over.addColorStop(0, YEL); over.addColorStop(1, BAD);
+    band(K.hi, 1, over);
+    if (K.stage !== 'aim'){ ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(mx, my - K.power * H, W, K.power * H); }
+    ctx.restore();
+    if (K.stage !== 'aim'){
+      const ny = Math.round(my - K.power * H);
+      ctx.fillStyle = INK; ctx.fillRect(mx - 4, ny - 1.5, W + 8, 3);
+      ctx.fillStyle = '#fff'; ctx.fillRect(mx - 3, ny - .5, W + 6, 1);
+    }
     ctx.restore();
   }
-  /* Dust drifting in the sunlit air. */
-  function dust(dt){
+  /* ---------- the conditions (weather.js) ---------- */
+  let lit = LIGHT.afternoon, curG = null;   // curG: this frame's game, for goalposts()
+  const rr = (a, b) => a + Math.random() * (b - a);
+  /* Under the lights: a light map baked once (world space, 5 px a yard, in dithered steps). The field bright and cool,
+     a touch brighter toward the four towers off its corners; past the walls the light falls away fast, and up the
+     stands it fades row by row into the dark. */
+  const LR = 5, LX0 = A.FX0, LY0 = A.FY0;
+  const BANKS = [[-4, -8], [104, -8], [-4, FW + 8], [104, FW + 8]];
+  let lmap = null;
+  function lightmap(){
+    if (lmap) return lmap;
+    const w = Math.round((A.CX0 + A.CDEPTH - LX0) * LR), h = Math.round((A.FY1 - LY0) * LR);
+    const c = A.canvas(w, h), x = c.getContext('2d'), img = x.createImageData(w, h), d = img.data;
+    const DK = [18, 24, 56], HI = [214, 230, 255];
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){
+      const X = LX0 + i / LR, Y = LY0 + j / LR, st = X > A.CX0;
+      let pool = 0; for (const [p, q] of BANKS) pool += 1 / (1 + ((X - p) ** 2 + (Y - q) ** 2) / 700);
+      const out = st ? 0 : Math.max(0, -Y - .4, Y - FW - .4, -10.4 - X, X - 110.4);
+      let L = st ? .66 - (X - A.CX0) / A.CDEPTH * .34 :1 - Math.pow(clamp(out / 7, 0, 1), .8) * .62;
+      L *= .8 + .2 * Math.min(1, pool);
+      const lv = clamp(Math.floor(L * 18 + A.bayer(i, j)) / 18, 0, 1), col = A.mix(DK, HI, lv * lv * (3 - 2 * lv) * .35 + lv * .65), q = (j * w + i) * 4;
+      d[q] = col[0]; d[q + 1] = col[1]; d[q + 2] = col[2]; d[q + 3] = 255;
+    }
+    x.putImageData(img, 0, 0);
+    return lmap = c;
+  }
+  /* A tileable value-noise texture, dithered to a few alpha steps in one color (fog banks, rain clouds). */
+  function noiseTex(N, per, col, lo, hi, maxA, seed, dith = 0){
+    const c = A.canvas(N, N), x = c.getContext('2d'), img = x.createImageData(N, N), d = img.data;
+    const vn = (u, v, P) => {
+      const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, h = (a, b) => A.hash2(((a % P) + P) % P + seed * 101, ((b % P) + P) % P + seed * 37);
+      const a = h(i, j), b = h(i + 1, j), cc = h(i, j + 1), e = h(i + 1, j + 1), su = fu * fu * (3 - 2 * fu), sv = fv * fv * (3 - 2 * fv);
+      return a + (b - a) * su + (cc - a) * sv + (a - b - cc + e) * su * sv;
+    };
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++){
+      let n = 0, amp = .55, tot = 0;
+      for (let o = 0, P = per; o < 4; o++, P *= 2, amp *= .5){ n += vn(i / N * P, j / N * P, P) * amp; tot += amp; }
+      const a = clamp(((n / tot) - lo) / (hi - lo), 0, 1), lv = Math.floor(a * a * 5 + (dith ? A.bayer(i, j) : .5)) / 5, q = (j * N + i) * 4;
+      d[q] = col[0]; d[q + 1] = col[1]; d[q + 2] = col[2]; d[q + 3] = Math.round(lv * maxA);
+    }
+    x.putImageData(img, 0, 0);
+    return c;
+  }
+  let clouds = null;
+  /* The pixel-art layer's grade: the light, then the sky. Noon gets a little more punch, a storm drifting cloud
+     shadow, and lightning lifts the night for a blink. */
+  function grade(G){
+    const C = G.cond; if (!C) return;
+    const K = SKY[C.sky], night = C.time === 'night', bolt = flash > .5;
+    bx.setTransform(1, 0, 0, 1, 0, 0);
+    if (C.time === 'noon' && !K){   // the high sun: the art pushed against itself for contrast and color
+      bx.globalCompositeOperation = 'overlay'; bx.globalAlpha = .28; bx.drawImage(buf, 0, 0, Wb, Hb, 0, 0, Wb, Hb); bx.globalAlpha = 1;
+    }
+    bx.globalCompositeOperation = 'multiply';
+    if (night){
+      const m = lightmap(), [ax, ay] = toBuf(LX0, LY0), [cx, cy] = toBuf(LX0 + m.width / LR, LY0 + m.height / LR);
+      bx.globalAlpha = bolt ? .3 : 1;
+      bx.beginPath(); bx.rect(0, 0, Wb, Hb); bx.rect(Math.min(ax, cx), Math.min(ay, cy), Math.abs(cx - ax), Math.abs(cy - ay));
+      bx.fillStyle = 'rgb(34,40,76)'; bx.fill('evenodd');
+      worldTransform(bx, LX0, LY0); bx.drawImage(m, 0, 0, m.width * S / LR, m.height * S / LR);
+      bx.setTransform(1, 0, 0, 1, 0, 0); bx.globalAlpha = 1;
+    }
+    if (K){ bx.fillStyle = K.mul; bx.fillRect(0, 0, Wb, Hb); }
+    if (C.sky === 'rain'){   // storm clouds rolling over, their shadows sliding across the turf
+      if (!clouds) clouds = bx.createPattern(noiseTex(256, 3, [104, 114, 136], .42, .78, 150, 3), 'repeat');
+      const [ox, oy] = toBuf(0, 0), dr = t * (6 + Math.abs(C.wind || 0));
+      clouds.setTransform(new DOMMatrix([2, 0, 0, 2, ox + (portrait ? dr : 0), oy + (portrait ? 0 : dr)]));
+      bx.fillStyle = clouds; bx.fillRect(0, 0, Wb, Hb);
+    }
+    bx.globalCompositeOperation = 'screen';
+    if (lit.lift){ bx.fillStyle = lit.lift; bx.fillRect(0, 0, Wb, Hb); }
+    if (K?.lift){ bx.fillStyle = K.lift; bx.fillRect(0, 0, Wb, Hb); }
+    bx.globalCompositeOperation = 'source-over';
+    standsLights(G);
+    // Flashbulbs in the stands, popping bright over the dark.
+    for (const [x, y] of pops){
+      bx.fillStyle = 'rgba(255,255,248,.16)'; bx.fillRect(x - 2, y - 1, 5, 3); bx.fillRect(x - 1, y - 2, 3, 5);
+      bx.fillStyle = 'rgba(255,255,244,.7)'; bx.fillRect(x - 2, y, 5, 1); bx.fillRect(x, y - 2, 1, 5);
+      bx.fillStyle = '#fff'; bx.fillRect(x, y, 1, 1);
+    }
+    pops.length = 0;
+  }
+  const pops = [];
+  /* Bloom: the bright parts of the pixel art (lines, jerseys, lights, snow) glowing softly into the air. The buffer
+     shrunk twice with smoothing, cubed against itself so only the brights survive, and laid back over the screen. */
+  const bl1 = A.canvas(8, 8), bl2 = A.canvas(8, 8), b1 = bl1.getContext('2d'), b2 = bl2.getContext('2d');
+  function bloom(a, ox, oy){
+    const w1 = Math.ceil(Wb / 4), h1 = Math.ceil(Hb / 4), w2 = Math.ceil(Wb / 12), h2 = Math.ceil(Hb / 12);
+    if (bl1.width !== w1 || bl1.height !== h1){ bl1.width = w1; bl1.height = h1; bl2.width = w2; bl2.height = h2; }
+    b1.imageSmoothingEnabled = b2.imageSmoothingEnabled = true;
+    b1.globalCompositeOperation = 'copy'; b1.drawImage(buf, 0, 0, Wb, Hb, 0, 0, w1, h1);
+    b1.globalCompositeOperation = 'multiply'; b1.drawImage(bl1, 0, 0); b1.drawImage(bl1, 0, 0);
+    b2.globalCompositeOperation = 'copy'; b2.drawImage(bl1, 0, 0, w1, h1, 0, 0, w2, h2);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = a * .55; ctx.drawImage(bl1, 0, 0, w1, h1, ox * k, oy * k, w1 * 4 * bs, h1 * 4 * bs);
+    ctx.globalAlpha = a; ctx.drawImage(bl2, 0, 0, w2, h2, ox * k, oy * k, w2 * 12 * bs, h2 * 12 * bs);
+    ctx.restore();
+  }
+  /* Rain, snow, wind and fog in the air, the haze of the lights at night, and lightning in a storm (UI pixels, over
+     the field and under the markers and labels, which stay crisp on top). */
+  function sky(G, dt){
+    const C = G.cond; if (!C) return;
+    const night = C.time === 'night', wind = C.wind || 0, s = C.sky;
+    // The crosswind on screen: across the field is left-right standing up, up-down lying down.
+    const wx = portrait ? wind : 0, wy = portrait ? 0 : wind;
+    if (night && flash < .5) nightLayer();
+    if (s === 'fog') fogBanks(night, dt, wind);
+    if (night) glows(s);
+    if (s === 'snow') snowEdge(night);
+    if (s === 'rain') rain(night, dt, wx, wy);
+    if (s === 'snow') snow(night, dt, wx, wy);
+    if ((C.temp ?? 60) <= 40) breath(G, dt, wind);
+    if (s === 'wind' || Math.abs(wind) >= 15) gusty(dt, wind, s === 'wind');
+    if (s === 'rain' && (nextBolt -= dt) <= 0){ nextBolt = rr(12, 34); flash = 1; }
+    if (flash > 0){
+      const a = flash > .82 ? .62 : flash > .7 ? .1 : flash > .56 ? .44 : flash * .4;
+      ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = `rgba(214,224,255,${a.toFixed(2)})`; ctx.fillRect(0, 0, Wu, Hu); ctx.globalCompositeOperation = 'source-over';
+      flash = Math.max(0, flash - dt * 2.2);
+    }
+  }
+  /* Rain in three depths: a haze of fine far drops, the body of it, and a few long bright streaks right by the lens,
+     slanting with the wind; splashes crown and ripple out on the turf (world space, so they stay put on the grass). */
+  const splashes = [];
+  let dropsOf = '';
+  function rain(night, dt, wx, wy){
+    const n = Math.min(420, Math.round(Wu * Hu / 260));
+    if (dropsOf !== 'rain'){ dropsOf = 'rain'; drops = []; }
+    while (drops.length < n) drops.push({ x: rr(-20, Wu + 20), y: rr(-20, Hu + 20), z: Math.pow(Math.random(), 1.6) });
+    drops.length = n;
+    const vx = 26 + wx * 4.5, vy = 340 + wy * 3, P = [new Path2D(), new Path2D(), new Path2D()];
+    for (const d of drops){
+      const sp = .5 + d.z * 1.1, L = .018 + d.z * .05;
+      d.x += vx * sp * dt; d.y += vy * sp * dt;
+      if (d.y > Hu + 24) d.y -= Hu + 48; if (d.y < -24) d.y += Hu + 48;
+      if (d.x > Wu + 24) d.x -= Wu + 48; if (d.x < -24) d.x += Wu + 48;
+      const p = P[d.z > .82 ? 2 : d.z > .42 ? 1 : 0]; p.moveTo(d.x, d.y); p.lineTo(d.x - vx * sp * L, d.y - vy * sp * L);
+    }
+    const tone = night ? '196,212,255' : '214,224,238';
+    // Sheets of heavier rain sweeping across with the wind.
+    for (let i = 0; i < 2; i++){
+      const L = portrait ? Wu : Hu, span = L * .45, c = ((t * (40 + Math.abs(wx + wy) * 3) + i * L * 1.1) % (L * 2.2)) - span, sg = (wx + wy) < 0 ? -1 : 1, u = sg > 0 ? c : L - c;
+      const g = portrait ? ctx.createLinearGradient(u - span / 2, 0, u + span / 2, 0) : ctx.createLinearGradient(0, u - span / 2, 0, u + span / 2);
+      g.addColorStop(0, `rgba(${tone},0)`); g.addColorStop(.5, `rgba(${tone},${night ? .07 : .09})`); g.addColorStop(1, `rgba(${tone},0)`);
+      ctx.fillStyle = g; if (portrait) ctx.fillRect(u - span / 2, 0, span, Hu); else ctx.fillRect(0, u - span / 2, Wu, span);
+    }
+    ctx.lineCap = 'round';
+    ctx.lineWidth = .55; ctx.strokeStyle = `rgba(${tone},${night ? .3 : .26})`; ctx.stroke(P[0]);
+    ctx.lineWidth = .85; ctx.strokeStyle = `rgba(${tone},${night ? .5 : .4})`; ctx.stroke(P[1]);
+    ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(${tone},${night ? .62 : .5})`; ctx.stroke(P[2]);
+    ctx.lineCap = 'butt';
+    for (let q = Wu * Hu / 1500 * dt; q > 0; q--) if (q >= 1 || Math.random() < q){ const w = toWorld(rr(0, Wu), rr(0, Hu)); splashes.push({ x: w.x, y: w.y, t: 0, big: Math.random() < .25 }); }
+    const crown = new Path2D(), ring = new Path2D(), fade = new Path2D();
+    for (let i = splashes.length - 1; i >= 0; i--){
+      const p = splashes[i]; p.t += dt;
+      if (p.t > .5){ splashes[i] = splashes[splashes.length - 1]; splashes.pop(); continue; }
+      const [x, y] = toScreen(p.x, p.y);
+      if (p.t < .08){ crown.rect(x, y - 2, 1, 1); crown.rect(x - 1, y - 1, 1, 1); crown.rect(x + 1, y - 1, 1, 1); crown.rect(x, y, 1, 1); continue; }
+      const r = 1.2 + (p.t - .08) * (p.big ? 14 : 9), ry = r * .55, pth = p.t < .3 ? ring : fade, m = r > 3 ? 12 : 8;
+      for (let a = 0; a < m; a++){ const th = a / m * Math.PI * 2; pth.rect(Math.round(x + Math.cos(th) * r), Math.round(y + Math.sin(th) * ry), 1, 1); }
+    }
+    ctx.fillStyle = `rgba(${tone},.85)`; ctx.fill(crown);
+    ctx.fillStyle = `rgba(${tone},.42)`; ctx.fill(ring);
+    ctx.fillStyle = `rgba(${tone},.2)`; ctx.fill(fade);
+  }
+  /* Snow in three depths: fine far flakes, a middle layer, and big soft ones drifting past close to the lens; all of
+     it swaying down and carried by the wind. */
+  function snow(night, dt, wx, wy){
+    const n = Math.min(520, Math.round(Wu * Hu / 210));
+    if (dropsOf !== 'snow'){ dropsOf = 'snow'; drops = []; }
+    while (drops.length < n) drops.push({ x: rr(-10, Wu + 10), y: rr(-10, Hu + 10), z: Math.pow(Math.random(), 1.3), ph: rr(0, 6) });
+    drops.length = n;
+    const P = [new Path2D(), new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    for (const d of drops){
+      const sp = .35 + d.z * 1.2;
+      d.y += (16 + wy * 1.1) * sp * dt; d.x += (wx * 1.6 * sp + Math.sin(t * (.7 + d.z * .6) + d.ph) * (3 + 9 * d.z)) * dt;
+      if (d.y > Hu + 8) d.y -= Hu + 16; if (d.y < -8) d.y += Hu + 16;
+      if (d.x > Wu + 8) d.x -= Wu + 16; if (d.x < -8) d.x += Wu + 16;
+      const x = Math.round(d.x), y = Math.round(d.y);
+      if (d.z < .4) P[0].rect(x, y, 1, 1);
+      else if (d.z < .76){ P[1].rect(x, y, 2, 2); P[4].rect(x + 1, y + 2, 2, 1); }
+      else if (d.z < .93){ P[2].rect(x - 1, y, 3, 1); P[2].rect(x, y - 1, 1, 3); P[3].rect(x, y, 1, 1); P[4].rect(x, y + 2, 2, 1); P[4].rect(x + 2, y + 1, 1, 1); }
+      else { P[2].rect(x - 1, y - 1, 4, 4); P[2].rect(x - 2, y, 6, 2); P[2].rect(x, y - 2, 2, 6); P[3].rect(x, y, 2, 2); P[4].rect(x, y + 4, 2, 1); P[4].rect(x + 2, y + 3, 2, 1); P[4].rect(x + 4, y + 2, 1, 1); }
+    }
+    const tone = night ? '226,234,255' : '255,255,255';
+    ctx.fillStyle = 'rgba(70,84,120,.3)'; ctx.fill(P[4]);   // a cool shade under the nearer flakes, so they read over the snow too
+    ctx.fillStyle = `rgba(${tone},.5)`; ctx.fill(P[0]);
+    ctx.fillStyle = `rgba(${tone},.85)`; ctx.fill(P[1]);
+    ctx.fillStyle = `rgba(${tone},.42)`; ctx.fill(P[2]);
+    ctx.fillStyle = `rgba(${tone},.95)`; ctx.fill(P[3]);
+  }
+  /* In the cold, every player's breath puffing and drifting off with the wind (world space, at head height). */
+  const puffs = [];
+  function breath(G, dt, wind){
+    const P = G.play; if (!P || G.kick) { puffs.length = 0; return; }
+    for (let q = P.all.length * dt * .7; q > 0; q--) if (q >= 1 || Math.random() < q){
+      const p = P.all[Math.floor(Math.random() * P.all.length)]; if (p.down) continue;
+      const f = portrait ? (p.team === 'off' ? 1 : -1) : (p.face ?? (p.team === 'off' ? 1 : -1));
+      puffs.push({ x: p.x + f * .45, y: p.y, vx: f * .5 + p.vx * .8, vy: wind * .045 + p.vy * .8, t: 0 });
+    }
+    const P3 = [new Path2D(), new Path2D(), new Path2D()];
+    for (let i = puffs.length - 1; i >= 0; i--){
+      const b = puffs[i]; b.t += dt;
+      if (b.t > 1){ puffs[i] = puffs[puffs.length - 1]; puffs.pop(); continue; }
+      b.x += b.vx * dt; b.y += b.vy * dt; b.vx *= 1 - dt * 2;
+      const [x, y] = toScreen(b.x, b.y, 3.4 + b.t * .3), r = Math.round(1 + b.t * 3.4), p = P3[b.t < .3 ? 0 : b.t < .65 ? 1 : 2];
+      p.rect(x - r + 1, y - r, 2 * r - 2 || 1, 2 * r); p.rect(x - r, y - r + 1, 2 * r, 2 * r - 2 || 1);
+    }
+    ctx.fillStyle = 'rgba(244,247,255,.62)'; ctx.fill(P3[0]);
+    ctx.fillStyle = 'rgba(244,247,255,.36)'; ctx.fill(P3[1]);
+    ctx.fillStyle = 'rgba(244,247,255,.16)'; ctx.fill(P3[2]);
+  }
+  /* Wind you can read (which way it blows matters for kicks): long swooshes of air whipping across with a curl at
+     their heads, a race of fine streaks under them, and leaves and scraps tumbling along. */
+  const swish = [], streaks = [], leaves = [];
+  function gusty(dt, wind, strong){
+    const sg = Math.sign(wind) || 1, sp = 80 + Math.abs(wind) * 8, ext = portrait ? Wu : Hu, wide = portrait ? Hu : Wu;
+    // Along / across the wind to the screen: u runs with it, v across.
+    const put = (p, u, v, w = 1, h = 1) => { const a = Math.round(sg > 0 ? u : ext - u), b = Math.round(v); if (portrait) p.rect(a, b, w, h); else p.rect(b, a, h, w); };
+    if (swish.length < (strong ? 11 : 4) && Math.random() < dt * (strong ? 7 : 2.5))
+      swish.push({ u: rr(-.4, .6) * ext, v: rr(.04, .96) * wide, len: rr(70, 150), amp: rr(2, 5), ph: rr(0, 6), fq: rr(.035, .07), t: 0, T: rr(1, 1.5), z: Math.random(), two: Math.random() < .4 });
+    const near = new Path2D(), far = new Path2D(), fine = new Path2D();
+    for (let i = swish.length - 1; i >= 0; i--){
+      const w = swish[i]; w.t += dt;
+      if (w.t > w.T){ swish.splice(i, 1); continue; }
+      const k = w.t / w.T, head = Math.min(1, k / .5) * w.len, tail = Math.max(0, (k - .4) / .6) * w.len, base = w.u + w.t * sp * .6, pth = w.z > .45 ? near : far;
+      for (let s = tail; s <= head; s += 1){
+        const v = w.v + Math.sin(s * w.fq + w.ph) * w.amp;
+        put(pth, base + s, v); if (w.two && s > tail + 12) put(far, base + s - 10, v + 4);
+      }
+      if (k > .45 && k < .8){   // the curl at the head
+        const v0 = w.v + Math.sin(head * w.fq + w.ph) * w.amp;
+        for (let a = 0; a < 12; a++){ const th = a / 12 * Math.PI * 1.7; put(pth, base + head + Math.sin(th) * 3.5, v0 - (1 - Math.cos(th)) * 3.5); }
+      }
+    }
+    const nS = strong ? 44 : 16;
+    while (streaks.length < nS) streaks.push({ u: rr(0, ext), v: rr(0, wide), len: rr(5, 16), z: rr(.5, 1) });
+    streaks.length = nS;
+    for (const q of streaks){
+      q.u += sp * 1.4 * q.z * dt; if (q.u > ext + 20){ q.u = -q.len - rr(0, 40); q.v = rr(0, wide); }
+      put(fine, q.u, q.v, Math.round(q.len), 1);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fill(fine);
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fill(far);
+    ctx.fillStyle = 'rgba(255,255,255,.62)'; ctx.fill(near);
+    if (!strong) return;
+    while (leaves.length < 16) leaves.push({ u: rr(0, ext), v: rr(0, wide), z: rr(.45, 1), ph: rr(0, 6), c: ['#c9822f', '#a65a24', '#e3c16f', '#7a8f3a', '#8a4a1e'][leaves.length % 5] });
+    for (const g of leaves){
+      g.u += sp * .75 * g.z * dt; g.v += Math.sin(t * 2.6 + g.ph) * 18 * dt;
+      if (g.u > ext + 10){ g.u = -rr(6, 60); g.v = rr(0, wide); }
+      const f = Math.floor(t * (8 + g.z * 6) + g.ph) % 4, sh = new Path2D(), lf = new Path2D(), u = g.u, v = g.v, big = g.z > .8 ? 1 : 0;
+      put(sh, u + 2, v + 4, 2 + big, 1);   // its shadow on the grass below
+      if (f === 0) put(lf, u, v, 3 + big, 2); else if (f === 1){ put(lf, u, v, 2, 1); put(lf, u + 1, v + 1, 2 + big, 1); } else if (f === 2) put(lf, u + 1, v - 1, 1, 3 + big); else { put(lf, u + 1, v, 2 + big, 1); put(lf, u, v + 1, 2, 1); }
+      ctx.fillStyle = 'rgba(16,22,12,.28)'; ctx.fill(sh); ctx.fillStyle = g.c; ctx.fill(lf);
+    }
+  }
+  /* Under the lights: the edges of the screen sinking into a deep blue night (dithered steps, built once per size). */
+  let nightV = null, snowV = null;
+  function edgeTex(rgb, r0, span, pow, maxA, lv = 6, dith = true){
+    const c = A.canvas(Wu, Hu), x = c.getContext('2d'), img = x.createImageData(Wu, Hu), d = img.data;
+    for (let j = 0; j < Hu; j++) for (let i = 0; i < Wu; i++){
+      const nx = (i - Wu / 2) / (Wu / 2), ny = (j - Hu / 2) / (Hu / 2), r = Math.sqrt(nx * nx * .9 + ny * ny * .9);
+      const a = Math.floor(Math.pow(clamp((r - r0) / span, 0, 1), pow) * lv + (dith ? A.bayer(i, j) : .5)) / lv; if (a <= 0) continue;
+      const q = (j * Wu + i) * 4; d[q] = rgb[0]; d[q + 1] = rgb[1]; d[q + 2] = rgb[2]; d[q + 3] = Math.round(Math.min(1, a) * maxA);
+    }
+    x.putImageData(img, 0, 0); return c;
+  }
+  function nightLayer(){ ctx.drawImage(nightV ||= edgeTex([2, 5, 20], .34, 1, 1.35, 225, 8), 0, 0); }
+  function snowEdge(night){ ctx.drawImage(snowV ||= edgeTex([226, 232, 244], .62, .7, 1.6, 120), 0, 0); }
+  /* The haze of the light towers: each one's glow hanging in the air toward where it stands (pulled in to just off
+     the screen's corner when it's farther), soft enough to read as air, not a lamp. Brighter in fog, rain and snow,
+     where the air catches the light. */
+  function glows(s){
+    const thick = s === 'fog' ? 2.2 : s === 'rain' || s === 'snow' ? 1.25 : 1, M = Math.max(Wu, Hu), R = M * .62;
+    ctx.globalCompositeOperation = 'screen';
+    for (const [p, q] of BANKS){
+      let [x, y] = toScreen(p, q); x = clamp(x, -Wu * .08, Wu * 1.08); y = clamp(y, -Hu * .12, Hu * 1.12);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+      g.addColorStop(0, `rgba(214,228,255,${(.3 * thick).toFixed(3)})`); g.addColorStop(.2, `rgba(176,198,255,${(.13 * thick).toFixed(3)})`);
+      g.addColorStop(.55, `rgba(120,146,220,${(.04 * thick).toFixed(3)})`); g.addColorStop(1, 'rgba(100,120,200,0)');
+      ctx.fillStyle = g; ctx.fillRect(Math.max(0, x - R), Math.max(0, y - R), R * 2, R * 2);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* Fog: banks of it rolling across the field in layers (dithered noise, drifting with the wind and lying on the turf
+     as the camera moves), over a thin wash, thickening into the distance at the edges of the screen. */
+  let fogPat = null, fogV = null;
+  function fogBanks(night, dt, wind){
+    const key = night ? 'n' : 'd', col = night ? [92, 106, 136] : [214, 218, 224];
+    if (!fogPat || fogPat.key !== key) fogPat = { key, far: ctx.createPattern(noiseTex(128, 2, col, .42, .74, 110, 7), 'repeat'), near: ctx.createPattern(noiseTex(256, 2, col, .46, .8, 140, 11), 'repeat') };
+    if (!fogV || fogV.key !== key) fogV = { key, c: edgeTex(col, .42, .9, 1.4, 180, 10) };
+    const [ox, oy] = toScreen(0, 0), dr = t * (5 + Math.abs(wind) * .8) * (Math.sign(wind) || 1);
+    ctx.fillStyle = A.css(col, .12); ctx.fillRect(0, 0, Wu, Hu);
+    for (const [pat, par, sc, spd] of [[fogPat.far, .7, 1, .6], [fogPat.near, 1, 2, 1.3]]){
+      const u = dr * spd + t * 2 * spd, mx = ox * par + (portrait ? u : t * 1.5), my = oy * par + (portrait ? t * 1.5 : u);
+      pat.setTransform(new DOMMatrix([sc, 0, 0, sc, mx, my])); ctx.fillStyle = pat; ctx.fillRect(0, 0, Wu, Hu);
+    }
+    ctx.drawImage(fogV.c, 0, 0);
+  }
+  /* Dust drifting in the sunlit air; at night, specks glinting in the lights. */
+  function dust(dt, night){
     for (const m of motes){
       m.x = (m.x + m.vx * dt + Wu) % Wu; m.y = (m.y + m.vy * dt + Hu) % Hu;
-      const w = toWorld(m.x, m.y); if (A.inShadow(w.x, w.y)) continue;
-      const a = (Math.sin(t * 1.7 + m.ph) + 1) / 2; if (a < .45) continue;
-      ctx.fillStyle = `rgba(255,236,190,${(.2 + a * .3).toFixed(2)})`; ctx.fillRect(Math.round(m.x), Math.round(m.y), 1, 1);
+      if (!night){ const w = toWorld(m.x, m.y); if (A.inShadow(w.x, w.y)) continue; }
+      const a = (Math.sin(t * (night ? 3.1 : 1.7) + m.ph) + 1) / 2; if (a < .45) continue;
+      ctx.fillStyle = night ? `rgba(220,232,255,${(.25 + a * .45).toFixed(2)})` : `rgba(255,236,190,${(.2 + a * .3).toFixed(2)})`; ctx.fillRect(Math.round(m.x), Math.round(m.y), 1, 1);
     }
   }
   /* A dithered vignette in a few quantized steps (UI pixels; built once per size). */
@@ -813,6 +1230,7 @@ export function createRenderer(canvas){
     t += dt;
     if (G.play && !G.play.live && !G.play.result && !G.kick) routesOn = !!view.routes;
     prepare(G);
+    lit = flash > .55 ? BOLT : LIGHT[G.cond?.time] || LIGHT.afternoon; curG = G;
     fsuTrack(G, dt);
     impacts(G, dt);
     updateZoom(G, dt, view.aim);
@@ -836,11 +1254,19 @@ export function createRenderer(canvas){
       ball(G);
     }
     if (spearOn()) spear();
+    const KB = G.kick?.ball, behind = KB && KB.x >= 110.4;
+    if (G.kick && behind && !KB.gone) drawBall(KB.x, KB.y, KB.z);
     goalposts();
+    if (KB && !behind) drawBall(KB.x, KB.y, KB.z);
+    grade(G);
     // Onto the screen, then the overlays in UI pixels.
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
     if (sh){ ctx.fillStyle = '#24222a'; ctx.fillRect(0, 0, cw, ch); }
     ctx.drawImage(buf, 0, 0, Wb, Hb, ox * k, oy * k, Wb * bs, Hb * bs);
+    const glow = lit.bloom || SKY[G.cond?.sky]?.bloom; if (glow) bloom(glow, ox, oy);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    if (!G.cond || G.cond.sky === 'clear') dust(dt, G.cond?.time === 'night');
+    sky(G, dt);
     ctx.setTransform(k, 0, 0, k, ox * k, oy * k);
     if (G.kick) kickOverlay(G);
     else if (P){
@@ -856,7 +1282,6 @@ export function createRenderer(canvas){
       effects(P, dt);
     }
     ctx.setTransform(k, 0, 0, k, 0, 0);
-    dust(dt);
     vignette();
     if (fsu.conf.length || fsu.flash > 0) confetti(dt);
     ctx.setTransform(k, 0, 0, k, 0, 0);
@@ -867,6 +1292,7 @@ export function createRenderer(canvas){
   return {
     resize, draw, toWorld, toScreen, dragToWorld, snapCamera,
     shake(a){ cam.shake = Math.max(cam.shake, a); },
+    bolt(){ flash = 1; },   // lightning now (a storm rolls its own)
     get portrait(){ return portrait; }, get W(){ return Wu; }, get H(){ return Hu; }, S: OLD,
     /* How far above his feet the middle of a player is, in UI pixels (for taps on receivers). */
     get figure(){ return Math.round(16 * f2u()); },

@@ -4,6 +4,8 @@
    Coordinates are in yards. x runs along the field from your goal line (0) to theirs (100), with end zones at
    -10..0 and 100..110; y runs across it, 0..53.33. You always drive toward x = 100. */
 
+import { effects as weatherFx, gust } from './weather.js';
+
 export const FW = 53.33, MID = FW / 2, HASH = [20, 33.33], GOAL_HALF = 3.08, BAR = 3.33;
 
 export const DIFFS = {
@@ -37,6 +39,8 @@ const emit = (G, type, data = {}) => G.events.push({ type, ...data });
 export const MD = { spd: 1, rec: 1, runBlock: 1, passPro: 1, latePro: 1, acc: 1, catchR: 0, paBite: 0, tempo: 1, cov: null, blitz: 1, fade: 1, cb: 1,
   drive: { q: 0, td: 1, fg: 1, to: 1, time: 1 } };
 const mods = G => G.mods || MD;
+/* The weather's effects (weather.js): G.cond, when the game has conditions. */
+const wx = G => weatherFx(G.cond);
 /* Team strength from ESPN's FPI efficiencies (0-100, ~50 average), as a small multiplier around 1. */
 const rate = v => (Number.isFinite(v) ? v : 50) - 50;
 
@@ -158,7 +162,7 @@ function assignCoverage(cov, { lb, cb1, cb2, fs, ss }, o, L){
 export function setupPlay(G){
   const L = G.los, b = clamp(G.y, HASH[0], HASH[1]), D = G.diff;
   const M = mods(G), fade = G.quarter >= 3 ? M.fade : (1 + M.fade) / 2;
-  const oMul = (1 + rate(G.me.off) / 900) * M.spd * fade, dMul = D.defSpd * (1 + rate(G.opp.def) / 900);
+  const oMul = (1 + rate(G.me.off) / 900) * M.spd * fade * wx(G).spd, dMul = D.defSpd * (1 + rate(G.opp.def) / 900) * wx(G).spd;
   const off = [], def = [];
   [-3.2, -1.6, 0, 1.6, 3.2].forEach((dy, i) => off.push(mk('OL', 'off', L - .7, b + dy, SPEED.OL, { n: i })));
   // Formations. Shotgun (the default): the back offset beside the quarterback, toward the wide side, easy to tap
@@ -563,7 +567,7 @@ function runCarrier(G, dt, inp){
     p = clamp(p, .35, .97);
     if (Math.random() < p){
       const big = closing > 6.5;
-      if (Math.random() < .0025 + (big ? .01 : 0) + (front < -.35 ? .003 : 0)) return end(G, { type: 'fumble', x: c.x, y: c.y, by: d });
+      if (Math.random() < (.0025 + (big ? .01 : 0) + (front < -.35 ? .003 : 0)) * wx(G).fumble) return end(G, { type: 'fumble', x: c.x, y: c.y, by: d });
       if (big){ pop(P, c.x, c.y, 'BIG HIT!', '#ff5a4e'); emit(G, 'shake', { a: 4 }); emit(G, 'hitstop', { s: .1 }); }
       // Forward progress: a runner hit from the side or behind falls forward; one stood up head on doesn't.
       const fall = front > .35 ? Math.max(0, cs * .07 - closing * .05) : rnd(.5, 1.5);
@@ -756,7 +760,7 @@ export function throwSpread(G, tx, ty){
   s *= ({ rookie: .55, pro: .75, allpro: 1, legend: 1.1 })[G.diffKey] ?? 1;
   s *= 1 - rate(G.me.off) / 300;
   if (G.practice) s *= .5;
-  return s * mods(G).acc;
+  return s * mods(G).acc * wx(G).acc * (d > TOUCH_AT ? wx(G).deep : 1);
 }
 const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
 /* Your slingshot throw: lands near where you aimed, by the spread above. */
@@ -884,7 +888,7 @@ function resolvePass(G){
   }
   // Deep balls are harder: a defender can contest from further away, and the catch itself is tougher.
   const air = Math.max(0, land.x - P.los), CR = 1.7 + Math.min(1.2, air / 25);
-  if (rd <= (D.catchR || 1.6) + mods(G).catchR){
+  if (rd <= (D.catchR || 1.6) + mods(G).catchR + wx(G).catchR){
     let contest = dd < CR ? (CR - dd) / CR : 0;
     // Leverage, judged along the receiver's run: a defender trailing behind him is shielded out of the play; one on
     // top of him (over a go route, in front of a crosser) is in position to make it.
@@ -1054,23 +1058,57 @@ export function punt(G){
   return { net, oppX: land >= 100 ? 80 : land, touchback: land >= 100 };
 }
 
-/* Field goals and extra points: tap to lock the aim (it sweeps side to side), tap to lock the power, then the
-   kick flies under real-ish physics with a crosswind. */
+/* Field goals and extra points: tap to lock the aim (it sweeps side to side), tap to lock the power, then the kick
+   flies under real-ish physics with the game's crosswind. The power meter is built for each kick: below `need` it
+   falls short; the green band just past it (K.lo..K.hi) flies true; past that the kicker over-swings and hooks it,
+   always the same way (his kicking foot), harder the closer to the top. A chip shot gets a wide band, a 55-yarder a
+   sliver. Past the posts the ball drops into the net (or, wide of it, into the stands): it never sails on. */
+const KICK_EL = .62, KICK_G = 10.7, WALL_X = 113.3;
+export const NET_X = 111.6, NET_HALF = 4.4;   // the net behind the uprights (drawhd.js draws it here)
+const kickRange = (G, p) => (20 + p * 52) * wx(G).kick;
+/* The power that just clears the bar (with a little to spare) `D` yards away. */
+function kickNeed(G, D){
+  const k = (BAR + .5) / (D * Math.tan(KICK_EL));
+  return k >= 1 ? 2 : (D / (1 - k) / wx(G).kick - 20) / 52;
+}
+const kickV = (G, p, a) => { const vh = Math.sqrt(kickRange(G, p) * KICK_G / (2 * Math.tan(KICK_EL))); return { vx: vh * Math.cos(a), vy: vh * Math.sin(a), vz: vh * Math.tan(KICK_EL) }; };
 export function startKick(G, kind){
   const spotX = kind === 'pat' ? 90 : G.los - 7, spotY = clamp(G.y, HASH[0], HASH[1]);
-  G.kick = { kind, spotX, spotY, stage: 'aim', t: 0, aim: 0, power: 0, wind: Math.round(rnd(-12, 12)),
-    center: Math.atan2(MID - spotY, 110 - spotX), ball: null, good: null, dist: Math.round(110 - spotX) };
+  const center = Math.atan2(MID - spotY, 110 - spotX), need = clamp(kickNeed(G, (110 - spotX) / Math.cos(center)), 0, 1.5);
+  const lo = Math.min(.97, need + .03), hi = Math.min(1, Math.max(lo + .025, lo + .14 + (1 - need) * .22));
+  G.kickFoot ??= Math.random() < .8 ? -1 : 1;   // most kickers are right-footed: an over-swing pulls it left
+  G.kick = { kind, spotX, spotY, stage: 'aim', t: 0, aim: 0, power: 0, wind: gust(G.cond), center, need, lo, hi,
+    ball: null, good: null, dist: Math.round(110 - spotX) };
 }
+/* How far past the green band a power is, 0..1 (1: the top of the meter). */
+const overSwing = (K, p) => p <= K.hi ? 0 : (p - K.hi) / Math.max(.03, 1 - K.hi);
 export function kickTap(G){
   const K = G.kick; if (!K) return;
   if (K.stage === 'aim'){ K.stage = 'power'; K.t = 0; emit(G, 'sfx', { name: 'blip' }); }
   else if (K.stage === 'power'){
     K.stage = 'flight'; K.t = 0;
-    // Overpowering it risks a hook.
-    const R = 20 + K.power * 52, el = .62, g = 10.7, vh = Math.sqrt(R * g / (2 * Math.tan(el))), a = K.aim + (K.power > .92 ? rnd(-.05, .05) : 0);
-    K.ball = { x: K.spotX, y: K.spotY, z: 0, vx: vh * Math.cos(a), vy: vh * Math.sin(a), vz: vh * Math.tan(el), crossed: false };
+    const e = overSwing(K, K.power);
+    K.hook = e;
+    const a = K.aim + G.kickFoot * .15 * e ** 1.4 + rnd(-.006, .006) * (1 + G.diff.keyErr);
+    K.ball = { x: K.spotX, y: K.spotY, z: 0, ...kickV(G, K.power, a), crossed: false };
     emit(G, 'sfx', { name: 'kick' });
   }
+}
+/* One step of a kick in the air, shared by the real kick and the aim preview. Returns 'cross' on reaching the plane
+   of the uprights. */
+function flyKick(b, wind, dt){
+  b.vy += wind * .045 * dt; b.vz -= KICK_G * dt;
+  const px = b.x; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+  return !b.crossed && px < 110 && b.x >= 110 ? 'cross' : null;
+}
+/* Where a kick with this aim (and the middle of the green band) would cross the goal line: what the aim line draws on
+   the easier levels, the wind's curve included. */
+export function kickPreview(G){
+  const K = G.kick; if (!K) return null;
+  const b = { x: K.spotX, y: K.spotY, z: 0, ...kickV(G, (K.lo + K.hi) / 2, K.aim), crossed: false }, pts = [[b.x, b.y, 0]];
+  for (let i = 0; i < 600; i++){ if (flyKick(b, K.wind, 1 / 60)) break; if (i % 4 === 3) pts.push([b.x, b.y, b.z]); if (b.z < 0) break; }
+  pts.push([b.x, b.y, Math.max(0, b.z)]);
+  return { pts, good: b.x >= 110 && Math.abs(b.y - MID) <= GOAL_HALF && b.z >= BAR };
 }
 export function stepKick(G, dt){
   const K = G.kick; if (!K) return;
@@ -1080,14 +1118,27 @@ export function stepKick(G, dt){
   else if (K.stage === 'power') K.power = (1 - Math.cos(K.t * Math.PI * 2 / (sweep * .85))) / 2;
   else if (K.stage === 'flight'){
     const b = K.ball;
-    b.vy += K.wind * .045 * dt; b.vz -= 10.7 * dt;
-    const px = b.x; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
-    if (!b.crossed && px < 110 && b.x >= 110){
+    if (flyKick(b, b.dead ? 0 : K.wind, dt) === 'cross'){
       b.crossed = true;
-      K.good = Math.abs(b.y - MID) <= GOAL_HALF && b.z >= BAR;
-      K.why = K.good ? null : b.z < BAR ? 'Short' : b.y < MID ? 'Wide left' : 'Wide right';
+      const dy = Math.abs(b.y - MID), side = b.y < MID ? 'left' : 'right';
+      // Doink: off an upright (above the bar) or the crossbar (between them), and in or out.
+      if (Math.abs(dy - GOAL_HALF) < .32 && b.z >= BAR - .2 && b.z < BAR + 9){
+        K.doink = 'upright'; K.good = Math.random() < .45;
+        b.vx = K.good ? b.vx * .35 : -Math.abs(b.vx) * .3; b.vy = (b.y < MID ? 1 : -1) * (K.good ? 2.5 : -2.5); b.vz = Math.min(b.vz, 2) * .5;
+      } else if (dy < GOAL_HALF && Math.abs(b.z - BAR) < .38){
+        K.doink = 'crossbar'; K.good = Math.random() < .5;
+        b.vx = K.good ? b.vx * .3 : -Math.abs(b.vx) * .25; b.vz = Math.abs(b.vz) * .3 + 1.5;
+      } else K.good = dy <= GOAL_HALF && b.z >= BAR;
+      K.why = K.doink ? (K.good ? `In off the ${K.doink}!` : `Off the ${K.doink}`) : K.good ? null : b.z < BAR ? 'Short' : `Wide ${side}`;
+      if (K.doink){ b.dead = true; emit(G, 'sfx', { name: 'kick' }); emit(G, 'shake', { a: 2 }); }
       emit(G, 'sfx', { name: K.good ? 'good' : 'miss' });
     }
+    // Behind the posts: caught by the net, or into the stands wide of it.
+    if (b.crossed && !b.netted && b.x >= NET_X && b.vx > 0){
+      if (Math.abs(b.y - MID) < NET_HALF){ b.netted = true; b.x = NET_X; b.vx = 0; b.vy *= .15; b.vz = Math.min(b.vz, 0) * .3; }
+      else if (b.x >= WALL_X){ b.z = 0; b.gone = true; }
+    }
+    if (b.netted){ b.vy *= Math.exp(-6 * dt); b.vz -= KICK_G * 1.5 * dt; }   // the net sags it down quickly
     if (b.z <= 0 && K.t > .2){
       b.z = 0;
       if (K.good == null){ K.good = false; K.why = 'Short'; emit(G, 'sfx', { name: 'miss' }); }
@@ -1107,10 +1158,11 @@ export function simDrive(G, ytg, { needed = null, behind = false, dm = null } = 
   const D = G.diff, q = clamp(D.opp + (rate(G.opp.off) - rate(G.me.def)) / 300 + W.q + C.q, .1, .8);
   let pTD = clamp((q * .82 + (70 - ytg) * .006) * W.td * C.td, .04, .9);
   let pFG = clamp((.17 + (ytg < 50 ? .08 : 0)) * W.fg * C.fg, 0, 1 - pTD);
-  const pTO = .11 * (1.25 - q) * W.to * C.to, pMiss = .04;
+  const pTO = .11 * (1.25 - q) * W.to * C.to * wx(G).to, pMiss = .04;
   // Overtime: if a field goal won't do, they go for it.
   if (needed === 'td'){ pTD = clamp(pTD + pFG * .4, 0, .9); pFG = 0; }
   if (behind){ pTD *= .7; pFG *= .85; }
+  pTD *= wx(G).td;
   const u = Math.random();
   let kind, endAt, points = 0, myX;
   if (u < pTD){ kind = 'td'; endAt = 0; points = 7; myX = rnd() < .85 ? 25 : Math.round(rnd(18, 40)); }

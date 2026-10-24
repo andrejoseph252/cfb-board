@@ -18,10 +18,11 @@ import * as hdUI from './hdui.js';
 import { initAudio, setSound, soundOn, sfx, resume, crowd, bindTeams, silence } from './sfx.js';
 import * as SV from './seasonview.js';
 import * as SC from './scout.js';
+import * as W from './weather.js';
 
 const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
-const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, ...store.get('pixelbowl', {}) };
+const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, time: 'random', sky: 'random', ...store.get('pixelbowl', {}) };
 delete saved.record; delete saved.hd; saved.results ||= {};   // (hd: the old HD switch; HD is the only look now)
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
@@ -37,6 +38,19 @@ const findPlay = id => saved.plays.find(p => p.id === id);
 const freshSettings = () => { if (!S.DIFFS[saved.diff]) saved.diff = 'rookie'; saved.len = 'quick'; saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; };
 freshSettings();
 const save = () => store.set('pixelbowl', saved);
+/* The next game's conditions (weather.js), from the setup screen's Kickoff and Weather choices: rolled once and kept
+   while you change other options (so the picture behind the menu doesn't flicker), a part rolled again only when its
+   choice changes. Each game uses them up, so the next one gets a new roll. */
+let cond = null;
+function conditions(){
+  if (cond && cond.picked.time === saved.time && cond.picked.sky === saved.sky) return cond;
+  const next = W.roll(saved.time, saved.sky);
+  if (cond && cond.picked.time === saved.time) next.time = cond.time;
+  if (cond && cond.picked.sky === saved.sky)
+    Object.assign(next, { sky: cond.sky, wind: cond.wind, temp: cond.temp - W.TEMP_BY_TIME[cond.time] + W.TEMP_BY_TIME[next.time] });
+  return cond = next;
+}
+const newGame = (...a) => Object.assign(S.newGame(...a), { cond: conditions() });
 const coarse = () => matchMedia('(pointer: coarse)').matches;
 const ord = n => ['1ST', '2ND', '3RD', '4TH'][n - 1] || `${n}TH`;
 const mmss = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -124,7 +138,7 @@ const seasonCtx = {
     const t = x => withImage(typeof x === 'string' ? teamInfo(x) : { ...x });
     const m = t(me); let o = opp ? t(opp) : null;
     if (!o){ const d = defaults(null).opp; o = withImage(teamInfo(d === m.id ? '61' : d)); }
-    G = S.newGame(m, o, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); phase = 'setup'; paused = false; showHud(false);
+    G = newGame(m, o, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); phase = 'setup'; paused = false; showHud(false);
   },
   play(cfg){ closeModal(); startGame(cfg); },
   final(html, won){ phase = 'final'; showHud(true); sfx(won ? 'td' : 'boo'); if (won) G.cheer = 6; modal(html); },
@@ -134,7 +148,7 @@ const seasonCtx = {
     pick = { me: String(me), opp: String(opp) };
     saved.practice = { ...PRACTICE_DEFAULTS, routes: {}, session: 'quick', side: area === 'def' ? 'defense' : 'offense', ddrill: 'cover' };
     if (area === 'def') startDefDrill();
-    else { G = S.newGame(withImage(teamInfo(me)), withImage(teamInfo(opp)), saved.diff, saved.len); startPractice(); }
+    else { G = newGame(withImage(teamInfo(me)), withImage(teamInfo(opp)), saved.diff, saved.len); startPractice(); }
     G.seasonDrill = { area };
   }
 };
@@ -158,7 +172,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
   root = document.createElement('div');
   root.className = 'pb hd'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
   root.innerHTML = `<canvas class="pb-cv"></canvas>
-    <div class="pb-hud" hidden><div class="pb-bug"></div><div class="pb-dd"></div><div class="pb-pbp" aria-live="polite"></div></div>
+    <div class="pb-hud" hidden><div class="pb-bugw"><div class="pb-bug"></div><div class="pb-wxhud"></div></div><div class="pb-dd"></div><div class="pb-pbp" aria-live="polite"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
     <button class="pb-jump" type="button" hidden aria-label="Jump the route">JUMP</button>
     <button class="pb-rp" type="button" hidden aria-label="Watch the replay">▶ REPLAY</button><div class="pb-rlabel" aria-hidden="true">REPLAY</div>
@@ -214,7 +228,7 @@ export const isOpen = () => !!root;
 
 /* Local testing only: lets a script advance the game without animation frames (which background tabs don't get). */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__pb = {
-  get G(){ return G; }, get R(){ return R; }, get phase(){ return phase; }, get paused(){ return paused; }, input,
+  get G(){ return G; }, get R(){ return R; }, get phase(){ return phase; }, get paused(){ return paused; }, input, kick: kind => startKick(kind),
   tick(sec){ for (let i = 0; i < sec * 60; i++){ if (!paused && G){ update(STEP); drain(); } } hud(); }
 };
 
@@ -280,23 +294,28 @@ function drain(){
 }
 
 /* ---------- setup screen ---------- */
-function setup(){
-  phase = 'setup'; paused = false; behind = null;
+/* The menu sits over a live picture of the matchup, in the chosen conditions. */
+function menuGame(){
   const me = withImage(teamInfo(pick.me)), opp = withImage(teamInfo(pick.opp));
-  // The menu sits over a live picture of the matchup.
-  G = S.newGame(me, opp, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G);
+  G = newGame(me, opp, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G);
+  return { me, opp };
+}
+function setup(){
+  phase = 'setup'; paused = false; behind = null; wxOpen = false;
+  const { me, opp } = menuGame();
   showHud(false);
   const hp = hdUI.cards.pair(me, opp);   // the two cards' colors kept apart
   const rec = saved.results[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" data-tid="${esc(t.id)}" style="${hp ? hp[t === me ? 0 : 1] : `--c:${esc(t.color)};--k:${inkOn(t.color)}`}">
       ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.name)}</b><small>${who}</small>
       <span class="pb-rt">${Number.isFinite(t.off) ? `OFF ${Math.round(t.off)} · DEF ${Math.round(t.def)}` : 'Tap to change'}</span></button>`;
-  const seg = (key, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="set" data-k="${key}" data-v="${v}" aria-pressed="${saved[key] === v}">${l}</button>`).join('')}</div>`;
+  const seg = (key, items, cls = '') => `<div class="pb-seg${cls}">${items.map(([v, l]) => `<button type="button" data-pb="set" data-k="${key}" data-v="${v}" aria-pressed="${saved[key] === v}">${l}</button>`).join('')}</div>`;
   modal(`<div class="pb-setup">
     <button class="pb-x" type="button" data-pb="exit" aria-label="Close">${ICON.x}</button>
     <h1 class="pb-logo"><span>COACH ANDRE'S</span><span>BOWL</span></h1>
     <div class="pb-match">${card(me, 'YOU', 'pickme')}<button class="pb-vs" type="button" data-pb="swap" aria-label="Swap teams">VS<i>⇄</i></button>${card(opp, 'CPU', 'pickopp')}</div>
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
+    ${wxRow()}
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label>
 </div>
@@ -307,6 +326,44 @@ function setup(){
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
   </div>`, false, 'setup');   // 'setup': redrawn in place (teams arriving, an option changed) without sliding in again
+}
+
+/* ---------- game conditions: the menu's one Conditions row, and the sheet behind it ---------- */
+let wxOpen = false, wxSeen = '';
+const wxRandom = () => saved.time === 'random' || saved.sky === 'random';
+// The time and weather marks together: the time's icon, the weather's riding on its corner (clear: the time alone).
+const wxPair = c => `<span class="pb-wxic${c.sky === 'clear' ? ' solo' : ''}">${W.icon(c.time)}${c.sky === 'clear' ? '' : W.icon(c.sky, 'sm')}</span>`;
+const wxWind = c => c.wind ? `<i class="pb-wxar" style="--r:${W.windTurn(c, R.portrait)}deg">${W.ARROW}</i>${Math.abs(c.wind)} mph` : 'Calm';
+// 'pb-new' plays the flip-in once, when the conditions just changed (a reroll, a new pick), not on every redraw.
+function wxFresh(){ const k = W.describe(G.cond), n = k !== wxSeen; wxSeen = k; return n ? ' pb-new' : ''; }
+function wxRow(){
+  const c = G.cond, name = `${W.TIMES[c.time].name} · ${W.SKIES[c.sky].name}`;
+  return `<div class="pb-wxrow${wxFresh()}">
+    <button type="button" class="pb-wxopen" data-pb="wx" aria-label="Game conditions: ${W.describe(c)}. Change">${wxPair(c)}
+      <span class="pb-wxtx"><b>${name}</b><small><span>${c.temp}°</span><span>${wxWind(c)}</span>${wxRandom() ? '<em>Random</em>' : ''}</small></span>
+      <i class="pb-wxchev">${ICON.chev}</i></button>
+    <button type="button" class="pb-dice" data-pb="reroll" aria-label="Reroll the conditions">${W.icon('dice')}</button></div>`;
+}
+/* The Kickoff and Weather choices: an icon over each name, Random first. */
+const wxItems = list => [['random', `${W.icon('dice')}Random`], ...Object.entries(list).map(([k, d]) => [k, `${W.icon(k)}${d.name}`])];
+function wxSheet(){
+  wxOpen = true; phase = 'setup';
+  menuGame();   // the field behind shows each pick at once
+  const c = G.cond, seg = (key, items) => `<div class="pb-seg pb-wx">${items.map(([v, l]) => `<button type="button" data-pb="set" data-k="${key}" data-v="${v}" aria-pressed="${saved[key] === v}">${l}</button>`).join('')}</div>`;
+  modal(`<div class="pb-card pb-wxsheet">
+    <button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button>
+    <h2>CONDITIONS</h2>
+    <div class="pb-wxcast t-${c.time} s-${c.sky}${wxFresh()}">
+      <span class="pb-wxbig">${W.mark(c)}</span>
+      <b class="pb-wxtemp">${c.temp}°</b>
+      <span class="pb-wxwho"><b>${W.SKIES[c.sky].name}</b><small>${W.TIME_LABEL[c.time]}</small></span>
+      <span class="pb-wxwind">${c.wind ? `<i class="pb-wxar" style="--r:${W.windTurn(c, R.portrait)}deg">${W.ARROW}</i><b>${Math.abs(c.wind)}</b><small>MPH</small>` : '<b>0</b><small>CALM</small>'}</span>
+    </div>
+    <p class="pb-wxfx">${W.playNote(c)}</p>
+    <div class="pb-opt pb-wxk"><span>Kickoff</span>${seg('time', wxItems(W.TIMES))}</div>
+    <div class="pb-opt pb-wxw"><span>Weather</span>${seg('sky', wxItems(W.SKIES))}</div>
+    <div class="pb-btns"><button class="pb-go alt pb-reroll" type="button" data-pb="reroll">${W.icon('dice')}REROLL</button><button class="pb-go" type="button" data-pb="back">DONE</button></div>
+  </div>`, false, 'wx');
 }
 
 function teamPicker(which){
@@ -323,12 +380,14 @@ function teamPicker(which){
 function startGame(cfg = null){
   if (!cfg){ saved.lastMe = pick.me; saved.lastOpp = pick.opp; save(); }
   initAudio(saved.sound);
+  if (cfg) cond = null;   // every season game gets its own conditions
   if (cfg){
     // A season game: your game plan, practice and freshness ride along (mods), and maybe coach mode.
-    G = S.newGame(withImage({ ...cfg.me }), withImage({ ...cfg.opp }), cfg.diff, cfg.len);
+    G = newGame(withImage({ ...cfg.me }), withImage({ ...cfg.opp }), cfg.diff, cfg.len);
     Object.assign(G, { season: { gid: cfg.gid }, seasonCfg: cfg, mods: cfg.mods, coach: !!cfg.coach, scout: cfg.scout, recommended: cfg.recommended, coachSnaps: 0, playSnaps: 0 });
     if (cfg.me.names) G.me.names = cfg.me.names;
-  } else G = S.newGame(G.me, G.opp, saved.diff, saved.len);
+  } else G = newGame(G.me, G.opp, saved.diff, saved.len);
+  cond = null;   // used up: the next game rolls its own
   attachNames(G.me, G.opp);
   snaps = 0;
   showHud(true);
@@ -340,6 +399,7 @@ function startGame(cfg = null){
   modal(`<div class="pb-card pb-tosscard" style="--d:${meWins ? 1.6 : 1.76}s;--n:${meWins ? 5 : 5.5}"><h2>COIN TOSS</h2>
     <div class="pb-cstage"><div class="pb-cshad"></div><div class="pb-ccoin"><div class="pb-cspin">${pixelCoin('heads', 'h')}${pixelCoin('tails', 't')}</div><i class="pb-cshine"></i></div><i class="pb-cspark"></i></div>
     <div class="pb-ccalls">${call(G.me, 'HEADS', meWins)}${call(G.opp, 'TAILS', !meWins)}</div>
+    <div class="pb-wxchip">${wxPair(G.cond)}<b>${W.TIMES[G.cond.time].name} · ${W.SKIES[G.cond.sky].name}</b><span>${G.cond.temp}°</span><span>${wxWind(G.cond)}</span></div>
     <p class="pb-toss pb-wait">${meWins ? `${esc(G.me.name)} won the toss and will receive.` : `${esc(G.opp.name)} won the toss and will receive.`}</p>
     <button class="pb-go pb-wait" type="button" data-pb="toss">${meWins ? 'RECEIVE' : 'KICK OFF'}</button></div>`);
   sfx('kick');
@@ -606,13 +666,13 @@ function afterKick(){
   phase = 'wait';
   const K = G.kick; G.kick = null;
   if (K.kind === 'pat'){
-    if (K.good){ G.score[0] += 1; banner('GOOD!', '', '#4cff7a', 900); } else banner('NO GOOD', K.why, '#ff5a4e', 1200);
+    if (K.good){ G.score[0] += 1; banner('GOOD!', K.why || '', '#4cff7a', 900); } else banner('NO GOOD', K.why, '#ff5a4e', 1200);
     driveLog(K.good ? 'Extra point is good' : 'Extra point is no good');
     return afterMyScore();
   }
   G.stats.fga++;
   driveLog(`${K.dist}-yard field goal ${K.good ? 'is good' : 'is no good'}`); endDrive(K.good ? 'FIELD GOAL' : 'MISSED FIELD GOAL');
-  if (K.good){ G.stats.fgm++; G.score[0] += 3; banner('IT\'S GOOD!', `${K.dist}-yard field goal`, '#4cff7a', 1500); G.cheer = 2; return later(() => afterMyScore(), 900); }
+  if (K.good){ G.stats.fgm++; G.score[0] += 3; banner('IT\'S GOOD!', `${K.dist}-yard field goal${K.doink ? ` · in off the ${K.doink}` : ''}`, '#4cff7a', 1500); G.cheer = 2; return later(() => afterMyScore(), 900); }
   banner('NO GOOD', K.why, '#ff5a4e', 1400);
   later(() => endMyPossession(Math.min(K.spotX, 80)), 900);
 }
@@ -748,7 +808,7 @@ function startDefDrill(){
   initAudio(saved.sound);
   const you = withImage(teamInfo(pick.me)), them = withImage(teamInfo(pick.opp)), kind = saved.practice.ddrill;
   closeModal();
-  G = S.newGame(them, you, saved.diff, saved.len);   // their offense is "me" in the engine; you defend
+  G = newGame(them, you, saved.diff, saved.len);   // their offense is "me" in the engine; you defend
   Object.assign(G, { youDefend: true, defDrill: { kind } });
   G.ds = { kind, reps: 0, n: SESSIONS[saved.practice.session]?.n || 5, session: saved.practice.session, scoreSum: 0, best: 0, streak: 0, bestStreak: 0,
     ints: 0, pbus: 0, stops: 0, comp: 0, yds: 0, tds: 0, sacks: 0, pressures: 0, blocked: 0, offside: 0, getOff: 0, getOffs: 0, last: '' };
@@ -935,8 +995,8 @@ function startKeyDef(){
   closeModal();
   const main = G;
   keyCtx = { main, ...kp };
-  G = S.newGame(main.opp, main.me, main.diffKey, main.lenKey);
-  Object.assign(G, { youDefend: true, defDrill: { kind: kp.kind, full: kp.kind === 'cover' } });
+  G = newGame(main.opp, main.me, main.diffKey, main.lenKey);
+  Object.assign(G, { cond: main.cond, youDefend: true, defDrill: { kind: kp.kind, full: kp.kind === 'cover' } });
   if (main.mods) G.mods = { ...S.MD, cb: main.mods.cb };
   showHud(true); defRep(true, 100 - kp.r.path[kp.k], kp.toGo); G.down = kp.down; sfx('defense');
 }
@@ -991,7 +1051,7 @@ function challengesScreen(){
    takes over: your drive, their simulated drives, overtime if it's tied. */
 function startChallenge(c){
   closeModal(); initAudio(saved.sound);
-  G = S.newGame(chalTeam(c.me), chalTeam(c.opp), saved.diff, saved.len);
+  G = newGame(chalTeam(c.me), chalTeam(c.opp), saved.diff, saved.len);
   attachNames(G.me, G.opp);
   Object.assign(G, { quarter: c.quarter, clock: c.clock, score: [...c.score], challenge: c, firstHalfReceiver: 'opp' });
   snaps = 0; showHud(true);
@@ -1239,7 +1299,7 @@ const sideSwitch = () => `<div class="pb-seg pb-side"><button type="button" data
 function practiceSetup(keepScroll){
   const prevScroll = keepScroll ? $('.pb-setup')?.scrollTop : 0;
   phase = 'setup'; paused = false; behind = null;
-  if (!G || G.practice || G.youDefend){ G = S.newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); }
+  if (!G || G.practice || G.youDefend){ G = newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); }
   showHud(false);
   const P = saved.practice, roles = practiceRoles(), routes = practiceRoutes();
   if (P.side === 'defense'){
@@ -1282,7 +1342,7 @@ function startPractice(){
   initAudio(saved.sound);
   const me = G.me, opp = G.opp;
   closeModal();
-  G = S.newGame(me, opp, saved.diff, saved.len);
+  G = newGame(me, opp, saved.diff, saved.len);
   G.practice = { roles: practiceRoles(), mode: saved.practice.mode, routes: practiceRoutes(), target: saved.practice.target === 'on' };
   G.ps = { att: 0, comp: 0, yds: 0, td: 0, long: 0, runs: 0, runYds: 0, last: '', gradeSum: 0, graded: 0, streak: 0, bestStreak: 0, best: 0,
     timing: 0, accuracy: 0, release: 0, inStride: 0, targeted: 0, hits: 0, n: SESSIONS[saved.practice.session]?.n || 5, session: saved.practice.session, drill: drillName() };
@@ -1444,7 +1504,7 @@ function unpause(){ paused = false; closeModal('pause'); }
 
 /* ---------- HUD, banners, modals ---------- */
 let lastHud = '';
-function showHud(on){ $('.pb-hud').hidden = !on; $('.pb-tools').hidden = !on; root.classList.toggle('pb-tools-on', on); if (!on){ $('.pb-bar').innerHTML = ''; $('.pb-hint').textContent = ''; } lastHud = ''; }
+function showHud(on){ $('.pb-hud').hidden = !on; const wx = $('.pb-wxhud'); if (wx){ wx.innerHTML = ''; wx.dataset.hk = ''; } $('.pb-tools').hidden = !on; root.classList.toggle('pb-tools-on', on); if (!on){ $('.pb-bar').innerHTML = ''; $('.pb-hint').textContent = ''; } lastHud = ''; }
 function hud(){
   if (!root || !G || $('.pb-hud').hidden) return;
   if (G.practice) return practiceHud();
@@ -1494,6 +1554,10 @@ function hudHD(H, dd, poss, tell, btns, hint){
   if (dk !== ddEl.dataset.hk || (dk ? !ddEl.querySelector('.hb-dd') : ddEl.innerHTML)){ ddEl.innerHTML = dk; ddEl.dataset.hk = dk; }
   $('.pb-bar').innerHTML = btns;
   $('.pb-hint').textContent = hint;
+  // The conditions tab, hanging under the clock (hidden by CSS while a film tell makes the down & distance tab long).
+  const wk = G.cond ? `${W.describe(G.cond)}|${R.portrait}` : '';
+  const wx = $('.pb-wxhud');
+  if (wk !== wx.dataset.hk){ wx.innerHTML = wk ? H.wx(G.cond, R.portrait) : ''; wx.dataset.hk = wk; }
 }
 function hintText(){
   if (paused) return '';
@@ -1502,7 +1566,7 @@ function hintText(){
   if (phase === 'kick'){
     const st = G.kick?.stage;
     if (st === 'aim') return `${touch ? 'Tap' : 'Click or press Space'} to lock the aim · wind ${Math.abs(G.kick.wind)} mph ${G.kick.wind > 0 ? (R.portrait ? '→' : '↓') : G.kick.wind < 0 ? (R.portrait ? '←' : '↑') : ''}`;
-    if (st === 'power') return `${touch ? 'Tap' : 'Click or press Space'} to set the power · red risks a hook`;
+    if (st === 'power') return `${touch ? 'Tap' : 'Click or press Space'} in the green · short below it, a hook above it`;
     return '';
   }
   if (snaps > 8 && saved.diff !== 'rookie' && !G.coach) return '';
@@ -1610,7 +1674,11 @@ function onClick(e){
       if (id === pick[other]) pick[other] = pick[picking];
       pick[picking] = id; return setup();
     }
-    case 'set': saved[b.dataset.k] = b.dataset.v; save(); return setup();
+    case 'set':
+      if (b.dataset.v === 'random' && saved[b.dataset.k] === 'random') cond = null;   // Random again: a new roll
+      saved[b.dataset.k] = b.dataset.v; save(); return wxOpen ? wxSheet() : setup();
+    case 'wx': return wxSheet();
+    case 'reroll': cond = null; return wxOpen ? wxSheet() : setup();
     case 'toss': return afterToss();
     case 'pat': return startKick('pat');
     case 'two': return goForTwo();
@@ -1621,7 +1689,7 @@ function onClick(e){
     case 'drive': return driveDone();
     case 'ot': return myOT();
     case 'otnext': return otCheck();
-    case 'rematch': { const me = G.me, opp = G.opp; closeModal(); G = S.newGame(me, opp, saved.diff, saved.len); return startGame(); }
+    case 'rematch': { const me = G.me, opp = G.opp; closeModal(); G = newGame(me, opp, saved.diff, saved.len); return startGame(); }
     case 'menu': paused = false; behind = null; keyCtx = null; closeModal(); return setup();
     case 'snap': return doSnap();
     case 'dcall': return pickDriveCall(b.dataset.v);
@@ -1832,7 +1900,8 @@ const ICON = {
   pause: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zM9 3h3v10H9z" fill="currentColor"/></svg>',
   sound: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2zM11 5h1v6h-1zM13 3h1v10h-1z" fill="currentColor"/></svg>',
   mute: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2zM11 6l1-1 1 1 1-1 1 1-1 1 1 1-1 1-1-1-1 1-1-1 1-1z" fill="currentColor"/></svg>',
-  x: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4l1-1 4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4z" fill="currentColor"/></svg>'
+  x: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4l1-1 4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4z" fill="currentColor"/></svg>',
+  chev: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
 const CSS = `
 body.pb-open{overflow:hidden}
@@ -1841,6 +1910,7 @@ body.pb-open{overflow:hidden}
 .pb-cv{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;display:block}
 .pb-hud{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);display:grid;justify-items:center;gap:4px;pointer-events:none}
 .pb-hud[hidden],.pb-tools[hidden]{display:none}
+.pb-bugw{position:relative;display:grid}
 .pb-bug{display:flex;align-items:stretch;background:#101215;border:2px solid #000;box-shadow:0 0 0 2px #2c3138,0 4px 0 #000}
 .pb-tm{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--c);color:var(--k)}
 .pb-tm img{width:18px;height:18px;image-rendering:pixelated;background:#fff;border-radius:50%;padding:1px}

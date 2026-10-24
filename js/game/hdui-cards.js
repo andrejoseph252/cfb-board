@@ -103,6 +103,102 @@ export const CSS = `
 .pb.hd .pb-take small{font:500 12px/1.2 var(--hd-body);letter-spacing:0;color:rgba(255,255,255,.6)}
 .pb.hd .pb-menu2 .pb-go{font-size:19px}
 .pb.hd .pb-rec{font:500 12.5px var(--hd-body);color:rgba(255,255,255,.55)}
+/* ---------- game conditions: the weather icons (weather.js), the menu's Conditions row, its sheet, the coin toss chip ---------- */
+.pb.hd .wxi{display:block;flex:none;overflow:visible}
+.pb.hd .wxi .ws,.pb.hd .wxi .wk{fill:#ffc93c}
+.pb.hd .wxi .wr{fill:none;stroke:#ffc93c;stroke-width:2.4;stroke-linecap:round}
+.pb.hd .wxi .wm{fill:#ffd76a}
+.pb.hd .wxi .wc{fill:#eef2f7;stroke:rgba(10,12,16,.5);stroke-width:1.4}
+.pb.hd .wxi .wd{fill:none;stroke:#5cc8ff;stroke-width:2.6;stroke-linecap:round}
+.pb.hd .wxi .wf{fill:none;stroke:#a6e3ff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pb.hd .wxi .ww{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
+.pb.hd .wxi .wx{fill:none;stroke:currentColor;stroke-width:2.2}
+.pb.hd .wxi .wp{fill:currentColor}
+.pb.hd .wxa{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transform:rotate(var(--r,0deg))}
+.pb.hd .pb-wxar{display:inline-grid;flex:none;width:14px;height:14px;color:var(--hd-cyan)}
+/* Time and weather together: the time's mark, the weather's on its corner in a small disc. */
+.pb.hd .pb-wxic{position:relative;flex:none;width:40px;height:40px}
+.pb.hd .pb-wxic > .wxi{width:31px;height:31px}
+.pb.hd .pb-wxic.solo > .wxi{width:36px;height:36px;margin:2px}
+.pb.hd .pb-wxic > .wxi.sm{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;padding:2.5px;border-radius:50%;background:#2a2e35;box-shadow:0 0 0 2px rgba(22,24,29,.95)}
+/* The row: like a toggle row; the whole row opens the sheet, the dice rerolls in place. */
+.pb.hd .pb-wxrow{position:relative;border-radius:20px;background:var(--hd-chip2)}
+.pb.hd .pb-wxopen{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:0 92px 0 12px;border:0;border-radius:20px;background:none;color:var(--hd-ink);text-align:left}
+.pb.hd .pb-wxopen:active{background:rgba(255,255,255,.04)}
+.pb.hd .pb-wxtx{display:grid;gap:5px;min-width:0}
+.pb.hd .pb-wxtx b{display:block;font:600 15px/1.1 var(--hd-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-wxtx small{display:flex;align-items:center;gap:10px;font:600 12.5px/1 var(--hd-body);color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pb.hd .pb-wxtx small span{display:inline-flex;align-items:center;gap:4px}
+.pb.hd .pb-wxtx em{padding:3px 6px 2px;border-radius:6px;background:rgba(255,210,63,.15);color:var(--hd-yellow);font:800 9.5px/1 var(--hd-body);font-style:normal;letter-spacing:.1em;text-transform:uppercase}
+.pb.hd .pb-wxchev{position:absolute;right:12px;top:50%;width:16px;height:16px;margin-top:-8px;color:rgba(255,255,255,.38);pointer-events:none}
+.pb.hd .pb-wxchev svg{display:block;width:100%;height:100%}
+.pb.hd .pb-dice{position:absolute;right:36px;top:50%;width:42px;height:42px;margin-top:-21px;display:grid;place-items:center;padding:0;border:0;border-radius:50%;background:var(--hd-chip);color:#fff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transition:transform .12s}
+.pb.hd .pb-dice:active{transform:scale(.9)}
+.pb.hd .pb-dice .wxi{width:22px;height:22px}
+/* A new roll: the readout flips in, the dice tumbles. (Past the in-place redraw's no-animation rule on purpose.) */
+.pb.hd .pb-modal .pb-wxrow.pb-new :is(.pb-wxic,.pb-wxtx),.pb.hd .pb-modal .pb-wxcast.pb-new > *{animation:wxIn .42s cubic-bezier(.2,.9,.25,1.2) both}
+.pb.hd .pb-modal .pb-wxrow.pb-new .pb-wxtx,.pb.hd .pb-modal .pb-wxcast.pb-new > :nth-child(n+2){animation-delay:.05s}
+.pb.hd .pb-modal .pb-wxrow.pb-new .pb-dice .wxi,.pb.hd .pb-modal .pb-wxsheet:has(.pb-wxcast.pb-new) .pb-reroll .wxi{animation:wxRoll .5s cubic-bezier(.2,.8,.3,1) both}
+@keyframes wxIn{from{opacity:0;transform:perspective(200px) rotateX(-75deg) translateY(4px)}}
+@keyframes wxRoll{from{transform:rotate(-300deg) scale(.6)}}
+/* The sheet: a broadcast weather board, its line on play, the two pickers. */
+.pb.hd .pb-wxsheet{gap:12px;max-height:calc(100dvh - var(--pb-top,0px) - env(safe-area-inset-bottom,0px) - 8px);overflow:auto;overscroll-behavior:contain;scrollbar-width:none}
+/* Phones on their side: the board and its line on the left, the pickers on the right. */
+@media (max-height:520px) and (min-width:640px){
+  .pb.hd .pb-wxsheet{max-width:860px;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);grid-template-areas:"h h" "c k" "f w" "b b";column-gap:16px;row-gap:10px;padding:20px 18px 16px;align-items:start}
+  .pb.hd .pb-wxsheet h2{grid-area:h;font-size:28px}
+  .pb.hd .pb-wxsheet .pb-wxcast{grid-area:c;padding:12px 14px 12px 12px}
+  .pb.hd .pb-wxsheet .pb-wxfx{grid-area:f}
+  .pb.hd .pb-wxsheet .pb-wxk{grid-area:k}
+  .pb.hd .pb-wxsheet .pb-wxw{grid-area:w}
+  .pb.hd .pb-wxsheet .pb-btns{grid-area:b}
+  .pb.hd .pb-wxsheet .pb-go{min-height:48px}
+  .pb.hd .pb-wxsheet .pb-wx button{height:48px}
+}
+.pb.hd .pb-wxcast{position:relative;isolation:isolate;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:16px 16px 16px 14px;border-radius:24px;overflow:hidden;
+  color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.35)}
+.pb.hd .pb-wxcast::before{content:"";position:absolute;inset:0;z-index:-1}
+.pb.hd .pb-wxcast::after{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 3px 3px 0;background:var(--hd-yellow)}
+.pb.hd .pb-wxcast.t-noon{background:linear-gradient(135deg,#3a8ee0 0%,#1f5aa0 55%,#132c55 100%)}
+.pb.hd .pb-wxcast.t-afternoon{background:linear-gradient(135deg,#e88f3e 0%,#a44c5c 52%,#2d2552 100%)}
+.pb.hd .pb-wxcast.t-night{background:radial-gradient(1px 1px at 72% 22%,#fff 50%,transparent),radial-gradient(1px 1px at 86% 64%,rgba(255,255,255,.7) 50%,transparent),radial-gradient(1.5px 1.5px at 58% 80%,rgba(255,255,255,.6) 50%,transparent),
+  linear-gradient(135deg,#25356f 0%,#141d45 55%,#0a0f26 100%)}
+.pb.hd .pb-wxcast.s-rain::before{background:linear-gradient(180deg,rgba(30,38,50,.5),rgba(20,26,36,.62))}
+.pb.hd .pb-wxcast.s-snow::before{background:linear-gradient(180deg,rgba(190,210,230,.22),rgba(60,74,92,.38))}
+.pb.hd .pb-wxcast.s-fog::before{background:linear-gradient(180deg,rgba(150,160,172,.42),rgba(80,88,98,.5))}
+.pb.hd .pb-wxcast.s-wind::before{background:repeating-linear-gradient(170deg,transparent 0 18px,rgba(255,255,255,.05) 18px 20px)}
+.pb.hd .pb-wxbig .wxi{width:54px;height:54px;color:#fff;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+.pb.hd .pb-wxtemp{font:800 54px/.8 var(--hd-display);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.pb.hd .pb-wxwho{display:grid;gap:5px;min-width:0}
+.pb.hd .pb-wxwho b{font:800 23px/.9 var(--hd-display);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-wxwho small{font:600 12px/1.15 var(--hd-body);color:rgba(255,255,255,.75)}
+.pb.hd .pb-wxwind{display:grid;justify-items:center;gap:3px;padding-left:12px;border-left:1px solid rgba(255,255,255,.22)}
+.pb.hd .pb-wxwind .pb-wxar{width:18px;height:18px;color:#fff}
+.pb.hd .pb-wxwind b{font:800 24px/.9 var(--hd-display);font-variant-numeric:tabular-nums}
+.pb.hd .pb-wxwind small{font:700 9.5px/1 var(--hd-body);letter-spacing:.12em;color:rgba(255,255,255,.7)}
+.pb.hd .pb-wxfx{display:flex;align-items:baseline;gap:9px;margin:0;padding:10px 14px;border-radius:16px;background:rgba(255,210,63,.08);box-shadow:inset 0 0 0 1px rgba(255,210,63,.22);font:600 13.5px/1.3 var(--hd-body);color:#fff}
+.pb.hd .pb-wxfx::before{content:"IN PLAY";flex:none;font:800 10px/1 var(--hd-body);letter-spacing:.12em;color:var(--hd-yellow)}
+.pb.hd .pb-wx button{display:grid;place-items:center;align-content:center;gap:4px;height:54px;padding:0 2px;font-size:11.5px;border-radius:17px}
+.pb.hd .pb-wx .wxi{width:22px;height:22px}
+.pb.hd .pb-wx button[aria-pressed="true"] .wxi .wc{fill:#fff;stroke:#2a2f36;stroke-width:1.8}
+.pb.hd .pb-wx button[aria-pressed="true"] .wxi :is(.ws,.wk){fill:#f2a900}
+.pb.hd .pb-wx button[aria-pressed="true"] .wxi .wr{stroke:#f2a900}
+.pb.hd .pb-wx button[aria-pressed="true"] .wxi .wm{fill:#e9a800}
+.pb.hd .pb-wx button[aria-pressed="true"] .wxi .wd{stroke:#1a95dc}
+.pb.hd .pb-wx button[aria-pressed="true"] .wxi .wf{stroke:#1a95dc}
+.pb.hd .pb-reroll{display:flex;align-items:center;justify-content:center;gap:9px}
+.pb.hd .pb-reroll .wxi{width:22px;height:22px}
+/* The coin toss: one broadcast chip. */
+.pb.hd .pb-wxchip{justify-self:center;display:flex;align-items:center;gap:10px;max-width:100%;padding:5px 14px 5px 7px;border-radius:999px;background:rgba(0,0,0,.32);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);font:700 13.5px/1 var(--hd-body);color:rgba(255,255,255,.85);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pb.hd .pb-wxchip .pb-wxic{width:32px;height:32px}
+.pb.hd .pb-wxchip .pb-wxic > .wxi{width:25px;height:25px}
+.pb.hd .pb-wxchip .pb-wxic.solo > .wxi{width:28px;height:28px}
+.pb.hd .pb-wxchip .pb-wxic > .wxi.sm{width:17px;height:17px;padding:2px}
+.pb.hd .pb-wxchip b{font:800 16px/1 var(--hd-display);letter-spacing:.04em;text-transform:uppercase;color:#fff;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-wxchip span{display:inline-flex;align-items:center;gap:4px}
+.pb.hd .pb-wxchip span::before{content:"";width:1px;height:14px;margin-right:6px;background:rgba(255,255,255,.22)}
 .pb.hd .pb-how{padding:2px 4px;font:400 13px/1.5 var(--hd-body);color:rgba(255,255,255,.72)}
 .pb.hd .pb-how summary{font-weight:600;color:var(--hd-yellow)}
 .pb.hd .pb-how b{font-weight:700}
