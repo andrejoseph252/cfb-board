@@ -187,10 +187,13 @@ export function createRenderer(canvas){
     const B = bake; if (!B || performance.now() < B.at) return;
     B.steps ||= A.buildFieldSteps(B.h, B.a, B.sky, B.shade);
     const end = performance.now() + (art ? 5 : 1e9);
-    let r; do r = B.steps.next(); while (!r.done && performance.now() < end);
+    // The field first, then the stands; both go up together once both are done.
+    let r;
+    if (!B.field){ do r = B.steps.next(); while (!r.done && performance.now() < end); if (!r.done) return; B.field = r.value; B.p = portrait; B.cs = A.buildCrowdSteps(portrait, B.h, B.a, B.sky); }
+    do r = B.cs.next(); while (!r.done && performance.now() < end);
     if (!r.done) return;
-    bake = null; art = r.value; crowd = A.buildCrowd(portrait, B.h, B.a, B.sky); crowdKey = `${B.fk}|${portrait}`;
-    baked.set(B.fk, { art, crowd: { [portrait]: crowd } });
+    bake = null; art = B.field; crowd = r.value; crowdKey = `${B.fk}|${B.p}`;   // turned meanwhile: prepare() rebuilds it
+    baked.set(B.fk, { art, crowd: { [B.p]: crowd } });
     while (baked.size > KEEP) baked.delete(baked.keys().next().value);
   }
   function loadLogo(img){
@@ -1247,7 +1250,12 @@ export function createRenderer(canvas){
   }
 
   /* ---------- a frame ---------- */
+  let held = 0, odd = false;
   function draw(G, dt, view = {}){
+    // Behind a menu, whose frosted glass re-blurs whatever changes under it, a heavy scene (night, or rain, snow or
+    // fog) redraws every other frame and without its glow: no one can tell under the blur, and the menu stays smooth.
+    const C = G.cond, heavy = C && (C.time === 'night' || C.sky === 'rain' || C.sky === 'snow' || C.sky === 'fog');
+    if (view.covered && heavy){ if ((odd = !odd)){ held += dt; return; } dt += held; } held = 0;
     t += dt;
     if (G.play && !G.play.live && !G.play.result && !G.kick) routesOn = !!view.routes;
     prepare(G);
@@ -1285,7 +1293,7 @@ export function createRenderer(canvas){
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
     if (sh){ ctx.fillStyle = '#24222a'; ctx.fillRect(0, 0, cw, ch); }
     ctx.drawImage(buf, 0, 0, Wb, Hb, ox * k, oy * k, Wb * bs, Hb * bs);
-    const glow = lit.bloom || SKY[G.cond?.sky]?.bloom; if (glow) bloom(glow, ox, oy);
+    const glow = !view.covered && (lit.bloom || SKY[G.cond?.sky]?.bloom); if (glow) bloom(glow, ox, oy);
     ctx.setTransform(k, 0, 0, k, 0, 0);
     if (!G.cond || G.cond.sky === 'clear') dust(dt, G.cond?.time === 'night');
     sky(G, dt);

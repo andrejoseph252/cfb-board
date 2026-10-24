@@ -869,6 +869,12 @@ function photographer(x, px, py, skin, T){
   set([22, 22, 26], px - 1, py - 9, 3, 2); set([90, 96, 110], px, py - 9, 1, 1);   // the camera to his eye, lens on the field
 }
 export function buildCrowd(portrait, home, away, sky = 'clear'){
+  const steps = buildCrowdSteps(portrait, home, away, sky); let r;
+  do r = steps.next(); while (!r.done);
+  return r.value;
+}
+/* The same, a slice at a time (like buildFieldSteps), so a new stadium never holds up a frame. */
+export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
   const along = (FY1 - FY0) * S, depth = CDEPTH * S;
   const hc = home.color || '#777', ha = letterColor(home), ac = away.color || '#777', al = letterColor(away);
   const HC = hex(hc), HA = hex(ha), LC = hex(ha);
@@ -963,14 +969,15 @@ export function buildCrowd(portrait, home, away, sky = 'clear'){
   const W0 = along, H0 = depth, sc = canvas(W0, H0), sx = sc.getContext('2d'), id = sx.createImageData(W0, H0), D = id.data;
   const gc = canvas(W0, H0), gx = gc.getContext('2d'), gid = gx.createImageData(W0, H0), GD = gid.data;
   const glowAt = (s, b, col, a) => { const q = ((H0 - 1 - b) * W0 + s) * 4; GD[q] = col[0]; GD[q + 1] = col[1]; GD[q + 2] = col[2]; GD[q + 3] = a; };
-  for (let b = 0; b < H0; b++) for (let s = 0; s < W0; s++){
+  for (let b = 0; b < H0; b++){ if (b % 12 === 11) yield; for (let s = 0; s < W0; s++){
     let col = pix(s, b);
     if (sky === 'snow' && cls){ const n = .94 + hash2(s, b) * .06; col = (cls === 2 ? [242, 246, 252] : cls === 3 ? [232, 236, 246] : [218, 224, 238]).map(v => v * n); }
     else if (sky === 'rain' && cls) col = cls === 2 && hash2(s, b + 9) < .5 ? [186, 192, 204] : [col[0] * .78, col[1] * .8, col[2] * .88 + 6];
     const lit = !inShadow(CX0 + b / S, FY0 + s / S, s, b), hz = b / H0;
     col = mix(lit ? LIT(col) : SHD(col), lit ? HZL : HZD, hz * .32);
     const q = ((H0 - 1 - b) * W0 + s) * 4; D[q] = col[0]; D[q + 1] = col[1]; D[q + 2] = col[2]; D[q + 3] = 255;
-  }
+  }}
+  yield;
   // The night's own lights: the suites lit warm, the rigs blazing in a halo, step lights down the aisles, the tunnels' glow.
   for (let b = SUI + 1; b < FAS; b++) for (let s = 0; s < W0; s++){
     const q = (s + 7) % 15, pi = (s + 7) / 15 | 0; if (q < 2 || hash2(pi, 11) < .22) continue;
@@ -992,6 +999,7 @@ export function buildCrowd(portrait, home, away, sky = 'clear'){
   // Turned for landscape: the wall down the left, the stands rising to the right.
   const turn = k => { if (portrait) return k; const o = canvas(H0, W0), ox = o.getContext('2d'); ox.setTransform(0, 1, -1, 0, H0, 0); ox.drawImage(k, 0, 0); ox.setTransform(1, 0, 0, 1, 0, 0); return o; };
   const c = turn(sc), glow = turn(gc), x = c.getContext('2d');
+  yield;
   // ---- The people, upright on the turned canvas.
   const at = (s, b) => portrait ? [s, depth - b] : [b, s];
   const rect = (s0, s1, b0, b1) => portrait ? [s0, depth - b1, s1 - s0, b1 - b0] : [b0, s0, b1 - b0, s1 - s0];
@@ -1011,6 +1019,7 @@ export function buildCrowd(portrait, home, away, sky = 'clear'){
   };
   // Lower bowl, back row to front.
   for (let r = LROWS - 1; r >= 0; r--){
+    yield;
     const base = LB0 + r * LROW + 2, umbs = [], signs = [], hz = base / depth * .42;
     for (let s = -3 + (r * 3) % 6; s < along + 3;){
       const z = zone(s, base), ss = z === 'band' ? s : s + Math.floor(rnd() * 3) - 1;
@@ -1059,6 +1068,7 @@ export function buildCrowd(portrait, home, away, sky = 'clear'){
   }
   // Upper deck, smaller and hazier.
   for (let r = UROWS - 1; r >= 0; r--){
+    yield;
     const base = UD0 + r * UROW + 1, hz = .18 + base / depth * .4, umb = [];
     for (let s = -2 + (r * 2) % 4; s < along + 2; s += 4){
       if (isAisle(s) || isAisle(s + 1) || isAisle(s - 1) || rnd() < .07) continue;

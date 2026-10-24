@@ -237,7 +237,9 @@ function onHide(){ if (document.hidden && G && !paused && ['presnap', 'live', 'd
 
 /* ---------- main loop ---------- */
 let waitingData = true, freeze = 0;
+let modalEl = null;   // the menu / card layer (loop() checks whether it's up)
 function loop(ts){
+  if (!modalEl?.isConnected) modalEl = document.querySelector('.pb-modal');
   raf = requestAnimationFrame(loop);
   R.resize();   // cheap when nothing changed; catches any size change the observer missed
   // Opened straight to #play before the board's team data arrived: fill in the real teams once it does.
@@ -247,7 +249,7 @@ function loop(ts){
   else if (!paused && G){ acc += dt * (phase === 'live' && coaching() ? 1.5 : 1); while (acc >= STEP){ update(STEP); acc -= STEP; } }
   if (G && !paused && phase !== 'setup') crowd(crowdLevel()); else crowd(0);
   const cover = G?.youDefend && G.defDrill?.kind === 'cover';
-  if (G) R.draw(G, paused ? 0 : dt, { aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
+  if (G) R.draw(G, paused ? 0 : dt, { covered: !!modalEl?.classList.contains('on') && !modalEl.classList.contains('light'), aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
     stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : 0,
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick && !G.play?.noHandoff || phase === 'live' && S.canHandoff(G)),
     readKey: phase === 'live' && G.play?.option && !G.play.carrier ? G.play.option.key : null });
