@@ -1,6 +1,50 @@
 {
- "updated": "2026-10-23T23:43:37+00:00",
+ "updated": "2026-10-24T02:06:33+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] NC State @ Stanford (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdvvbz/game_thread_nc_state_stanford_1030_pm_et/",
+   "published": "2026-10-24T01:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "NC State",
+    "Stanford"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Johns Hopkins Defeats Gettysburg 40-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdvc87/postgame_thread_johns_hopkins_defeats_gettysburg/",
+   "published": "2026-10-24T01:02:43+00:00",
+   "gameId": "401908352",
+   "teams": [
+    "Johns Hopkins",
+    "Gettysburg"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] NCCU Defeats Delaware State 31-12",
+   "url": "https://www.reddit.com/r/CFB/comments/1xduk3l/postgame_thread_nccu_defeats_delaware_state_3112/",
+   "published": "2026-10-24T00:23:22+00:00",
+   "gameId": "401867955",
+   "teams": [
+    "NCCU",
+    "Delaware State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Air Force @ Wyoming (9:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xdu18b/game_thread_air_force_wyoming_900_pm_et/",
+   "published": "2026-10-24T00:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Air Force",
+    "Wyoming"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Army @ Tulsa (8:30 PM ET)",
