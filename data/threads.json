@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-25T20:02:45+00:00",
+ "updated": "2026-10-25T22:51:29+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2683,36 +2683,6 @@
     "Colorado State",
     "Texas State"
    ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Georgia Southern @ Old Dominion (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x6zkmf/game_thread_georgia_southern_old_dominion_730_pm/",
-   "published": "2026-10-15T22:30:07+00:00",
-   "gameId": null,
-   "teams": [
-    "Georgia Southern",
-    "Old Dominion"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] ECU @ UAB (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x6zklt/game_thread_ecu_uab_730_pm_et/",
-   "published": "2026-10-15T22:30:06+00:00",
-   "gameId": null,
-   "teams": [
-    "ECU",
-    "UAB"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Non-D1 Games \u2014 Thursday, October 15",
-   "url": "https://www.reddit.com/r/CFB/comments/1x6yvuy/game_thread_nond1_games_thursday_october_15/",
-   "published": "2026-10-15T22:00:10+00:00",
-   "gameId": null,
-   "teams": null
   }
  ],
  "errors": []
