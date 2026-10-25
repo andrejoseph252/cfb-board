@@ -12,11 +12,19 @@ Standard library only.
 
 "b" is the ballot, 1st to 25th, as ESPN team ids (a team ESPN can't be matched to is kept as "?Name").
 
+"stats" sums up, week by week, how sure the voters are as a group (see uncertainty() below):
+
+    "stats": {"7": {"cons": 79.5, "slots": [2.7, 2.9, ...], "churn": 42.0, "new": 2.97,
+                    "most": [["Name", "Outlet", 71.3], ...], "least": [...]}}
+
     python3 scripts/ballots.py            # the GitHub Action: the current week if it's new (Sunday to Tuesday only)
     python3 scripts/ballots.py --all      # every week of the season the tracker has (fills in anything missing)
+    python3 scripts/ballots.py --stats    # just work out "stats" again from the saved ballots
 """
 import html
+import itertools
 import json
+import math
 import pathlib
 import re
 import sys
@@ -91,7 +99,57 @@ def parse_week(page, find, teams_out):
     return {"date": title.group(1) if title else None, "voters": voters}
 
 
+def rbo(a, b, p=0.9):
+    """How alike two top-25 ballots are, 0 to 1 (rank-biased overlap, extrapolated to the end of the list): the share
+    of teams they have in common in their top 1, top 2, ... top 25, weighted toward the top, so disagreeing about #3
+    counts for far more than disagreeing about #23. p = 0.9 puts about 86% of the weight on the top 10."""
+    seen_a, seen_b, x, s = set(), set(), 0, 0.0
+    for d, (ta, tb) in enumerate(zip(a, b), 1):
+        x += (ta == tb) + (ta in seen_b) + (tb in seen_a)
+        seen_a.add(ta)
+        seen_b.add(tb)
+        s += x / d * p ** d
+    k = len(a)
+    return x / k * p ** k + (1 - p) / p * s
+
+
+def uncertainty(weeks):
+    """Per week: "cons", the consensus index (0-100, how alike the average pair of ballots is); "slots", for each spot
+    1st to 25th, the effective number of teams the voters put there (e^entropy: 1.0 is unanimous, 4.0 is as split as
+    four teams sharing it evenly); and, against the week before, "churn" (0-100, how much the average voter's own
+    ballot changed, on the same scale), "new" (how many teams the average voter added) and the voters who changed
+    theirs the "most" and "least". Voters are matched across weeks by name."""
+    out, prev = {}, None
+    for w in sorted(weeks, key=int):
+        bs = {v["n"]: v["b"] for v in weeks[w]["voters"]}
+        outlet = {v["n"]: v["o"] for v in weeks[w]["voters"]}
+        ballots = list(bs.values())
+        pairs = list(itertools.combinations(ballots, 2))
+        st = {"cons": round(100 * sum(rbo(a, b) for a, b in pairs) / len(pairs), 1), "slots": []}
+        for r in range(25):
+            counts = {}
+            for b in ballots:
+                counts[b[r]] = counts.get(b[r], 0) + 1
+            h = -sum(c / len(ballots) * math.log(c / len(ballots)) for c in counts.values())
+            st["slots"].append(round(math.exp(h), 1))
+        same = [(n, prev[n], b) for n, b in bs.items() if prev and n in prev]
+        if same:
+            moved = sorted(((n, 100 * (1 - rbo(a, b))) for n, a, b in same), key=lambda x: -x[1])
+            st["churn"] = round(sum(m for _, m in moved) / len(moved), 1)
+            st["new"] = round(sum(len(set(b) - set(a)) for _, a, b in same) / len(same), 2)
+            st["most"] = [[n, outlet[n], round(m, 1)] for n, m in moved[:3]]
+            st["least"] = [[n, outlet[n], round(m, 1)] for n, m in moved[::-1][:3]]
+        out[w] = st
+        prev = bs
+    return out
+
+
 def main():
+    if "--stats" in sys.argv:
+        data = json.loads(OUT.read_text())
+        data["stats"] = uncertainty(data["weeks"])
+        OUT.write_text(json.dumps(data, separators=(",", ":")) + "\n")
+        return
     full = "--all" in sys.argv
     now = datetime.now(timezone.utc)
     # New polls come out Sunday afternoon; the ballots follow within a day or so.
@@ -125,6 +183,7 @@ def main():
     unmatched = sorted({t for wk in weeks.values() for v in wk["voters"] for t in v["b"] if t.startswith("?")})
     if unmatched:
         print("not matched to ESPN:", ", ".join(unmatched))
+    data["stats"] = uncertainty(weeks)
     data["updated"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     OUT.write_text(json.dumps(data, separators=(",", ":")) + "\n")
 
