@@ -1,6 +1,28 @@
 {
- "updated": "2026-10-25T05:24:53+00:00",
+ "updated": "2026-10-25T09:05:09+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Utah Defeats Houston 21-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeudl6/postgame_thread_utah_defeats_houston_2113/",
+   "published": "2026-10-25T05:53:23+00:00",
+   "gameId": "401856837",
+   "teams": [
+    "Utah",
+    "Houston"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] New Mexico Defeats North Dakota State 21-16",
+   "url": "https://www.reddit.com/r/CFB/comments/1xeu0rl/postgame_thread_new_mexico_defeats_north_dakota/",
+   "published": "2026-10-25T05:31:47+00:00",
+   "gameId": "401864527",
+   "teams": [
+    "New Mexico",
+    "North Dakota State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] UTSA Defeats Tulane 42-19",
