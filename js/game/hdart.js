@@ -93,6 +93,14 @@ const F3 = { 0: ['111', '101', '101', '101', '111'], 1: ['010', '110', '010', '0
   3: ['111', '001', '011', '001', '111'], 4: ['101', '101', '111', '001', '001'], 5: ['111', '100', '111', '001', '111'],
   6: ['111', '100', '111', '101', '111'], 7: ['111', '001', '010', '010', '010'], 8: ['111', '101', '111', '101', '111'], 9: ['111', '101', '111', '001', '111'] };
 const glyph = ch => ROWS[ch] || ROWS['?'];
+/* Famous homes dressed as themselves when that team is at home (by ESPN team id): the end zones' wording and paint
+   (letters, their edge), the far wall's lettering, the stands' wall, the ribbon boards' copy, the far rim's facade and
+   the width of its board (px either side of the posts). Every other team gets its own name and colors. */
+const VENUES = {
+  52: { ez: ['FLORIDA STATE', 'SEMINOLES'], ezc: '#782f40', ezl: '#ceb888', ezo: '#f2f0e4', wall: 'BOBBY BOWDEN FIELD',   // Doak Campbell Stadium
+    abbr: 'FSU', stand: ['BOBBY BOWDEN FIELD', 'DOAK CAMPBELL STADIUM'], ribbon: ['FLORIDA STATE', 'UNCONQUERED', 'SEMINOLES', 'GO NOLES'], rim: 'brick', board: 150 }
+};
+export const venueOf = t => VENUES[t?.id] || null;
 /* Letters the field can paint (the board's 5x7 font), anything else dropped. */
 const paintable = s => String(s || '').toUpperCase().replace(/[^A-Z0-9& ]/g, '').replace(/\s+/g, ' ').trim();
 
@@ -166,6 +174,7 @@ function figFB(o){
       kneeX = cx + s * (2.9 - up * .5); footX = cx + s * (3 - up * .9);
       kneeY = yKnee - up * (back ? 1.2 : 2.4); footY = 31 - up * (back ? 6.5 : 4);
     }
+    if (o.sit){ kneeX = cx + s * 3.4; kneeY = yHip + 2.4; footX = cx + s * 3.5; }   // on the bench: thighs toward us, shins down
     const p = g.newPart();
     g.cap(p, 'P', hipX, yHip, kneeX, kneeY, 2.55);
     if (back && footY < 28){ g.cap(p, 'O', kneeX, kneeY + 1, footX, footY + .8, 1.9); g.ell(p, 'B', footX, footY + .3, 2.2, 1.6); }   // kicked up behind: the sole shows
@@ -276,6 +285,7 @@ function figSide(o){
     c = 31 - Math.max(front.foot[1], back.foot[1]);
     for (const L of [front, back]) for (const k of ['hip', 'knee', 'foot']) L[k] = [L[k][0], L[k][1] + c];
   }
+  if (o.sit){ back = { hip: [9.6, 21 + c], knee: [14.6, 21.4 + c], foot: [14.8, 31] }; front = { hip: [11.4, 21.2 + c], knee: [16.2, 21.6 + c], foot: [16.4, 31] }; }
   const leg = L => { const p = g.newPart(); g.cap(p, 'P', L.hip[0], L.hip[1], L.knee[0], L.knee[1], 2.55);
     g.cap(p, 'O', L.knee[0], L.knee[1] + 1.1, L.foot[0], L.foot[1] - .6, 1.9); g.ell(p, 'B', L.foot[0] + 1, L.foot[1] + .5, 2.7, 1.3); };
   leg(back);
@@ -339,6 +349,197 @@ function figSideLine(o){
   for (let x = fx + 1; x <= fx + 3; x++){ g.set(x, hy + 2, 'M', pM); g.set(x, hy + 4, 'M', pM); }
   arm(g, [19, 13.6 + b], [20.8, 19.6], [21.2, 27.4]);
   return { g, ax: 11, ay: 29 };
+}
+
+/* ---------- the sideline's people, at the players' scale ----------
+   Coaches, trainers, the chain crew, cheerleaders, photographers, the mascot: the same Grid and shading as the players,
+   slimmer and bare-headed. o.fit says what they wear: hat ('cap' | 'visor' | 'beanie' | 'hood' | 'big' for the
+   mascot's head), set (headset), long (sleeves), legs ('pants' | 'shorts' | 'skirt'), coat (bulky), cape (a hooded
+   sideline cape to the knees), stripes (an official), item ('card' | 'cam' | 'lens' | 'pom'). Regions: H hat, W brim
+   or accent, R hair, K skin, E eyes, J shirt, S sleeves, T trim, N logo, P pants, O shins, B shoes, G the item, M the
+   headset. Pose: 'stand', 'walk0' / 'walk1' (a step each way), 'sit', 'kneel'. Arms: 'hang', 'card' (the play card
+   over his mouth), 'hips', 'up', 'clap', 'cross', 'hold' (both hands at the chest: a pole), 'cam' (a camera to the
+   eye or the shoulder), 'pom' (pom-poms down) / 'pomup'. 22x34 (24 from the side), feet on row 32, plus `top` rows. */
+function armS(g, sh, el, hd, sleeve, thin = 1.45){
+  const p = g.newPart();
+  g.cap(p, 'K', sh[0], sh[1], el[0], el[1], thin); g.cap(p, 'K', el[0], el[1], hd[0], hd[1], thin - .1);
+  if (sleeve >= 1){ g.cap(p, 'S', sh[0], sh[1], el[0], el[1], thin + .35); const w = lerp2(el, hd, .72); g.cap(p, 'S', el[0], el[1], w[0], w[1], thin + .2); }
+  else { const s = lerp2(sh, el, sleeve); g.cap(p, 'S', sh[0], sh[1], s[0], s[1], thin + .5); }
+  g.ell(p, 'K', hd[0], hd[1] + .2, 1.25, 1.2);
+  return p;
+}
+function figStaff(o){
+  const F = o.fit, side = o.view === 'side', back = o.view === 'back', top = o.top || 0, W = side ? 24 : 22, g = new Grid(W, 34 + top), Y = v => v + top;
+  const pose = o.pose || 'stand', bth = o.b || 0, cape = F.cape, coat = F.coat || cape, big = F.hat === 'big';
+  const c = pose === 'sit' ? 4 : pose === 'kneel' ? 6 : 0, cx = 11;
+  const legR = F.legs === 'skirt' ? 1.45 : coat ? 2.25 : 2.05;
+  const leg = (hip, knee, foot) => {
+    const p = g.newPart();
+    g.cap(p, F.legs === 'pants' || !F.legs ? 'P' : 'O', hip[0], hip[1], knee[0], knee[1], legR + .15);
+    g.cap(p, F.legs === 'pants' || !F.legs ? 'P' : 'O', knee[0], knee[1], foot[0], foot[1] - .5, legR);
+    if (F.legs === 'skirt') g.ell(p, 'T', foot[0], foot[1] - 1.6, 1.5, .9);   // the socks
+    g.ell(p, 'B', foot[0] + (side ? 1 : 0), foot[1] + .4, side ? 2.4 : 2.2, 1.2);
+  };
+  // Legs.
+  if (side){
+    const hy = Y(21 + c);
+    if (pose === 'sit'){ leg([9.6, hy], [14.6, hy + .4], [14.8, Y(31)]); leg([11.4, hy + .2], [16.2, hy + .6], [16.4, Y(31)]); }
+    else if (pose === 'kneel'){ leg([10.4, hy], [7.6, Y(30.6)], [4.6, Y(31)]); leg([11.6, hy], [15.6, hy + .2], [15.6, Y(31)]); }
+    else {
+      const w = pose === 'walk0' ? 1 : pose === 'walk1' ? -1 : 0;
+      leg([11, hy], [11 - w * 1.6, Y(26)], [11 - w * 3, Y(30.8)]);
+      leg([11.6, hy], [11.6 + w * 1.8, Y(25.8)], [11.6 + w * 3.2, Y(30.8)]);
+    }
+  } else {
+    for (const s of [-1, 1]){
+      const hy = Y(21 + c);
+      if (pose === 'sit' || pose === 'kneel') leg([cx + s * 2.3, hy], [cx + s * 3.1, hy + 2.4], [cx + s * 3.2, Y(31)]);
+      else {
+        const up = pose === 'walk0' ? (s < 0 ? 1 : 0) : pose === 'walk1' ? (s > 0 ? 1 : 0) : 0;
+        leg([cx + s * 2.2, hy], [cx + s * 2.4, Y(26) - up * 1.6], [cx + s * 2.5, Y(30.8) - up * (back ? 3.4 : 2.4)]);
+      }
+    }
+  }
+  // Arms: [shoulder, elbow, hand] by pose, each side (s -1 is screen left; from the side, the far arm is drawn first).
+  const sy = Y(13.4 + c + bth), A = o.arms || 'hang';
+  const pose2 = (s, a) => {
+    if (side){
+      const sh = [11.6 + (s < 0 ? -.6 : .4), sy];
+      if (a === 'card') return s > 0 ? [sh, [14.4, Y(15.6 + c)], [14.8, Y(9.6 + c)]] : [sh, [12.2, Y(17.4 + c)], [12.6, Y(20.6 + c)]];
+      if (a === 'hips') return [sh, [9.4, Y(16.8 + c)], [11.6, Y(20 + c)]];
+      if (a === 'up' || a === 'pomup') return [sh, [s > 0 ? 13.4 : 12.4, Y(8.6 + c)], [s > 0 ? 14.4 : 13.2, Y(3.8 + c)]];
+      if (a === 'clap') return [sh, [14.2, Y(16.6 + c)], [16.4, Y(14.2 + c)]];
+      if (a === 'cross') return [sh, [13.2, Y(17.2 + c)], [s > 0 ? 15 : 14.2, Y(15.6 + c)]];
+      if (a === 'hold') return [sh, [13.6, Y(17 + c)], [16, Y(16 + c)]];
+      if (a === 'cam') return s > 0 ? [sh, [14.6, Y(13.8 + c)], [16.2, Y(9.8 + c)]] : [sh, [13.6, Y(16.4 + c)], [15.6, Y(11.4 + c)]];
+      if (a === 'pom') return [sh, [12.6 + s * .4, Y(17.6 + c)], [13.6 + s * .4, Y(21 + c)]];
+      return [sh, [11.8 + s * .5, Y(17.4 + c + bth)], [12.4 + s * .6, Y(20.8 + c)]];
+    }
+    const sh = [cx + s * 5.4, sy], f = back ? -1 : 1;   // f: the hand that does things is on the screen-right from the front
+    if (a === 'card') return s * f > 0 ? [sh, [cx + s * 6.4, Y(16.4 + c)], [cx + s * (back ? 2.6 : 1.6), Y(9.8 + c)]] : [sh, [cx + s * 6.6, Y(17.4 + c)], [cx + s * 6.6, Y(21 + c)]];
+    if (a === 'hips') return [sh, [cx + s * 8.2, Y(16.6 + c)], [cx + s * 5.2, Y(20.2 + c)]];
+    if (a === 'up' || a === 'pomup') return [sh, [cx + s * 7.4, Y(8.8 + c)], [cx + s * 8, Y(4 + c)]];
+    if (a === 'clap') return [sh, [cx + s * 6.6, Y(16.2 + c)], [cx + s * 1.2, Y(14.6 + c)]];
+    if (a === 'cross') return [sh, [cx + s * 6.4, Y(17 + c)], [cx - s * 2.6, Y(16.2 + c)]];
+    if (a === 'hold') return [sh, [cx + s * 6.2, Y(17.2 + c)], [cx + s * 1.2, Y(16.4 + c)]];
+    if (a === 'cam') return s * f > 0 ? [sh, [cx + s * 6.6, Y(11.4 + c)], [cx + s * 4.2, Y(8.4 + c)]] : [sh, [cx + s * 6, Y(16.4 + c)], [cx + s * 2.6, Y(11.6 + c)]];
+    if (a === 'pom') return [sh, [cx + s * 6.8, Y(17.4 + c)], [cx + s * 7.4, Y(21.2 + c)]];
+    return [sh, [cx + s * 6.4, Y(17.4 + c + bth)], [cx + s * 6.4, Y(21 + c)]];
+  };
+  const sleeve = F.long || coat ? 1 : .55;
+  const hands = [];
+  const doArm = s => { const [a, b, h] = pose2(s, A); if (!cape || A !== 'hang') armS(g, a, b, h, sleeve, coat ? 1.75 : 1.45); hands.push(h); };
+  const armsFirst = side || back && A !== 'up' && A !== 'pomup';
+  if (side) doArm(-1); else if (armsFirst) for (const s of [-1, 1]) doArm(s);
+  // The body: shirt and shoulders, the waist; bulkier in a coat, a cape hanging to the knees.
+  const pB = g.newPart({ pad: coat });
+  if (side){
+    if (cape){ g.cap(pB, 'J', 11.2, Y(14 + c), 10.4, Y(25 + c), 4.4); g.rect(pB, 'J', 6.6, Y(21 + c), 14.4, Y(26.4 + c)); }
+    else {
+      g.rect(pB, 'P', 9, Y(19.6 + c), 14, Y(22 + c));
+      g.ell(pB, 'J', 11.4, Y(16.4 + c + bth), coat ? 4.1 : 3.4, coat ? 5.4 : 4.6); g.ell(pB, 'J', 11.8, Y(13.6 + c + bth), coat ? 4 : 3.3, 2.1);
+      if (F.legs === 'skirt'){ g.rect(pB, 'P', 7.6, Y(20 + c), 14.8, Y(23 + c)); for (let x = 8; x <= 14; x += 2) g.decal(x, Y(22.6 + c), null, 3); }
+    }
+  } else {
+    const hw = cape ? 6.6 : coat ? 6 : 5;
+    g.rect(pB, 'P', cx - 4.6, Y(19.6 + c), cx + 4.6, Y(22 + c));
+    g.rect(pB, 'J', cx - hw, Y(13 + c + bth), cx + hw - 1, Y(20 + c));
+    g.ell(pB, 'J', cx, Y(13.4 + c + bth), hw + 1.3, 2.5);
+    if (cape){ g.rect(pB, 'J', cx - hw - .4, Y(19 + c), cx + hw - .6, Y(26.6 + c)); for (let y = Y(20 + c); y <= Y(26 + c); y++){ g.decal(cx - 3, y, null, 3); g.decal(cx + 3, y, null, 3); } }
+    if (F.legs === 'skirt'){ g.rect(pB, 'P', cx - 5.6, Y(20 + c), cx + 4.6, Y(23.4 + c)); for (let x = cx - 5; x <= cx + 4; x += 2) g.decal(x, Y(23 + c), null, 3); }
+    // An official's stripes; a polo's collar and the logo on the chest; across the back, a band of the trim.
+    if (F.stripes) for (let y = Y(11 + c); y <= Y(21 + c); y++) for (let x = 0; x < W; x++) if ((x - cx) % 2 === 0 && g.regAt(x, y) === 'J') g.decal(x, y, 'T');
+    if (!back && !F.stripes && !cape){ g.decal(cx - 1, Y(12.4 + c), 'T'); g.decal(cx, Y(12.4 + c), 'T'); g.decal(cx - 1, Y(13.4 + c), 'T'); if (F.logo !== false){ g.decal(cx + 2, Y(15 + c), 'N'); g.decal(cx + 3, Y(15 + c), 'N'); g.decal(cx + 2, Y(16 + c), 'N'); g.decal(cx + 3, Y(16 + c), 'N'); } }
+    if (back && F.band) for (let x = cx - 4; x <= cx + 3; x++){ g.decal(x, Y(15 + c), 'T'); g.decal(x, Y(16 + c), 'T'); }
+    if (cape && F.num != null) numberDecal(g, F.num, F4, cx, Y(15 + c), String(F.num).length > 1 ? 2 : 1);
+  }
+  if (!armsFirst || side) for (const s of side ? [1] : [-1, 1]) doArm(s);
+  // Neck and head.
+  const hy = Y(7 + c + bth), hx = side ? 12.4 : cx;
+  const pN = g.newPart(); g.rect(pN, 'K', hx - 1.2, hy + 3, hx + .6, hy + 5);
+  if (big){
+    // The mascot's head: oversized and furry, big eyes, a snout.
+    const pH = g.newPart({ gloss: true, hcx: hx, hcy: hy - 1, hrx: 6.4, hry: 5.8 }); g.ell(pH, 'H', hx, hy - 1, 6.4, 5.8);
+    for (const s of [-1, 1]) g.ell(pH, 'H', hx + s * 4.6, hy - 6, 1.8, 1.8);   // ears
+    if (!back){
+      const ex = side ? [hx + 1.6, hx + 4] : [hx - 2.6, hx + 1.6];
+      for (const e of ex){ g.decal(e, hy - 2, 'W'); g.decal(e + 1, hy - 2, 'W'); g.decal(e, hy - 1, 'W'); g.decal(e + 1, hy - 1, 'E'); }
+      for (let x = Math.round(side ? hx + 3 : hx - 2); x <= Math.round(side ? hx + 6 : hx + 1); x++){ g.decal(x, hy + 1, 'G'); g.decal(x, hy + 2, 'G'); }
+      g.decal(side ? hx + 6 : hx - 1, hy + 1, 'E');
+    }
+  } else {
+    const pH = g.newPart();
+    g.ell(pH, 'K', hx, hy, side ? 3.1 : 3.3, 3.6);
+    const hood = F.hat === 'hood' || cape;
+    if (hood){
+      // A hood: the cape's cloth around the head, the face showing in front.
+      g.ell(pH, 'J', hx - (side ? .8 : 0), hy - .4, side ? 4 : 4.3, 4.2);
+      if (!back) for (let y = Math.round(hy - 1.6); y <= hy + 2.6; y++) for (let x = 0; x < W; x++){
+        const u = (x + .5 - (side ? hx + 1.4 : hx)) / (side ? 2 : 2.6), v = (y + .5 - hy - .6) / 2.6;
+        if (u * u + v * v <= 1) g.decal(x, y, 'K', -1);
+      }
+    } else {
+      // Hair, then the hat.
+      for (let y = 0; y < g.h; y++) for (let x = 0; x < W; x++){
+        if (g.part[y * W + x] !== pH) continue;
+        if (back || y < hy - 1.6 || side && x < hx - .6 && y < hy + 2) g.decal(x, y, 'R');
+      }
+      if (F.hat === 'cap' || F.hat === 'visor'){
+        if (F.hat === 'cap') g.ell(pH, 'H', hx - (side ? .4 : 0), hy - 2, side ? 3.4 : 3.6, 2.2);
+        else for (let x = Math.round(hx - 3); x <= Math.round(hx + 2); x++) g.decal(x, Math.round(hy - 2), 'H');
+        // The brim (the cap's own color, in shadow underneath), the logo on the crown, the strap behind.
+        const by = Math.round(hy - 1.2);
+        if (side) for (let x = Math.round(hx + 2); x <= Math.round(hx + 4.6); x++){ g.set(x, by, 'H', pH); g.decal(x, by, null, 3); }
+        else if (!back){ for (let x = Math.round(hx - 4); x <= Math.round(hx + 3); x++){ g.set(x, by, 'H', pH); g.decal(x, by, null, 3); } if (F.hat === 'cap'){ g.decal(hx - 1, by - 2, 'W'); g.decal(hx, by - 2, 'W'); } }
+        else g.decal(hx, by, 'W');
+      }
+      if (F.hat === 'beanie'){ g.ell(pH, 'H', hx, hy - 1.4, side ? 3.4 : 3.6, 2.8); for (let x = 0; x < W; x++) if (g.regAt(x, Math.round(hy)) === 'H') g.decal(x, Math.round(hy), 'W'); g.ell(pH, 'W', hx - (side ? 1 : 0), hy - 4.6, 1.2, 1.1); }
+      if (F.pony){ g.ell(pH, 'R', side ? hx - 3.8 : hx + (back ? 0 : 3.6), hy - 1.6, 1.4, 2.4); }
+    }
+    if (!back){
+      if (side) g.decal(hx + 1.6, hy - .4, 'E');
+      else { g.decal(hx - 2, hy - .4, 'E'); g.decal(hx + 1, hy - .4, 'E'); }
+    }
+    // The headset: a band over the top, a cup over the ear, the mic swung to his mouth.
+    if (F.set){
+      const pM = g.newPart({ mask: true });
+      if (side){ g.ell(pM, 'M', hx - 1, hy + .2, 1.3, 1.7); for (const [x, y] of [[hx, hy + 1.6], [hx + 1, hy + 2], [hx + 2, hy + 2.2]]) g.set(Math.round(x), Math.round(y), 'M', pM); for (let y = Math.round(hy - 3.6); y < hy - 1; y++) g.set(Math.round(hx - 1), y, 'M', pM); }
+      else {
+        for (const s of [-1, 1]) g.rect(pM, 'M', hx + (s < 0 ? -4 : 3), hy - 1, hx + (s < 0 ? -3.6 : 3.4), hy + 1);
+        for (let x = Math.round(hx - 3); x <= Math.round(hx + 2); x++) g.set(x, Math.round(hy - 4), 'M', pM);
+        if (!back) for (const [x, y] of [[hx - 3, hy + 1.6], [hx - 2, hy + 2.2], [hx - 1, hy + 2.4]]) g.set(Math.round(x), Math.round(y), 'M', pM);
+      }
+    }
+  }
+  // What's in his hands.
+  const it = F.item, pI = it ? g.newPart({ mask: it === 'card' }) : -1;
+  if (it === 'card' && A === 'card' && !back){ const [hx2, hy2] = hands[side ? hands.length - 1 : 1]; g.rect(pI, 'G', hx2 - (side ? 0 : 3), hy2 - 2.4, hx2 + (side ? 2 : 1), hy2 + 1.6); g.decal(hx2 - (side ? -1 : 1), hy2 - 1, 'N'); g.decal(hx2 - (side ? -1 : 2), hy2 + .4, 'N'); }
+  if (it === 'cam' && A === 'cam'){
+    // A broadcast camera on the shoulder: the body, the lens toward the field, the viewfinder at his eye.
+    if (side){ g.rect(pI, 'G', 8.6, hy - 1.4, 17.4, hy + 2.4); g.rect(pI, 'N', 17.6, hy - .8, 19.6, hy + 1.8); g.rect(pI, 'G', 13, hy - 3, 15, hy - 1.6); }
+    else { const x0 = back ? cx - 8 : cx + 2; g.rect(pI, 'G', x0, hy - 2, x0 + 6, hy + 2.4); if (!back) g.ell(pI, 'N', x0 + 2.6, hy + .4, 1.7, 1.7); }
+  }
+  if (it === 'lens' && A === 'cam'){
+    // A photographer's long white lens.
+    if (side){ g.rect(pI, 'G', 13.6, hy + .4, 21.6, hy + 2.6); g.rect(pI, 'M', 21.8, hy + .2, 22.6, hy + 2.8); g.rect(pI, 'M', 12.6, hy - .6, 14.2, hy + 2.6); }
+    else if (!back){ g.ell(pI, 'G', hx, hy + 1.4, 2.6, 2.4); g.ell(pI, 'M', hx, hy + 1.4, 1.2, 1.1); }
+    else g.rect(pI, 'M', hx - 2, hy - .6, hx + 1, hy + 1.6);
+  }
+  if (it === 'pom') for (const [x, y] of hands) g.ell(pI, 'G', x, y, 2.5, 2.2);
+  return { g, ax: side ? 11 : cx, ay: Y(32) };
+}
+/* A sideline person's sprite, cached like the players'. o: { fit, uni (the colors), skin, view, pose, arms, b, flip, lit }. */
+const STAFF = new Map();
+export function staffSprite(o){
+  const key = `${o.uni.key}|${o.fit.key}|${o.view}|${o.pose}|${o.arms}|${o.b}|${o.skin}|${o.flip}|${o.lit}`;
+  let s = STAFF.get(key); if (s) return s;
+  if (STAFF.size > 1500) STAFF.clear();
+  const fig = figStaff(o);
+  let cv = renderGrid(fig.g, o.uni, o.skin, o.lit), ax = fig.ax;
+  if (o.flip){ cv = flipCanvas(cv); ax = cv.width - ax; }
+  s = { cv, sil: silhouette(cv), ax, ay: fig.ay };
+  STAFF.set(key, s);
+  return s;
 }
 
 /* ---------- uniforms ---------- */
@@ -421,7 +622,7 @@ const silhouette = c => { const s = canvas(c.width, c.height), x = s.getContext(
    silhouette (for the cast shadow) and the feet. */
 const SPR = new Map();
 export function getSprite(o){
-  const key = `${o.uni.key}|${o.view}|${o.pose}|${o.c}|${o.arms}|${o.b}|${o.run}|${o.num}|${o.skin}|${o.flip}|${o.lit}|${o.down}`;
+  const key = `${o.uni.key}|${o.view}|${o.pose}|${o.c}|${o.arms}|${o.b}|${o.run}|${o.num}|${o.skin}|${o.flip}|${o.lit}|${o.down}${o.sit ? '|s' : ''}`;
   let s = SPR.get(key); if (s) return s;
   if (SPR.size > 4000) SPR.clear();   // a long session's worth of jerseys and frames, then start over
   const fo = { ...o, stripe: o.uni.stripe };
@@ -645,7 +846,8 @@ export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
     let off = 0;
     for (const ch of s){ if (ch !== ' ') stamp(glyph(ch), sc, (lx, ly) => [i0 - ly, j0 + off + lx], code); off += (ch === ' ' ? 4 : 6) * sc; }
   };
-  ezBox[0] = ezBox[1] = [0, 0]; word(home.name, -5, 4); word(away.name, 105, 6);
+  const V = venueOf(home);
+  ezBox[0] = ezBox[1] = [0, 0]; word(V ? V.ez[0] : home.name, -5, 4); word(V ? V.ez[1] : away.name, 105, 6);
   // Outline the letters.
   for (const [a, b, code] of [[ti(-10) + 2, ti(0) - 1, 4], [ti(100) + 2, ti(110) - 1, 6]])
     for (let i = a; i < b; i++) for (let j = tj(0); j < tj(FW); j++){
@@ -656,13 +858,13 @@ export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
     }
   // Padded walls behind both end lines; the far one carries the home team's name.
   const wallFar = [ti(112.3), ti(113.3)], wallNear = [ti(-13.3), ti(-12.3)];
-  const wallTxt = paintable(home.name) || 'HOME';
+  const wallTxt = paintable(V ? V.wall : home.name) || 'HOME';
   for (let jj = 0; jj < TH; jj += (wallTxt.length + 3) * 6){
     let off = 0;
     for (const ch of wallTxt){ if (ch !== ' ') stamp(glyph(ch), 1, (lx, ly) => [wallFar[1] - 2 - ly, jj + off + lx], 7); off += ch === ' ' ? 4 : 6; }
   }
-  const homeEZ = ezRamp(home.color), awayEZ = ezRamp(away.color);
-  const homeL = hex(letterColor(home)), awayL = hex(letterColor(away));
+  const homeEZ = ezRamp(V ? V.ezc : home.color), awayEZ = ezRamp(V ? V.ezc : away.color);
+  const homeL = hex(V ? V.ezl : letterColor(home)), awayL = hex(V ? V.ezl : letterColor(away)), edge = V ? hex(V.ezo) : null;
   const wallC = hex(home.color), wallT = hex(letterColor(home));
   const wallCol = (i, w) => paint[i] === 7 ? wallT : w === 0 ? mix(wallC, [255, 255, 255], .18) : w === 2 ? wallC.map(v => v * .45) : wallC.map(v => v * .7);
 
@@ -707,7 +909,7 @@ export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
         const ez = x > -10 && x < 0 ? homeEZ : x > 100 && x < 110 ? awayEZ : null;
         if (ez && y >= 0 && y <= FW){
           const lc = x < 0 ? homeL : awayL, code = x < 0 ? 4 : 6;
-          col = pc === code ? mix(lc, GRASS[lvl], .08) : pc === code + 1 ? mix(mix(lc, ez[0], .55), [10, 10, 16], .35) : ez[clamp(lvl - 1, 0, 3)];
+          col = pc === code ? mix(lc, GRASS[lvl], .08) : pc === code + 1 ? (edge ? mix(edge, GRASS[lvl], .1) : mix(mix(lc, ez[0], .55), [10, 10, 16], .35)) : ez[clamp(lvl - 1, 0, 3)];
         }
         let chalk = pc === 1;
         if (!chalk){
@@ -721,6 +923,7 @@ export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
           if (((x >= 110 && x < 110.4) || (x > -10.4 && x <= -10)) && y > -.4 && y < FW + .4) chalk = true;
           if (((y > -.4 && y <= 0) || (y >= FW && y < FW + .4)) && x > -10.4 && x < 110.4) chalk = true;
           if ((Math.abs(y + 2.1) < .1 || Math.abs(y - FW - 2.1) < .1) && x > 25 && x < 75 && Math.floor(x * 2) % 2 === 0) chalk = true;
+          if ((Math.abs(x - 25) < .1 || Math.abs(x - 75) < .1) && (y < -2.1 && y > -6.3 || y > FW + 2.1 && y < FW + 6.3)) chalk = true;   // the team boxes' ends
         }
         if (chalk) col = hs < .05 ? mix(CHALK[1], col, .45) : hs > .8 ? CHALK[2] : hs < .3 ? CHALK[1] : CHALK[0];
         if (sky === 'rain') col = rainTurf(col, x, y, chalk, ez && y >= 0 && y <= FW ? pc : 0, w, hs);
@@ -766,10 +969,11 @@ function txt5(x, s, X, Y, col, sc = 1){
 /* The ribbon's tape (7 px tall): the home name on a plate of the home color, then a run of chevrons; `hot` (a
    score) turns it inside out. Long enough to scroll across the whole width. */
 function ribbonTape(name, home, along, hot){
-  const txt = paintable(name) || 'HOME', tw = txt.length * 6 - 1, seg = tw + 14 + 42, n = Math.ceil(along / seg) + 2;
-  const c = canvas(seg * n, 7), x = c.getContext('2d'), H = led(home.color), L = led(letterColor(home));
-  for (let k = 0; k < n; k++){
-    const o = k * seg;
+  const V = venueOf(home), txts = V ? V.ribbon : [paintable(name) || 'HOME'], ws = txts.map(q => q.length * 6 - 1 + 14 + 42);   // a venue runs its own copy, phrase after phrase
+  const seg = ws.reduce((a, q) => a + q, 0), m = txts.length, n = (Math.ceil(along / seg) + 2) * m;
+  const c = canvas(seg * n / m, 7), x = c.getContext('2d'), H = led(home.color), L = led(letterColor(home));
+  for (let k = 0, o = 0; k < n; o += ws[k % m], k++){
+    const txt = txts[k % m], tw = txt.length * 6 - 1, seg = tw + 56;
     x.fillStyle = css(hot ? L : [14, 13, 18]); x.fillRect(o, 0, seg, 7);
     x.fillStyle = css(H); x.fillRect(o, 0, tw + 14, 7);
     txt5(x, txt, o + 7, 0, onColor(H));
@@ -779,6 +983,26 @@ function ribbonTape(name, home, along, hot){
     }
   }
   return { c, seg };
+}
+/* The far rim as a red-brick collegiate gothic front (Doak's University Center): buttresses between tall pointed arches
+   in cast stone, a string course under them, a cornice and a crenellated parapet over. archAt: 1 the stone, 2 the glass. */
+const BRK = [[150, 70, 50], [136, 62, 46], [162, 80, 58], [122, 56, 42]], CSTONE = [214, 198, 166], CSTONE2 = [182, 166, 138];
+function archAt(s, b, depth){
+  const f = ((s + 6) % 20 + 20) % 20, u = Math.abs(f - 11.5), lo = b - (UD1 + 3), top = depth - 12, w = b < top - 9 ? 4.5 : 4.5 * Math.sqrt(Math.max(0, 1 - ((b - top + 9) / 9) ** 2));
+  if (f < 4 || lo < 5 || b > top) return 0;
+  return u < w - 1 ? 2 : u < w + .5 ? 1 : 0;
+}
+function brickRim(s, b, depth){
+  const lo = b - (UD1 + 3);
+  if (b >= depth - 3) return (b === depth - 1 ? s % 8 < 5 : s % 8 < 5 || b === depth - 3) ? CSTONE : BRK[3];   // the parapet's merlons
+  if (b >= depth - 6) return b === depth - 4 ? CSTONE2 : CSTONE;   // the cornice
+  if (lo < 3) return lo === 2 ? CSTONE : CSTONE2;   // the string course
+  const a = archAt(s, b, depth), f = ((s + 6) % 20 + 20) % 20;
+  if (a === 2){ const m = Math.abs(f - 11.5) < .6 || b === UD1 + 17; return m ? CSTONE2 : mix([40, 50, 70], [118, 142, 172], (b - UD1) / 44); }   // the glass, a mullion and transom
+  if (a === 1) return CSTONE;
+  const k = ((b / 3) | 0) & 1, bk = BRK[hash2(((s + k * 3) / 6) | 0, (b / 3) | 0) * 4 | 0];
+  if (f < 4) return b % 9 === 0 ? CSTONE2 : mix(bk, [60, 26, 20], .25);   // a buttress, its stone weatherings
+  return b % 3 === 0 || (s + k * 3) % 6 === 0 ? mix(bk, [196, 180, 160], .26) : bk;   // brick courses and joints
 }
 /* The video board's screen: the home name, both teams and the score, the quarter; after a score, the logo. */
 export function paintBoard(C, home, away, score, q, logo, hot){
@@ -792,7 +1016,7 @@ export function paintBoard(C, home, away, score, q, logo, hot){
   }
   const n = (paintable(home.name) || 'HOME').slice(0, 17), ab = s => (paintable(s).replace(/ /g, '') || 'AWAY').slice(0, 4);
   x.fillStyle = css(HC); x.fillRect(0, 0, w, 9); txt5(x, n, (w - n.length * 6 + 1) >> 1, 1, onColor(HC));
-  const a0 = ab(home.name), a1 = ab(away.name), s0 = String(score[0] ?? 0), s1 = String(score[1] ?? 0);
+  const a0 = venueOf(home)?.abbr || ab(home.name), a1 = ab(away.name), s0 = String(score[0] ?? 0), s1 = String(score[1] ?? 0);
   txt5(x, a0, 4, 12, HA); txt5(x, a1, w - 3 - a1.length * 6, 12, AC);
   txt5(x, s0, 4, 22, '#fff', 2); txt5(x, s1, w - 2 - s1.length * 12, 22, '#fff', 2);
   const qq = 'Q' + Math.min(4, q || 1); txt5(x, qq, (w - 11) >> 1, 25, '#ffd23f');
@@ -880,8 +1104,9 @@ export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
   const HC = hex(hc), HA = hex(ha), LC = hex(ha);
   const HZL = [214, 170, 120], HZD = [52, 62, 90];
   // ---- The concrete, canonically (s across, b up the stands), into pixels: its daylight colors, and its night lights.
-  const txt = new Uint8Array(along * 7), nm = paintable(home.name) || 'HOME', tw = nm.length * 6 - 1;
-  for (const c of [MIDS, MIDS - 240, MIDS + 240]) for (let i = 0; i < nm.length; i++){
+  const V = venueOf(home), brick = V?.rim === 'brick', BD = V?.board ? [MIDS - V.board, MIDS + V.board, BOARD[2]] : BOARD;
+  const txt = new Uint8Array(along * 7), nm0 = paintable(V ? V.stand[0] : home.name) || 'HOME', nm1 = paintable(V ? V.stand[1] : home.name) || 'HOME';
+  for (const [c, nm] of [[MIDS, nm0], [MIDS - 240, nm1], [MIDS + 240, nm1]]) for (let i = 0, tw = nm.length * 6 - 1; i < nm.length; i++){
     const g = glyph(nm[i]), x0 = Math.round(c - tw / 2) + i * 6;
     for (let r = 0; r < 7; r++) for (let q = 0; q < 5; q++) if (g[r][q] === '1' && x0 + q >= 0 && x0 + q < along) txt[r * along + x0 + q] = 1;
   }
@@ -948,8 +1173,8 @@ export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
       if (s % 4 === 3) return SEATG; if (k === 4){ cls = 3; return SEATT; } return SEAT;
     }
     // The rim: the board, the light rigs, the back wall's bays and truss, the roof's edge.
-    if (s >= BOARD[0] && s < BOARD[1] && b >= BOARD[2]){
-      const e = Math.min(s - BOARD[0], BOARD[1] - 1 - s, b - BOARD[2], depth - 1 - b);
+    if (s >= BD[0] && s < BD[1] && b >= BD[2]){
+      const e = Math.min(s - BD[0], BD[1] - 1 - s, b - BD[2], depth - 1 - b);
       return e < 1 ? [64, 66, 76] : e < 3 ? [28, 28, 34] : [10, 10, 14];
     }
     for (const c of RIGS) if (s >= c - 14 && s < c + 14 && b >= depth - 18){
@@ -960,6 +1185,7 @@ export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
     }
     for (const c of RIGS) if (b >= depth - 32 && (s === c - 10 || s === c + 9)) return [62, 64, 72];
     if (b === UD1){ cls = 2; return RAIL; } if (b === UD1 + 1){ cls = 1; return [132, 128, 134]; } if (b === UD1 + 2) return [52, 50, 60];
+    if (brick) return brickRim(s, b, depth);
     if (b >= depth - 3){ if (b === depth - 1){ cls = 4; return [210, 206, 200]; } return b === depth - 2 ? mix(HC, [0, 0, 0], .3) : HC; }
     if (s % 46 < 6) return s % 46 === 0 ? [150, 146, 152] : [120, 116, 124];
     if (b === depth - 16 || b === depth - 17) return [146, 150, 158];
@@ -995,6 +1221,7 @@ export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
     for (let r = 0; r < UROWS; r++) glowAt(s, UD0 + r * UROW + 1, [150, 196, 255], 150);
   }
   for (const c of PORTALS) for (let b = PB0 + 1; b < PB0 + 6; b++) for (let s = c - 8; s <= c + 8; s++) glowAt(s, b, [255, 190, 120], Math.round(120 * (1 - (b - PB0 - 1) / 5)));
+  if (brick) for (let b = UD1 + 3; b < depth - 3; b++) for (let s = 0; s < W0; s++){ if ((s >= BD[0] && s < BD[1]) || RIGS.some(q => Math.abs(s - q) < 15 && b >= depth - 32)) continue; const w = archAt(s, b, depth); if (w === 2 && hash2((s + 6) / 20 | 0, 3) > .25) glowAt(s, b, mix([255, 200, 120], [255, 236, 190], (b - UD1) / 40), 230); }
   sx.putImageData(id, 0, 0); gx.putImageData(gid, 0, 0);
   // Turned for landscape: the wall down the left, the stands rising to the right.
   const turn = k => { if (portrait) return k; const o = canvas(H0, W0), ox = o.getContext('2d'); ox.setTransform(0, 1, -1, 0, H0, 0); ox.drawImage(k, 0, 0); ox.setTransform(1, 0, 0, 1, 0, 0); return o; };
@@ -1108,10 +1335,344 @@ export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
   const shooters = crew.filter(q => q[0] === 'p').map(([, s, b]) => atA(s, b));
   fans.sort((a, b) => a.s - b.s);
   const tape = ribbonTape(home.name, home, along, false), hot = ribbonTape(home.name, home, along, true);
-  const face = canvas(BOARD[1] - BOARD[0] - 6, depth - BOARD[2] - 6);
-  return { c, glow, aprons, AP, UP, shooters, towels, flags, bob, chop, stu, fans, along, depth, rect, portrait,
-    tape: tape.c, tapeHot: hot.c, seg: tape.seg, segHot: hot.seg, ribY: depth - (RIB + 8), face, faceAt: [BOARD[0] + 3, 3],
+  const face = canvas(BD[1] - BD[0] - 6, depth - BD[2] - 6);
+  const sides = yield* buildSidesSteps(portrait, home, away, sky);
+  return { c, glow, aprons, sides, AP, UP, shooters, towels, flags, bob, chop, stu, fans, along, depth, rect, portrait,
+    tape: tape.c, tapeHot: hot.c, seg: tape.seg, segHot: hot.seg, ribY: depth - (RIB + 8), face, faceAt: [BD[0] + 3, 3],
     bands: { LB0, LB1, UD0, UD1, STU, AIS0, AISP }, colors: { field: ha, band: hc } };
+}
+
+/* =====================================================================================================
+   THE SIDELINES: home's along the near side (y < 0), the visitors' along the far one. Past each wall a strip of
+   stands (the camera only ever runs a few yards past the sideline), baked like the end zone's, per side and per
+   orientation, its fans upright on screen; the wall in front of them carries an LED board (lit per frame). On the
+   grass in front, the cast: each team's box between the 25s (players at its edge, the benches, coaches with headsets
+   and play cards, trainers, the cooler table, the injury tent), the chain crew on the visitors' side, cheerleaders,
+   the mascot, photographers, a camera cart. Each is a cached sprite that drawhd.js draws under the players, placing
+   the movers (head coaches, the line judge, the chain crew, the cart) each frame from the game.
+   ===================================================================================================== */
+export const SB0 = 6.5, SB1 = 13.2, SX0 = FX0, SX1 = CX0 + CDEPTH;
+const SROW0 = 12, SAISP = 150, SAIS0 = 44;
+const sideAisle = s => ((s - SAIS0) % SAISP + SAISP) % SAISP;
+const seeded = n => { let s = n; return () => (s = Math.imul(s ^ (s >>> 15), 2246822507) + 0x9e3779b9 | 0, (s >>> 0) / 4294967296); };
+/* A fan from behind (the far side's stands, lying down): the back of the shirt, the back of the head. */
+function fanBack(x, px, py, shirt, hair, hat, T){
+  const sh = hex(shirt), set = (c, a, b, w = 1, h = 1) => { x.fillStyle = css(T(c)); x.fillRect(a, b, w, h); };
+  set(mix(sh, [10, 8, 20], .35), px - 2, py - 4, 5, 4); set(sh, px - 2, py - 4, 4, 3); set(mix(sh, [255, 236, 190], .2), px - 2, py - 4, 1, 3);
+  x.clearRect(px - 2, py - 4, 1, 1); x.clearRect(px + 2, py - 4, 1, 1);
+  const hc = hat ? hex(hat) : hex(hair);
+  set(mix(hc, [10, 8, 20], .3), px - 1, py - 7, 3, 3); set(hc, px - 1, py - 7, 2, 2); set(mix(hc, [255, 236, 190], .25), px - 1, py - 7, 1, 1);
+}
+/* One side's stands. far: the visitors' side. Returns the canvas (in screen orientation), where its top-left sits in
+   the world, and the fans who bob. */
+function* sideStand(portrait, far, home, away, sky){
+  const Al = Math.round((SX1 - SX0) * S), D = Math.round((SB1 - SB0) * S);
+  const hc = home.color || '#777', ha = letterColor(home), ac = away.color || '#777', al = letterColor(away), HC = hex(hc);
+  const SEAT = mix(HC, [58, 62, 80], .62), SEATT = mix(SEAT, [255, 255, 255], .22), SEATG = mix(SEAT, [0, 0, 0], .45);
+  const RISER = [94, 90, 100], NOSE = [178, 174, 174], TREAD = [128, 124, 130], PAN = [46, 42, 54], RAIL = [204, 208, 216];
+  const HZL = [214, 170, 120], HZD = [52, 62, 90];
+  let cls = 0;
+  const pix = (s, bb) => {
+    cls = 0;
+    if (bb === 0) return [30, 28, 34];
+    if (bb < 10) return bb === 1 || bb === 9 ? [60, 62, 70] : [14, 13, 18];   // the LED board's frame and its dark face
+    if (bb === 10){ cls = 4; return [206, 202, 194]; }
+    if (bb === 11) return [56, 52, 62];
+    const k = (bb - SROW0) % 7, ai = sideAisle(s);
+    if (ai < 8){   // the stairs, two steps a row, a handrail down the middle
+      if (ai === 0 || ai === 7) return [80, 76, 86];
+      if (ai === 4) return k === 1 || k === 4 ? [70, 72, 80] : RAIL;
+      if (ai === 3) return [104, 100, 110];
+      if (k === 0 || k === 3) return RISER; if (k === 1 || k === 4){ cls = 2; return NOSE; } cls = 1; return TREAD;
+    }
+    if (k === 0) return RISER; if (k === 1){ cls = 2; return NOSE; } if (k === 2){ cls = 1; return TREAD; } if (k === 3) return PAN;
+    if (s % 6 === 5) return SEATG; if (k === 6){ cls = 3; return SEATT; } return SEAT;
+  };
+  const c0 = canvas(Al, D), x0 = c0.getContext('2d'), id = x0.createImageData(Al, D), d = id.data;
+  for (let bb = 0; bb < D; bb++){
+    if (bb % 4 === 3) yield;
+    const y = far ? FW + SB0 + (bb + .5) / S : -(SB0 + (bb + .5) / S), hz = bb / D * .14;
+    for (let s = 0; s < Al; s++){
+      let col = pix(s, bb);
+      if (sky === 'snow' && cls){ const n = .94 + hash2(s, bb + 77) * .06; col = (cls === 2 ? [242, 246, 252] : cls === 3 ? [232, 236, 246] : [218, 224, 238]).map(v => v * n); }
+      else if (sky === 'rain' && cls) col = cls === 2 && hash2(s, bb + 9) < .5 ? [186, 192, 204] : [col[0] * .78, col[1] * .8, col[2] * .88 + 6];
+      const lit = !inShadow(SX0 + (s + .5) / S, y, s, bb);
+      col = mix(lit ? LIT(col) : SHD(col), lit ? HZL : HZD, hz);
+      const q = (bb * Al + s) * 4; d[q] = col[0]; d[q + 1] = col[1]; d[q + 2] = col[2]; d[q + 3] = 255;
+    }
+  }
+  x0.putImageData(id, 0, 0);
+  // Turned to the screen: landscape keeps the canonical rows (outward is up on the near side, down on the far);
+  // standing up, the stands run up the screen with the field to their right (near) or left (far).
+  const c = portrait ? canvas(D, Al) : canvas(Al, D), x = c.getContext('2d');
+  if (portrait) x.setTransform(0, -1, far ? 1 : -1, 0, far ? 0 : D, Al); else x.setTransform(1, 0, 0, far ? 1 : -1, 0, far ? 0 : D);
+  x.drawImage(c0, 0, 0); x.setTransform(1, 0, 0, 1, 0, 0);
+  yield;
+  const at = (s, bb) => portrait ? [far ? bb : D - bb, Al - s] : [s, far ? bb : D - bb];
+  // ---- The fans, row by row, drawn top of the screen to the bottom.
+  const rnd = seeded(far ? 4242 : 2424), bob = [];
+  const SHIRTS = [[hc, 26], [ha, 22], ['#f2f0ea', 11], ['#8f969c', 6], ['#1d1d22', 6], ['#3c5a86', 5], [ac, 3], ['#5a2d1c', 3], ['#2f4f2f', 2]];
+  const STUS = [[hc, 52], [ha, 22], ['#f2f0ea', 9], ['#1d1d22', 5], ['#8f969c', 2]];
+  const HAIR = ['#2a1a10', '#3a2416', '#1a1210', '#6a4a2a', '#8a6a3a', '#1d1d22'];
+  const rows = Math.floor((D - SROW0) / 7), order = [...Array(rows).keys()];
+  if (!portrait && !far) order.reverse();
+  for (const r of order){
+    yield;
+    const rb = SROW0 + r * 7, fb = portrait ? rb + (far ? 3 : 4) : far ? rb + 6 : rb + 2, hz = rb / D * .14, list = [];
+    for (let s = 1 + (r * 3) % 6; s < Al - 2;){
+      const X = SX0 + s / S, stu = !far && X < 22, vis = far && X > 72, ss = s + Math.floor(rnd() * 3) - 1;
+      s += stu ? 5 : 6;
+      const ai = sideAisle(ss); if (ai < 10 || ai > SAISP - 3) continue;
+      if (rnd() < (stu ? .02 : .07)) continue;
+      list.push([ss, stu, vis]);
+    }
+    if (portrait) list.reverse();
+    let n = 0;
+    for (const [ss, stu, vis] of list){
+      if (++n % 90 === 0) yield;
+      const [px, py] = at(ss, fb), wy = far ? FW + SB0 + fb / S : -(SB0 + fb / S), lit = !inShadow(SX0 + ss / S, wy), haze = lit ? HZL : HZD;
+      const T = col => fanTone(col, lit, haze, hz), skin = CROWD_SKIN[Math.floor(rnd() * CROWD_SKIN.length)];
+      let shirt = vis ? (rnd() < .72 ? ac : rnd() < .5 ? al : '#9aa3a9') : pickW(stu ? STUS : SHIRTS, rnd()), hat = rnd() < .14 ? (rnd() < .5 ? ha : vis ? ac : hc) : null, poncho = false;
+      if (sky === 'rain' && rnd() < .42){ poncho = true; shirt = pickW([['#e9e6d6', 4], ['#f2d43a', 2], [vis ? ac : hc, 3], ['#3c5a86', 1], ['#dfe8ea', 2]], rnd()); hat = shirt; }
+      else if (sky === 'snow' && rnd() < .34) shirt = pickW([['#1d1d22', 3], ['#3a3540', 2], [vis ? ac : hc, 3], ['#e9e6dc', 1]], rnd());
+      if (!poncho && sky !== 'clear' && rnd() < (sky === 'snow' ? .55 : .2)) hat = rnd() < .5 ? ha : vis ? ac : hc;
+      if (!portrait && far) fanBack(x, px, py, shirt, HAIR[Math.floor(rnd() * HAIR.length)], hat, T);
+      else person(x, px, py, shirt, skin, hat, lit, haze, hz);
+      if (sky === 'snow' && hat && rnd() < .7){ x.fillStyle = css(T([242, 240, 234])); x.fillRect(px, py - 9, 1, 1); }
+      if (poncho){ x.fillStyle = css(T(mix(hex(shirt), [255, 255, 255], .55))); x.fillRect(px - 1, py - 8, 1, 1); }
+      if (rnd() < .16) bob.push({ px, py, s: portrait ? py : px, ph: rnd() * 6, sp: 3 + rnd() * 3 });
+    }
+  }
+  bob.sort((p, q) => p.s - q.s);
+  // Where its top-left pixel sits in the world (drawhd.js turns that into the buffer).
+  const org = portrait ? [SX1, far ? FW + SB0 : -SB1] : [SX0, far ? FW + SB0 : -SB1];
+  return { c, org, bob, Al, D, far, led: far ? 2 : D - 9 };
+}
+
+/* An object as boxes in its own frame (u along the field and v out from it, px; h up, px), as the camera sees it on
+   one side in one orientation: every box's top and its face toward the camera, the farther boxes first (a box can
+   be a cylinder, shaded round). fx(x, front, top) paints details on a box's faces (rects on the object's canvas);
+   deco(x, M) anything else, with M placing a point (u, v, h). Returns a sprite, its feet at (u, v) = (0, 0). */
+function boxObj(list, portrait, far, T, deco){
+  const M = (u, v, h = 0) => portrait ? [far ? v : -v, -u - h] : [u, (far ? v : -v) - h];
+  const R = list.map(b => { const p = M(b.u0, b.v0), q = M(b.u1, b.v1); return { b, X0: Math.min(p[0], q[0]), X1: Math.max(p[0], q[0]), Y0: Math.min(p[1], q[1]), Y1: Math.max(p[1], q[1]) }; });
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, sy = 1e9;
+  for (const r of R){ x0 = Math.min(x0, r.X0); x1 = Math.max(x1, r.X1); y0 = Math.min(y0, r.Y0 - r.b.h1); y1 = Math.max(y1, r.Y1 - r.b.h0); sy = Math.min(sy, r.Y0); }
+  x0 -= 12; y0 -= 40; x1 += 12; y1 += 2;
+  const cv = canvas(x1 - x0, y1 - y0), x = cv.getContext('2d');
+  R.sort((a, b) => a.Y1 - b.Y1 || a.b.h0 - b.b.h0);
+  const rect = (c, a, b, w, h) => { if (w > 0 && h > 0){ x.fillStyle = css(T(c)); x.fillRect(a, b, w, h); } };
+  for (const { b, X0, X1, Y0, Y1 } of R){
+    const w = X1 - X0, fr = [X0 - x0, Y1 - b.h1 - y0, w, b.h1 - b.h0], tp = [X0 - x0, Y0 - b.h1 - y0, w, Y1 - Y0];
+    if (b.cyl){
+      for (let i = 0; i < w; i++){ const f = (i + .5) / w; rect(f < .28 ? mix(b.front, [255, 244, 220], .3) : f > .72 ? mix(b.front, [10, 8, 24], .35) : b.front, fr[0] + i, fr[1], 1, fr[3]); }
+      if (b.top){ rect(b.top, tp[0] + 1, tp[1], w - 2, tp[3]); rect(b.top, tp[0], tp[1] + 1, w, Math.max(0, tp[3] - 2)); }
+    } else {
+      rect(b.front, ...fr);
+      if (b.top){ rect(b.top, ...tp); rect(mix(b.top, [255, 255, 255], .18), tp[0], tp[1] + tp[3] - 1, w, 1); }   // the lit front edge
+    }
+    if (b.h0 === 0 && fr[3] > 2) rect(mix(b.front, [8, 6, 16], .4), fr[0], fr[1] + fr[3] - 1, w, 1);   // its foot, in contact shadow
+    b.fx?.(x, fr, tp, rect);
+  }
+  deco?.(x, (u, v, h) => { const [a, b2] = M(u, v, h); return [a - x0, b2 - y0]; }, rect);
+  return { cv, sil: silhouette(cv), ax: -x0, ay: -y0, sy };
+}
+
+/* The cast of one sideline, in one orientation. Returns the actors: { side (1 the far one), x, b (yards out), kind,
+   f (idle frames), j (after your score), d (dejected), sy (sort offset), mv (how drawhd.js moves it), ph }. */
+function* sideCast(portrait, home, away, sky){
+  const rnd = seeded(9001), out = [], todo = [];
+  const HU = uniform(home, false), AU = uniform(away, true);
+  const skinR = () => CROWD_SKIN[Math.floor(rnd() * CROWD_SKIN.length)];
+  const HAIR = ['#2a1a10', '#3a2416', '#1a1210', '#6a4a2a', '#8a7a6a', '#c8c4bc', '#1d1d22'];
+  const face = far => portrait ? ['side', !!far] : [far ? 'back' : 'front', false];
+  const litAt = (x, far, b) => !inShadow(x, far ? FW + b : -b);
+  const T0 = lit => c => lit ? LIT(c) : SHD(c);
+  const snow = sky === 'snow', rain = sky === 'rain', cold = snow || rain;
+  const add = (side, x, b, kind, mk, extra) => todo.push({ side, x, b, kind, mk, ph: rnd() * 6, sy: 0, ...extra });
+  const colorsOf = (o) => { const u = { H: '#1d1d22', W: '#f2f2ee', R: HAIR[0], J: '#777777', S: '#777777', T: '#f2f2ee', N: '#f2f2ee', P: '#2a2a30', O: '#2a2a30', B: '#1d1d22', G: '#ece7d2', M: '#1d1e24', E: '#1a0f0c', ...o }; u.key = Object.values(u).join(''); return u; };
+  const fitOf = o => ({ ...o, key: JSON.stringify(o) });
+  // Players: in the uniform, or (in the wet and the cold) a hooded team cape with the number on it.
+  const player = (far, x, b) => {
+    const team = far ? away : home, uni = far ? AU : HU, num = 1 + Math.floor(rnd() * 98), skin = skinR(), lit = litAt(x, far, b);
+    let [view, flip] = face(far);
+    if (rnd() < .28){ if (portrait){ view = rnd() < .5 ? 'back' : 'front'; flip = false; } else { view = 'side'; flip = rnd() < .5; } }
+    const cape = rain && rnd() < .45 || snow && rnd() < .65, arms = rnd() < .3 ? 'ready' : 'hang';
+    add(far, x, b, 'pl', () => {
+      if (cape){
+        const cc = team.color || '#777', u = colorsOf({ J: cc, S: cc, H: cc, N: lum(cc) > .6 ? '#1c1c22' : '#f4f4f0', P: uni.P, O: uni.O, B: uni.B }), fit = fitOf({ hat: 'hood', cape: true, num });
+        const F = o => staffSprite({ fit, uni: u, skin, view, pose: 'stand', arms: 'hang', b: 0, flip, lit, ...o });
+        return { f: [F({}), F({ b: 1 })], j: [F({ arms: 'up' })], d: [F({})] };
+      }
+      const F = o => getSprite({ uni, view, pose: 'set', c: 0, arms, b: 0, run: null, num, skin, flip, lit, down: false, ...o });
+      return { f: [F({}), F({ b: 1 })], j: [F({ arms: 'reach', c: 1 })], d: [F({ c: 2, arms: 'knees' })] };
+    });
+  };
+  const seated = (far, x, b) => {
+    const team = far ? away : home, uni = far ? AU : HU, num = 1 + Math.floor(rnd() * 98), skin = skinR(), lit = litAt(x, far, b), [view, flip] = face(far);
+    const cape = cold && rnd() < .6;
+    add(far, x, b, 'sit', () => {
+      if (cape){
+        const cc = team.color || '#777', u = colorsOf({ J: cc, S: cc, H: cc, N: lum(cc) > .6 ? '#1c1c22' : '#f4f4f0', P: uni.P, O: uni.O, B: uni.B }), fit = fitOf({ hat: 'hood', cape: true, num });
+        const F = o => staffSprite({ fit, uni: u, skin, view, pose: 'sit', arms: 'hang', b: 0, flip, lit, ...o });
+        return { f: [F({}), F({ b: 1 })], j: [F({ arms: 'up' })], d: [F({})] };
+      }
+      const F = o => getSprite({ uni, view, pose: 'set', c: 4, arms: 'knees', b: 0, run: null, num, skin, flip, lit, down: false, sit: true, ...o });
+      return { f: [F({}), F({ b: 1 })], j: [F({ arms: 'reach' })], d: [F({ arms: 'hang' })] };
+    });
+  };
+  // Coaches and staff: team polos and caps, headsets, play cards; rain jackets and hoods, or parkas and beanies.
+  const staff = (far, x, b, kind, o = {}) => {
+    const team = far ? away : home, tc = team.color || '#777', tl = letterColor(team), skin = skinR(), lit = litAt(x, far, b);
+    let [view, flip] = face(far);
+    if (o.turn && !portrait){ view = 'side'; flip = o.turn < 0; }
+    let fit = { hat: 'cap', set: true, item: 'card' }, col = { H: tc, W: tl, J: tc, S: tc, T: tl, N: tl, P: rnd() < .5 ? '#c2b48e' : '#2a2a30', B: rnd() < .5 ? '#e8e8e8' : '#1d1d22', R: HAIR[Math.floor(rnd() * HAIR.length)] };
+    col.O = col.P;
+    let arms = o.arms || 'card';
+    if (kind === 'hc'){ fit.hat = 'visor'; }
+    if (kind === 'trainer'){ fit = { hat: null, legs: 'shorts', logo: true }; col = { ...col, J: rnd() < .5 ? '#f2f2ee' : tc, S: '#f2f2ee', T: tc, N: tc, P: '#1d1d22', O: skin, B: '#f2f2ee' }; if (col.J === tc) col.S = tc; arms = o.arms || 'hips'; }
+    if (kind === 'chain'){ fit = { hat: 'cap', long: true }; col = { ...col, H: '#1d1d22', W: '#1d1d22', J: '#ff8a1c', S: '#2c2c34', T: '#ffd23f', N: '#1d1d22', P: '#2a2a30', O: '#2a2a30', B: '#1a1a1e' }; arms = 'hold'; }
+    if (kind === 'ref'){ fit = { hat: 'cap', stripes: true, long: !!cold }; col = { ...col, H: '#f4f4f0', W: '#f4f4f0', J: '#f4f4f0', S: '#f4f4f0', T: '#18181c', P: '#18181c', O: '#18181c', B: '#18181c' }; arms = 'hang'; }
+    if (kind === 'photo'){ fit = { hat: rnd() < .6 ? 'cap' : null, long: true, item: 'lens' }; col = { ...col, H: '#1d1d22', W: '#1d1d22', J: '#8a7a56', S: '#2a2a30', P: '#2a2a30', O: '#2a2a30', B: '#1a1a1e', G: '#ece9df', M: '#1a1a1e' }; arms = 'cam'; }
+    if (kind === 'tv'){ fit = { hat: 'cap', long: true, item: 'cam', set: true }; col = { ...col, H: '#1d1d22', W: '#1d1d22', J: '#1d1d22', S: '#1d1d22', P: '#1d1d22', O: '#1d1d22', B: '#1a1a1e', G: '#2a2c33', N: '#3a5a9a' }; arms = 'cam'; }
+    if (kind === 'cheer'){ fit = { hat: null, legs: 'skirt', item: 'pom', pony: true, logo: false }; col = { ...col, R: ['#7a4a22', '#2a1a10', '#c89a5a', '#3a2416'][Math.floor(rnd() * 4)], J: tc, S: tc, P: tc, O: skin, T: tl, B: '#f2f2ee', G: tl }; arms = 'pom'; }
+    if (kind === 'mascot'){ fit = { hat: 'big', long: true }; col = { ...col, H: tc, W: '#f8f8f4', J: tc, S: tc, P: tc, O: tc, B: tl, G: '#e6b04a', N: tl }; arms = 'up'; }
+    if (kind === 'manager'){ fit = { hat: 'cap', long: !!cold }; col = { ...col, J: '#8f969c', S: '#8f969c', T: tc, N: tc, P: '#2a2a30', O: '#2a2a30' }; arms = 'hang'; }
+    // The weather: hoods and rain jackets (coaches keep the headset), parkas and beanies in the snow.
+    if (['hc', 'coach', 'manager', 'trainer', 'photo', 'tv'].includes(kind) && cold){
+      fit = { ...fit, long: true, coat: rnd() < .8 };
+      if (kind === 'trainer'){ fit.legs = 'pants'; col.O = col.P = '#1d1d22'; }
+      if (snow){ if (kind !== 'hc' || rnd() < .5) fit.hat = 'beanie'; if (kind !== 'photo' && kind !== 'tv'){ col.J = col.S = rnd() < .5 ? '#1d1d22' : tc; } }
+      else if (rnd() < .45 && kind !== 'tv'){ fit.hat = 'hood'; if (rnd() < .4){ col.J = col.S = '#dfe6ea'; } }
+    }
+    const u = colorsOf(col), ff = fitOf(fit), pose = o.pose || 'stand', mv = o.mv;
+    add(far, x, b, kind, () => {
+      const F = q => staffSprite({ fit: ff, uni: u, skin, view, pose, arms, b: 0, flip, lit, ...q });
+      const r = { f: [F({}), F({ b: 1 })], j: [F({ arms: kind === 'photo' || kind === 'tv' || kind === 'chain' ? arms : kind === 'cheer' ? 'pomup' : 'up' })], d: [F({ arms: kind === 'chain' || kind === 'photo' || kind === 'tv' ? arms : 'hips' })] };
+      if (kind === 'cheer' || kind === 'mascot') r.f = [F({}), F({ arms: kind === 'cheer' ? 'pomup' : 'hang' })];
+      // Walking (another slice): from the side along the field lying down; standing up, toward or away from the camera.
+      if (mv) r.mkw = function(){ const W = (dir, pz) => staffSprite({ fit: ff, uni: u, skin, view: portrait ? (dir > 0 ? 'back' : 'front') : 'side', pose: pz, arms: arms === 'cam' || arms === 'hold' ? arms : 'hang', b: 0, flip: !portrait && dir < 0, lit });
+        this.wp = ['walk0', 'stand', 'walk1', 'stand'].map(pz => W(1, pz)); this.wn = ['walk0', 'stand', 'walk1', 'stand'].map(pz => W(-1, pz)); delete this.mkw; };
+      return r;
+    }, mv ? { mv } : {});
+  };
+  // Things: benches with the name across the back, the cooler table, the injury tent, heaters, the camera cart.
+  const obj = (far, x, b, kind, make) => { const lit = litAt(x, far, b); add(far, x, b, kind, () => { const s = make(T0(lit), lit, far); return { f: [s], j: [s], d: [s], sy: s.sy }; }); };
+  const snowTop = c => snow ? [234, 238, 248] : c;
+  const bench = (far, x0, x1, b) => obj(far, x0, b, 'bench', (T, lit) => {
+    const L = Math.round((x1 - x0) * S), team = far ? away : home, tc = hex(team.color), tl = hex(letterColor(team)), name = (paintable(team.name) || 'HOME').slice(0, Math.floor((L - 4) / 6));
+    return boxObj([
+      ...[1, L / 2 - 1 | 0, L - 3].map(u => ({ u0: u, u1: u + 2, v0: 0, v1: 7, h0: 0, h1: 5, front: [48, 50, 58] })),
+      { u0: 0, u1: L, v0: 0, v1: 5, h0: 5, h1: 7, top: snowTop([176, 180, 188]), front: [112, 116, 126] },
+      { u0: 0, u1: L, v0: 5, v1: 7, h0: 3, h1: 15, top: snowTop(mix(tc, [255, 255, 255], .25)), front: far && !portrait ? mix(tc, [0, 0, 0], .3) : tc,
+        fx: (x, fr, tp, rect) => { if (portrait) return; rect(tl, fr[0], fr[1] + 2, fr[2], 1); if (!far) for (let i = 6; i < fr[2] - 4; i += 12) rect(mix(tc, [255, 255, 255], .35), fr[0] + i, fr[1] + 5, 4, 4); } }
+    ], portrait, far, T);
+  });
+  const table = (far, x0, b) => obj(far, x0, b, 'table', (T) => {
+    const team = far ? away : home, tc = hex(team.color);
+    return boxObj([
+      { u0: 0, u1: 36, v0: 0, v1: 7, h0: 1, h1: 10, top: snowTop([238, 236, 228]), front: tc, fx: (x, fr, tp, rect) => { rect(mix(tc, [255, 255, 255], .3), fr[0], fr[1], fr[2], 1); } },
+      { u0: 3, u1: 11, v0: 1, v1: 6, h0: 10, h1: 21, top: [246, 246, 242], front: [236, 120, 28], cyl: true, fx: (x, fr, tp, rect) => { rect([246, 246, 242], fr[0], fr[1], fr[2], 2); rect([200, 90, 20], fr[0] + 2, fr[1] + 6, fr[2] - 4, 1); } },
+      { u0: 14, u1: 22, v0: 1, v1: 6, h0: 10, h1: 21, top: [246, 246, 242], front: [236, 120, 28], cyl: true, fx: (x, fr, tp, rect) => { rect([246, 246, 242], fr[0], fr[1], fr[2], 2); rect([200, 90, 20], fr[0] + 2, fr[1] + 6, fr[2] - 4, 1); } },
+      { u0: 25, u1: 27, v0: 2, v1: 4, h0: 10, h1: 18, top: [250, 250, 248], front: [226, 226, 222] },
+      { u0: 29, u1: 31, v0: 2, v1: 4, h0: 10, h1: 15, top: [250, 250, 248], front: [226, 226, 222] },
+      { u0: 38, u1: 44, v0: 1, v1: 6, h0: 0, h1: 9, top: [130, 160, 200], front: [60, 96, 150], cyl: true }   // the ice tub
+    ], portrait, far, T);
+  });
+  // The injury tent: a pop-up canopy in the team color over dark walls, the door zipped, the roof's four facets.
+  const tent = (far, x0, b) => obj(far, x0, b, 'tent', (T) => {
+    const team = far ? away : home, tc = hex(team.color), tl = hex(letterColor(team)), WALL = [40, 46, 62];
+    return boxObj([
+      { u0: 0, u1: 34, v0: 0, v1: 28, h0: 0, h1: 21, front: WALL, fx: (x, fr, tp, rect) => {
+        const m = fr[0] + (fr[2] >> 1); rect([24, 28, 40], m - 4, fr[1] + 3, 8, fr[3] - 3); rect([150, 156, 170], m, fr[1] + 3, 1, fr[3] - 3);
+        rect(mix(WALL, [255, 255, 255], .14), fr[0], fr[1], 1, fr[3]); rect(mix(WALL, [0, 0, 0], .3), fr[0] + fr[2] - 1, fr[1], 1, fr[3]); } },
+      { u0: -2, u1: 36, v0: -2, v1: 30, h0: 21, h1: 25, top: snowTop(tc), front: tc, fx: (x, fr, tp, rect) => {
+        rect(tl, fr[0], fr[1] + fr[3] - 1, fr[2], 1);
+        for (let i = 1; i < fr[2]; i += 4) rect(mix(tc, [0, 0, 0], .35), fr[0] + i, fr[1] + fr[3], 2, 1);   // the scalloped hem
+        if (snow) return;
+        const [X, Y, w, h] = tp;
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){
+          const u = (i + .5) / w - .5, v = (j + .5) / h - .5, f = Math.abs(u) > Math.abs(v) ? (u < 0 ? 0 : 2) : v < 0 ? 0 : 1;
+          const ridge = Math.abs(Math.abs(u) - Math.abs(v)) < .5 / Math.min(w, h);
+          rect(ridge ? mix(tc, [255, 255, 255], .4) : f === 0 ? mix(tc, [255, 240, 220], .16) : f === 2 ? mix(tc, [10, 8, 24], .3) : mix(tc, [10, 8, 24], .12), X + i, Y + j, 1, 1);
+        }
+        rect([250, 250, 246], X + (w >> 1), Y + (h >> 1), 1, 1);
+      } }
+    ], portrait, far, T);
+  });
+  const heater = (far, x0, b) => obj(far, x0, b, 'heater', (T) => boxObj([
+    { u0: 0, u1: 8, v0: 0, v1: 8, h0: 0, h1: 30, top: [236, 240, 248], front: [62, 64, 72], cyl: true, fx: (x, fr, tp, rect) => { rect([255, 150, 50], fr[0] + 1, fr[1] + 4, fr[2] - 2, 6); rect([255, 214, 120], fr[0] + 2, fr[1] + 6, fr[2] - 4, 2); rect([40, 40, 46], fr[0] + 1, fr[1] + 2, fr[2] - 2, 1); } }
+  ], portrait, far, T));
+  const cart = (far, x0, b) => {
+    const lit = litAt(x0, far, b), skin = skinR();
+    add(far, x0, b, 'cart', () => {
+      const T = T0(lit), op = staffSprite({ fit: fitOf({ hat: 'cap', long: true, set: true }), uni: colorsOf({ J: '#1d1d22', S: '#1d1d22', P: '#1d1d22', O: '#1d1d22', H: '#1d1d22', W: '#1d1d22' }), skin, view: face(far)[0], pose: 'stand', arms: 'hold', b: 0, flip: face(far)[1], lit });
+      // A flatbed on fat tires, a striped skirt, a gray broadcast camera on its post with the long lens to the field.
+      const s = boxObj([
+        ...[[1, 0], [21, 0], [1, 11], [21, 11]].map(([u, v]) => ({ u0: u, u1: u + 7, v0: v, v1: v + 3, h0: 0, h1: 6, front: [20, 20, 24], top: [44, 44, 50], fx: (x, fr, tp, rect) => rect([120, 122, 130], fr[0] + 2, fr[1] + 2, 3, 2) })),
+        { u0: 0, u1: 30, v0: 1, v1: 13, h0: 4, h1: 9, top: snowTop([92, 94, 104]), front: [46, 48, 58], fx: (x, fr, tp, rect) => { rect([236, 196, 44], fr[0], fr[1] + 2, fr[2], 1); rect([200, 40, 30], fr[0] + 1, fr[1] + 1, 2, 1); } },
+        { u0: 13, u1: 16, v0: 5, v1: 8, h0: 9, h1: 18, top: [40, 40, 46], front: [28, 28, 34] },
+        { u0: 7, u1: 22, v0: 3, v1: 10, h0: 18, h1: 26, top: [206, 208, 214], front: [160, 164, 172], fx: (x, fr, tp, rect) => { rect([90, 94, 104], fr[0], fr[1] + fr[3] - 1, fr[2], 1); rect([255, 60, 40], fr[0] + 2, fr[1] + 2, 1, 1); } },
+        { u0: 9, u1: 18, v0: -1, v1: 3, h0: 19, h1: 25, top: [44, 46, 54], front: [16, 18, 26], fx: (x, fr, tp, rect) => rect([70, 96, 150], fr[0] + 2, fr[1] + 2, 2, 2) }
+      ], portrait, far, T, (x, M) => { const [a, b2] = M(17, 11, 9); x.drawImage(op.cv, a - op.ax, b2 - op.ay); });
+      return { f: [s], j: [s], d: [s], sy: s.sy };
+    }, { mv: 'cart' });
+  };
+  // ---- The layout. Both team boxes between the 25s; home's nearer the field (lying down, the far side's people
+  // would stand over the grass if they came as close).
+  for (const far of [0, 1]){
+    const bb = far ? 5.1 : 4.9, front = far ? 3.6 : 2.6, back = far ? 4.6 : 4.2;
+    const benches = [[29.5, 36.5], [38, 45], [55.5, 62.5], [64, 71]];
+    for (const [a, z] of benches){ bench(far, a, z, bb); for (let k = 0; k < 2; k++) if (rnd() < .8) seated(far, a + 1 + rnd() * (z - a - 2), bb - .25); }
+    table(far, far ? 49.5 : 47, bb);
+    tent(far, far ? 76.6 : 19.8, far ? 3.4 : 3.2);
+    if (snow) for (const x of [37.1, 53.6, 63.1]) heater(far, x, bb + .1);
+    // Players along the front of the box, in loose knots.
+    for (let x = 27.5; x < 73; x += 1.5 + rnd() * 1.6){
+      if (rnd() < .2){ x += 2.5; continue; }
+      player(far, x, front + rnd() * (back - front));
+    }
+    staff(far, 33.5, far ? 3.3 : 2.1, 'coach', { turn: 1 }); staff(far, 41.5, far ? 3.4 : 2.2, 'coach', { arms: 'cross' });
+    staff(far, 57.5, far ? 3.3 : 2.0, 'coach'); staff(far, 66.5, far ? 3.2 : 2.3, 'coach', { arms: 'hang', turn: -1 });
+    staff(far, far ? 51.5 : 50.8, far ? 4.6 : 4.3, 'manager');
+    staff(far, far ? 74.8 : 24.8, far ? 3.6 : 2.9, 'trainer'); staff(far, far ? 75.6 : 26, far ? 4.5 : 4, 'trainer', { arms: 'cross' });
+    staff(far, 50, far ? 3.4 : 1.35, 'hc', { mv: far ? 'hc1' : 'hc0' });
+    // Photographers kneeling by both goal lines.
+    for (const x of far ? [-2, 4, 96, 102] : [-4, 1.5, 97.5, 103]) staff(far, x, far ? 2.4 + rnd() * .4 : 1.7 + rnd() * .5, 'photo', { pose: 'kneel' });
+    yield;
+  }
+  // Home's cheerleaders and mascot toward their end, a TV camera on the shoulder; the line judge on the near side.
+  for (const [i, x] of [6, 8.4, 10.8, 13.2, 15.6, 18].entries()) staff(0, x, i % 2 ? 3.3 : 2.6, 'cheer');
+  staff(0, 2.4, 3, 'mascot');
+  staff(0, 80, 1.9, 'tv', { mv: 'tv' });
+  staff(0, 50, 1, 'ref', { mv: 'lj' });
+  // The chain crew on the visitors' side: the rods at both ends of the ten yards, the box at the line.
+  for (const m of ['rod0', 'box', 'rod1']) staff(1, 50, 2.4, 'chain', { mv: m });
+  cart(1, 40, 1);
+  // The sprites, a few at a time.
+  // Each sprite drawn once into a pixel, so the browser uploads it now, in a slice, not on the frame it first shows.
+  const wx = canvas(1, 1).getContext('2d'), warm = list => { for (const q of list || []){ wx.drawImage(q.cv, 0, 0, 1, 1); wx.drawImage(q.sil, 0, 0, 1, 1); } };
+  for (const a of todo){ yield; const r = a.mk(); delete a.mk; Object.assign(a, r); out.push(a); warm(a.f); warm(a.j); warm(a.d); if (a.mkw){ yield; a.mkw(); warm(a.wp); warm(a.wn); } }
+  return out;
+}
+/* The sidelines, sliced like the rest (inside buildCrowdSteps). */
+function* buildSidesSteps(portrait, home, away, sky){
+  const near = yield* sideStand(portrait, false, home, away, sky), far = yield* sideStand(portrait, true, home, away, sky);
+  const cast = yield* sideCast(portrait, home, away, sky), Al = near.Al, wx = canvas(1, 1).getContext('2d');
+  for (const s of [near, far]){ wx.drawImage(s.c, 0, 0, 1, 1); yield; }
+  const tape = ribbonTape(home.name, home, Al, false), hot = ribbonTape(home.name, home, Al, true);
+  return { stands: [near, far], cast, tape: tape.c, tapeHot: hot.c, seg: tape.seg, segHot: hot.seg };
+}
+/* The chain crew's down box: an orange box with the down on it (1-4), in its light. */
+const DOWNS = new Map();
+export function downBox(n, lit){
+  const key = `${n}${lit}`; let c = DOWNS.get(key); if (c) return c;
+  c = canvas(10, 11); const x = c.getContext('2d'), T = col => css(lit ? LIT(col) : SHD(col)), g = F4[clamp(n | 0, 1, 4)];
+  x.fillStyle = T([250, 112, 28]); x.fillRect(0, 0, 10, 10); x.fillStyle = T([255, 172, 92]); x.fillRect(0, 0, 10, 1); x.fillRect(0, 0, 1, 10);
+  x.fillStyle = T([168, 64, 14]); x.fillRect(0, 9, 10, 1); x.fillRect(9, 1, 1, 9);
+  x.fillStyle = T([24, 20, 26]); for (let r = 0; r < 6; r++) for (let q = 0; q < 4; q++) if (g[r][q] === '1') x.fillRect(3 + q, 2 + r, 1, 1);
+  x.fillStyle = T([60, 60, 66]); x.fillRect(4, 10, 2, 1);
+  DOWNS.set(key, c); return c;
 }
 
 /* The midfield logo, painted on: posterized, a little grass showing through, in the late light. */

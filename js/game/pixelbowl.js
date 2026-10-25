@@ -95,7 +95,7 @@ function withImage(t){
   if (t.logo){ t.img = new Image(); t.img.src = logoUrl(t.logo, 72); }
   return t;
 }
-/* Opponents for a game opened from the Play button: big-name Power 4 programs (ESPN ids), so the matchup always
+/* The teams for a game opened from the Play button: two big-name Power 4 programs (ESPN ids), so the matchup always
    feels like a marquee one. */
 const MARQUEE = ['333', '61', '194', '130', '251', '201', '99', '30', '213', '57', '52', '228', '2390', '2483', '2633', '2',
   '245', '264', '275', '145', '158', '127', '26', '2294', '254', '2579', '8', '97', '38', '259', '2306', '197', '142', '2641'];
@@ -105,10 +105,11 @@ function defaults(prefill){
     const [a, h] = prefill.map(String);
     me = myTeam && (a === myTeam.id || h === myTeam.id) ? myTeam.id : h; opp = me === a ? h : a;
   } else {
-    // Your team against a random big name (never yourself, never the team you just played).
-    me = myTeam?.id || saved.lastMe || state.rankings?.ranks?.[0]?.id || Object.keys(state.standings?.byTeam || {})[0] || '333';
-    const pool = MARQUEE.filter(x => x !== String(me) && x !== String(saved.lastOpp));
-    opp = pool[Math.floor(Math.random() * pool.length)];
+    // Two random big names (your own team is for Season mode), never the same matchup as last time.
+    const any = list => list[Math.floor(Math.random() * list.length)];
+    me = any(MARQUEE);
+    const pool = MARQUEE.filter(x => x !== me && !(me === String(saved.lastMe) && x === String(saved.lastOpp)));
+    opp = any(pool);
   }
   return { me: String(me), opp: String(opp) };
 }
@@ -183,6 +184,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
   bindTeams(() => ({ me: (keyCtx?.main || G)?.me }));   // the home band plays for your team (and its chant)
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
   if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
+  root.addEventListener('pointerdown', e => { if (phase === 'fly'){ e.preventDefault(); e.stopPropagation(); R.flySkip(); } }, true);
   canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', cancel);
   // Its own button, so a press on the field only ever steers; a second thumb can hit it mid-drag.
@@ -249,7 +251,7 @@ function loop(ts){
   else if (!paused && G){ acc += dt * (phase === 'live' && coaching() ? 1.5 : 1); while (acc >= STEP){ update(STEP); acc -= STEP; } }
   if (G && !paused && phase !== 'setup') crowd(crowdLevel()); else crowd(0);
   const cover = G?.youDefend && G.defDrill?.kind === 'cover';
-  if (G) R.draw(G, paused ? 0 : dt, { covered: !!modalEl?.classList.contains('on') && !modalEl.classList.contains('light'), aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
+  if (G) R.draw(G, paused ? 0 : dt, { fly: phase === 'setup' || phase === 'fly', covered: !!modalEl?.classList.contains('on') && !modalEl.classList.contains('light'), aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
     stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : 0,
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick && !G.play?.noHandoff || phase === 'live' && S.canHandoff(G)),
     readKey: phase === 'live' && G.play?.option && !G.play.carrier ? G.play.option.key : null });
@@ -392,8 +394,12 @@ function startGame(cfg = null){
   cond = null;   // used up: the next game rolls its own
   attachNames(G.me, G.opp);
   snaps = 0;
-  showHud(true);
-  // Coin toss.
+  // The stadium flyover first (when its overview is baked and there's no one to skip it for), then the coin toss.
+  const g0 = G, toss = () => { if (!root || G !== g0) return; showHud(true); tossCard(); };
+  if (window.__pb?.noFly) toss();
+  else { closeModal(); showHud(false); phase = 'fly'; R.flyStart(G, () => { if (phase === 'fly') toss(); }, window.__pb?.fly); }
+}
+function tossCard(){
   const meWins = Math.random() < .5;
   phase = 'modal';
   // A pixel gold coin, flipped end over end as it goes up, landing on the winner's face: you have heads, they have tails.
@@ -569,6 +575,7 @@ function syncReplay(){
 /* The crowd: quiet between plays, louder on third and fourth down, in the red zone, late in a close game, and in a
    roar after a score (G.cheer). */
 function crowdLevel(){
+  if (phase === 'fly') return R.flyLevel;
   if (!G || phase === 'modal' && $('.pb-modal').dataset.kind === 'pause') return 0;
   let l = .05;
   if (G.down >= 3) l += .04; if (G.los >= 80) l += .04;
@@ -1854,6 +1861,7 @@ function keydown(e){
   if (!root || e.target.matches?.('input, textarea')) return;
   const k = e.key.toLowerCase();
   if (k === 'escape' || k === 'p'){ e.preventDefault(); if (phase === 'setup') return; return paused ? unpause() : pause(); }
+  if (phase === 'fly' && G){ if ([' ', 'enter', 'escape'].includes(k)){ e.preventDefault(); R.flySkip(); } return; }
   if (paused || !G || phase === 'setup') return;
   if (k === 'm'){ saved.sound = !soundOn(); setSound(saved.sound); save(); return; }
   if (KEYMAP[k]){ e.preventDefault(); keys.add(KEYMAP[k]); return; }

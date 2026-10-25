@@ -8,6 +8,7 @@
    UI pixels, and a drag is worth as many yards as it always was. */
 import { FW, MID, GOAL_HALF, BAR, NET_X, NET_HALF, canThrow, clamp, trajectory, throwSpread, kickPreview } from './sim.js';
 import * as A from './hdart.js';
+import * as FO from './flyover.js';
 import { sfx } from './sfx.js';
 
 const { S } = A;
@@ -15,6 +16,7 @@ const UI = 290;   // UI pixels on the screen's short side: the game's original r
 const OLD = 5;    // UI pixels per yard for drags (the original scale, so a throw's pull feels as it always has)
 /* Yards across the screen's short side. */
 const CLOSE = 32, CARRY = 36, THROW = 48, COVER = 46, WIDE = 58;
+const SIDE = 11.5;   // how far past a sideline the camera may look: the team box, the wall, the first rows of the stands
 const KX = .95, KY = .38;   // the cast shadows' lean: low sun from the top left
 /* The light by kickoff time (weather.js): the cast shadows' leans and strength, and a grade over the pixel art
    (multiply, then a lift on the field itself). Afternoon is the art as painted. Night: four light towers, four faint
@@ -157,6 +159,7 @@ export function createRenderer(canvas){
   let home = null, away = null, turf = 'clear', bake = null;
   /* The last few fields and stands baked (by matchup, light and weather), so flipping back to one is instant. */
   const baked = new Map(), KEEP = 3;
+  let ov = null, ovBake = null, fly = null;   // the pregame flyover's overview (baked a slice at a time) and the shot under way
   function prepare(G){
     const C = G.cond || {}, sky = C.sky || 'clear';
     const key = `${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${C.time === 'afternoon' || !C.time ? 'sun' : 'flat'}${sky}|${G.youDefend ? 'D' : ''}`;
@@ -166,11 +169,14 @@ export function createRenderer(canvas){
       uniOff = A.uniform(G.me, !!G.youDefend); uniDef = A.uniform(G.opp, !G.youDefend);
       const fk = key.slice(0, key.lastIndexOf('|'));
       if (fk !== fieldKey){
-        fieldKey = fk; home = { name: G.me.name, color: G.me.color, alt: G.me.alt }; away = { name: G.opp.name, color: G.opp.color, alt: G.opp.alt };
+        fieldKey = fk; home = { id: G.me.id, name: G.me.name, color: G.me.color, alt: G.me.alt }; away = { id: G.opp.id, name: G.opp.name, color: G.opp.color, alt: G.opp.alt };
         const shade = !C.time || C.time === 'afternoon';
         turf = sky; A.setShade(shade);
         const hit = baked.get(fk);
-        if (hit){ baked.delete(fk); baked.set(fk, hit); art = hit.art; crowd = hit.crowd[portrait] ||= A.buildCrowd(portrait, home, away, sky); crowdKey = `${fk}|${portrait}`; bake = null; }
+        if (hit){
+          baked.delete(fk); baked.set(fk, hit); art = hit.art; crowd = hit.crowd[portrait] || null; crowdKey = `${fk}|${portrait}`;
+          bake = crowd ? null : { fk, field: art, p: portrait, cs: A.buildCrowdSteps(portrait, home, away, sky), at: 0 };
+        }
         // Baking a field takes a while (most of a second on a phone): it's done a little each frame (pumpBake), the
         // old one staying up meanwhile, and only once the choice has settled for a moment.
         else bake = { fk, h: home, a: away, sky, shade, steps: null, at: performance.now() + (art ? 220 : 0) };
@@ -178,8 +184,12 @@ export function createRenderer(canvas){
       loadLogo(G.youDefend ? G.opp.img : G.me.img);
     }
     const ck = `${fieldKey}|${portrait}`;
-    // Turned the phone: the fans stand upright the other way.
-    if (art && crowdKey && ck !== crowdKey && !bake){ crowdKey = ck; const e = baked.get(fieldKey); crowd = e ? (e.crowd[portrait] ||= A.buildCrowd(portrait, home, away, turf)) : A.buildCrowd(portrait, home, away, turf); }
+    // Turned the phone: the fans stand upright the other way (baked a slice at a time, the stands empty meanwhile).
+    if (art && crowdKey && ck !== crowdKey && !bake){
+      crowdKey = ck; const e = baked.get(fieldKey);
+      if (e?.crowd[portrait]) crowd = e.crowd[portrait];
+      else { crowd = null; bake = { fk: fieldKey, field: art, p: portrait, cs: A.buildCrowdSteps(portrait, home, away, turf), at: 0 }; }
+    }
   }
   /* A slice of the waiting bake: about 5 ms a frame, so the game keeps running (the first field of a game bakes all at
      once, there being nothing to show meanwhile). */
@@ -193,7 +203,8 @@ export function createRenderer(canvas){
     do r = B.cs.next(); while (!r.done && performance.now() < end);
     if (!r.done) return;
     bake = null; art = B.field; crowd = r.value; crowdKey = `${B.fk}|${B.p}`;   // turned meanwhile: prepare() rebuilds it
-    baked.set(B.fk, { art, crowd: { [B.p]: crowd } });
+    const e = baked.get(B.fk)?.art === art ? baked.get(B.fk) : { art, crowd: {} }; e.crowd[B.p] = crowd;
+    baked.delete(B.fk); baked.set(B.fk, e);
     while (baked.size > KEEP) baked.delete(baked.keys().next().value);
   }
   function loadLogo(img){
@@ -223,6 +234,7 @@ export function createRenderer(canvas){
     if (!art) return;
     worldTransform(bx, A.FX0, A.FY0); bx.drawImage(art.tex, 0, 0);
     bx.setTransform(1, 0, 0, 1, 0, 0);
+    if (crowd?.sides) sideStands(G);
     if (crowd) stands(G);
     if (logo){ const [x, y] = toBuf(50, MID); bx.globalAlpha = .93; bx.drawImage(logo, x - (logo.width >> 1), y - (logo.height >> 1)); bx.globalAlpha = 1; }
   }
@@ -326,6 +338,113 @@ export function createRenderer(canvas){
     if (key !== C.faceKey){ C.faceKey = key; A.paintBoard(C, home || G.me, away || G.opp, G.score || [0, 0], G.quarter, logo, hot); }
     bx.drawImage(C.face, C.faceAt[0], C.faceAt[1]);
     bx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /* ---------- the sidelines (hdart.js's sideStand and sideCast) ---------- */
+  /* Where a strip of side stands sits on the buffer (standing up, the world's rows land one pixel lower). */
+  const sideAt = s => { const [x, y] = toBuf(s.org[0], s.org[1]); return portrait ? [x, y + 1] : [x, y]; };
+  /* The strip's span along the field that's on screen, in its own pixels. */
+  const sideSpan = (s, ox, oy) => portrait ? [Math.max(0, -oy), Math.min(s.c.height, Hb - oy)] : [Math.max(0, -ox), Math.min(s.c.width, Wb - ox)];
+  function sideStands(G){
+    const roar = (G.cheer || 0) > 0;
+    for (const s of crowd.sides.stands){
+      const [ox, oy] = sideAt(s), c = s.c;
+      if (ox > Wb || oy > Hb || ox + c.width < 0 || oy + c.height < 0) continue;
+      bx.drawImage(c, ox, oy);
+      const [a0, a1] = sideSpan(s, ox, oy);
+      if (roar){
+        // After a score the whole strip is up and jumping, a stretch at a time (the wall stays put).
+        const r0 = s.far ? 12 : 0, rn = s.D - 12, f = Math.floor(t * 11);
+        for (let a = a0 - a0 % 24; a < a1; a += 24){
+          const k = [0, 2, 3, 1][(f + a / 24) % 4]; if (!k) continue;
+          if (portrait) bx.drawImage(c, r0, a, rn, 24, ox + r0, oy + a - k, rn, 24); else bx.drawImage(c, a, r0, 24, rn, ox + a, oy + r0 - k, 24, rn);
+        }
+      } else for (let i = lo(s.bob, a0 - 3); i < s.bob.length && s.bob[i].s < a1 + 3; i++){ const b = s.bob[i]; if (Math.sin(t * b.sp + b.ph) > .6) bx.drawImage(c, b.px - 2, b.py - 9, 5, 9, ox + b.px - 2, oy + b.py - 10, 5, 9); }
+    }
+  }
+  /* The LED boards along both walls (after the grade, so they glow at night): the home name and chevrons scrolling,
+     racing inside out after a score. Upright either way: standing up, the letters' tops face the field. */
+  function sideLights(G){
+    const C = crowd?.sides; if (!C) return;
+    const roar = (G.cheer || 0) > 0, hotT = roar && Math.floor(t * 5) % 2, tape = hotT ? C.tapeHot : C.tape, seg = hotT ? C.segHot : C.seg;
+    const run = Math.floor(t * (roar ? 70 : 16)) % seg;
+    for (const s of C.stands){
+      const [ox, oy] = sideAt(s); if (ox > Wb || oy > Hb || ox + s.c.width < 0 || oy + s.c.height < 0) continue;
+      const [a0, a1] = sideSpan(s, ox, oy), n = a1 - a0; if (n <= 0) continue;
+      if (!portrait){ bx.drawImage(tape, run + a0, 0, n, 7, ox + a0, oy + s.led, n, 7); continue; }
+      // Standing up the canvas runs top to bottom with the field: near side reads downward, far side upward.
+      if (s.far) bx.setTransform(0, -1, 1, 0, ox + s.led, oy + a1); else bx.setTransform(0, 1, -1, 0, ox + s.led + 7, oy + a0);
+      bx.drawImage(tape, run + a0, 0, n, 7, 0, 0, n, 7);
+      bx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+  }
+  /* The cast: placed (the movers walked toward where the game wants them), culled, sorted back to front, shadowed
+     like the players, and drawn before the lines and the players, so a man run out of bounds is always on top. */
+  const MOVE = { hc0: 2.6, hc1: 2.6, lj: 7, rod0: 5, box: 5, rod1: 5, tv: 4, cart: 7 };
+  const HOP = { pl: 6, sit: 4, cheer: 5, mascot: 9 };
+  let castG = null, sideShade = null;
+  function sideline(G, dt){
+    sideShade = null; const cast = crowd?.sides?.cast; if (!cast) return;
+    const P = G.play, L = P ? P.los : G.los, fd = Math.min(100, L + (G.toGo || 10)), roar = (G.cheer || 0) > 0;
+    const live = P?.live, bxw = live ? (P.carrier || P.ball)?.x : null, fresh = castG !== G; castG = G;
+    const list = [];
+    let r0 = null, r1 = null;
+    for (const a of cast){
+      if (a.mv){
+        let tx = a.x;
+        if (a.mv === 'hc0') tx = clamp(L - 3, 28, 72) + 2.6 * Math.sin(t * .4 + a.ph);   // pacing his box, a step behind the line
+        else if (a.mv === 'hc1') tx = clamp(L + 2, 28, 72) + 2.2 * Math.sin(t * .33 + a.ph);
+        else if (a.mv === 'lj') tx = bxw != null ? clamp(bxw, -2, 102) : L;   // the line judge runs with the play
+        else if (a.mv === 'rod0') tx = fd - 10; else if (a.mv === 'box') tx = L; else if (a.mv === 'rod1') tx = fd;
+        else if (a.mv === 'tv') tx = clamp(bxw ?? L, 77, 99);
+        else if (a.mv === 'cart') tx = clamp((bxw ?? Math.min(L, fd - 10)) - 6, -8, 104);
+        if (fresh || !a.on){ a.x = tx; a.on = true; }
+        const dx = G.kick ? 0 : clamp(tx - a.x, -MOVE[a.mv] * dt, MOVE[a.mv] * dt);
+        a.x += dx; a.step = (a.step || 0) + Math.abs(dx); a.walk = dt > 0 && Math.abs(dx) > dt * .3 ? Math.sign(dx) : 0;
+        if (a.mv === 'rod0') r0 = a; else if (a.mv === 'rod1') r1 = a;
+      }
+      const y = a.side ? FW + a.b : -a.b, [gx, gy] = toBuf(a.x, y);
+      let spr, hop = 0;
+      if (a.walk && a.wp) spr = (a.walk > 0 ? a.wp : a.wn)[Math.floor(a.step / .45) % 4];
+      else if (roar && (a.side === 0 || a.kind === 'ref')){ spr = a.j[0]; const h = HOP[a.kind]; if (h) hop = Math.round(Math.abs(Math.sin(t * (a.kind === 'mascot' ? 6 : 9) + a.ph)) * h); if (a.kind === 'cheer') spr = a.f[Math.floor(t * 7 + a.ph) % 2]; }
+      else if (roar) spr = a.d[0];
+      else if (a.kind === 'cheer' || a.kind === 'mascot') spr = a.f[Math.floor(t * (a.kind === 'cheer' ? 2.2 : 1.4) + a.ph) % 2];
+      else spr = a.f[a.f.length > 1 && Math.sin(t * 2.1 + a.ph) > .35 ? 1 : 0];
+      const x0 = gx - spr.ax, y0 = gy - hop - spr.ay;
+      if (x0 > Wb + 24 || y0 > Hb + 8 || x0 + spr.cv.width < -24 || y0 + spr.cv.height < -8) continue;
+      list.push({ a, spr, gx, gy, hop, key: gy + (a.sy || 0) });
+    }
+    if (!list.length) return;
+    list.sort((p, q) => p.key - q.key);
+    sideShade = list;   // their shadows go down with the players' (one pass over the buffer, in drawPlayers)
+    // The chain, slack on the grass between the rods.
+    if (r0 && r1){
+      const p = toBuf(r0.x, FW + r0.b), q = toBuf(r1.x, FW + r1.b), off = portrait ? -6 : 6;
+      bx.fillStyle = 'rgba(30,28,24,.85)';
+      if (portrait) bx.fillRect(p[0] + off, q[1], 1, p[1] - q[1]); else bx.fillRect(p[0] + off, p[1] - 1, q[0] - p[0], 1);
+      bx.fillStyle = 'rgba(214,206,170,.9)';
+      if (portrait){ for (let y = Math.max(q[1], -2); y < Math.min(p[1], Hb + 2); y += 3) bx.fillRect(p[0] + off, y, 1, 1); }
+      else for (let x = Math.max(p[0] + off, -2); x < Math.min(q[0] + off, Wb + 2); x += 3) bx.fillRect(x, p[1] - 1, 1, 1);
+    }
+    for (const d of list){
+      const s = d.spr, k = d.a.kind;
+      if (k !== 'bench' && k !== 'table' && k !== 'tent' && k !== 'heater' && k !== 'cart'){
+        if (!d.hop) bx.drawImage(A.AO, d.gx - (A.AO.width >> 1), d.gy - 4); else bx.drawImage(A.AO, d.gx - 7, d.gy - 3, 14, A.AO.height - 2);
+      }
+      bx.drawImage(s.cv, d.gx - s.ax, d.gy - d.hop - s.ay);
+      if (k === 'chain') pole(G, d);
+    }
+  }
+  /* A chain crew man's pole: the rods' orange paddles, the box with the down on it. */
+  function pole(G, d){
+    const a = d.a, on = !A.inShadow(a.x, FW + a.b), px = d.gx + (portrait ? -6 : 6), top = d.gy - 37;
+    const T = c => A.css(on ? A.LIT(c) : A.SHD(c));
+    bx.fillStyle = T([208, 208, 214]); bx.fillRect(px, top, 1, d.gy - top);
+    bx.fillStyle = T([120, 120, 130]); bx.fillRect(px + 1, top, 1, d.gy - top);
+    if (a.mv === 'box'){ bx.drawImage(A.downBox(G.down || 1, on), px - 4, top - 10); return; }
+    bx.fillStyle = T([250, 112, 28]); bx.fillRect(px - 2, top - 8, 6, 9);
+    bx.fillStyle = T([255, 178, 96]); bx.fillRect(px - 2, top - 8, 6, 1);
+    bx.fillStyle = T([168, 64, 14]); bx.fillRect(px - 2, top, 6, 1);
   }
 
   /* ---------- lines on the grass (under the players) ---------- */
@@ -470,7 +589,8 @@ export function createRenderer(canvas){
     }
     // Long late-afternoon shadows, then erased where the stadium already shades the grass.
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = 'source-over'; sx.clearRect(0, 0, Wb, Hb);
-    for (const [kx, ky] of lit.sh) for (const d of drawn){ if (d.down) continue; const s = d.spr; sx.setTransform(1, 0, -kx, -ky, d.gx - s.ax + kx * s.ay, d.gy + ky * s.ay); sx.drawImage(s.sil, 0, 0); }
+    for (const [kx, ky] of lit.sh) for (const d of sideShade ? drawn.concat(sideShade) : drawn){ if (d.down) continue; const s = d.spr; sx.setTransform(1, 0, -kx, -ky, d.gx - s.ax + kx * s.ay, d.gy + ky * s.ay); sx.drawImage(s.sil, 0, 0); }
+    sideShade = null;
     sx.setTransform(1, 0, 0, 1, 0, 0);
     goalposts(true);
     if (art){ sx.globalCompositeOperation = 'destination-out'; worldTransform(sx, A.FX0, A.FY0); sx.drawImage(art.mask, 0, 0); sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalCompositeOperation = 'source-over'; }
@@ -787,19 +907,20 @@ export function createRenderer(canvas){
   /* Under the lights: a light map baked once (world space, 5 px a yard, in dithered steps). The field bright and cool,
      a touch brighter toward the four towers off its corners; past the walls the light falls away fast, and up the
      stands it fades row by row into the dark. */
-  const LR = 5, LX0 = A.FX0, LY0 = A.FY0;
+  const LR = 5, LX0 = A.FX0, LY0 = -A.SB1 - 1, LY1 = FW + A.SB1 + 1;
   const BANKS = [[-4, -8], [104, -8], [-4, FW + 8], [104, FW + 8]];
   let lmap = null;
   function lightmap(){
     if (lmap) return lmap;
-    const w = Math.round((A.CX0 + A.CDEPTH - LX0) * LR), h = Math.round((A.FY1 - LY0) * LR);
+    const w = Math.round((A.CX0 + A.CDEPTH - LX0) * LR), h = Math.round((LY1 - LY0) * LR);
     const c = A.canvas(w, h), x = c.getContext('2d'), img = x.createImageData(w, h), d = img.data;
     const DK = [18, 24, 56], HI = [214, 230, 255];
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){
-      const X = LX0 + i / LR, Y = LY0 + j / LR, st = X > A.CX0;
+      const X = LX0 + i / LR, Y = LY0 + j / LR, st = X > A.CX0, b = Math.max(-Y, Y - FW), side = !st && b > A.SB0;
       let pool = 0; for (const [p, q] of BANKS) pool += 1 / (1 + ((X - p) ** 2 + (Y - q) ** 2) / 700);
       const out = st ? 0 : Math.max(0, -Y - .4, Y - FW - .4, -10.4 - X, X - 110.4);
-      let L = st ? .66 - (X - A.CX0) / A.CDEPTH * .34 :1 - Math.pow(clamp(out / 7, 0, 1), .8) * .62;
+      // The end zone's stands, the side stands (a little dimmer, falling off up the rows), the field and its edges.
+      let L = st ? .66 - (X - A.CX0) / A.CDEPTH * .34 : side ? .56 - (b - A.SB0) / (A.SB1 - A.SB0) * .16 : 1 - Math.pow(clamp(out / 7, 0, 1), .8) * .62;
       L *= .8 + .2 * Math.min(1, pool);
       const lv = clamp(Math.floor(L * 18 + A.bayer(i, j)) / 18, 0, 1), col = A.mix(DK, HI, lv * lv * (3 - 2 * lv) * .35 + lv * .65), q = (j * w + i) * 4;
       d[q] = col[0]; d[q + 1] = col[1]; d[q + 2] = col[2]; d[q + 3] = 255;
@@ -854,7 +975,7 @@ export function createRenderer(canvas){
     if (lit.lift){ bx.fillStyle = lit.lift; bx.fillRect(0, 0, Wb, Hb); }
     if (K?.lift){ bx.fillStyle = K.lift; bx.fillRect(0, 0, Wb, Hb); }
     bx.globalCompositeOperation = 'source-over';
-    standsLights(G);
+    standsLights(G); sideLights(G);
     // Flashbulbs in the stands, popping bright over the dark.
     for (const [x, y] of pops){
       bx.fillStyle = 'rgba(255,255,248,.16)'; bx.fillRect(x - 2, y - 1, 5, 3); bx.fillRect(x - 1, y - 2, 3, 5);
@@ -1239,7 +1360,7 @@ export function createRenderer(canvas){
     if (fx + long / 2 > 96) tx = Math.max(tx, Math.min(far + long * .2 - long / 2, fx + long * .25));
     if (K) tx = Math.min(tx, K.spotX - 3 + long / 2);   // ...without losing the kicker off the near edge
     tx = long >= 128 ? 50 : clamp(tx, -13 + long / 2, 140 - long / 2);
-    ty = lat >= FW + 14 ? MID : clamp(ty, lat / 2 - 7, FW + 7 - lat / 2);
+    ty = lat >= FW + 2 * SIDE ? MID : clamp(ty, lat / 2 - SIDE, FW + SIDE - lat / 2);
     const q = Math.min(1, dt * (P?.live ? 5 : 3.2));
     cam.x += (tx - cam.x) * q; cam.y += (ty - cam.y) * q;
   }
@@ -1260,15 +1381,21 @@ export function createRenderer(canvas){
     if (G.play && !G.play.live && !G.play.result && !G.kick) routesOn = !!view.routes;
     prepare(G);
     pumpBake();
+    // The flyover's overview, once the field is up: baked in slices behind the setup menu (a bigger bite if the shot is waiting on it).
+    const C0 = G.cond || {}, okey = art && !bake ? `${fieldKey}|${C0.time}|${['rain', 'snow', 'fog'].includes(C0.sky) ? C0.sky : 'clear'}` : '';
+    if (okey && (view.fly || fly) && ov?.key !== okey && ovBake?.key !== okey) ovBake = { key: okey, steps: FO.buildOverviewSteps(home, away, { time: C0.time || 'afternoon', sky: C0.sky || 'clear' }, art, logo) };
+    if (ovBake && !bake){ const end = performance.now() + (fly && !fly.on ? 12 : 5); let r; do r = ovBake.steps.next(); while (!r.done && performance.now() < end); if (r.done){ ov = r.value; ov.key = ovBake.key; ovBake = null; } }
+    const fm = fly ? flyTick(G, dt, okey) : 0;   // 0: no flyover, 1: the overview alone, 2: crossfading into the live scene
+    if (fm === 1) return paintOv(G);
     lit = flash > .55 ? BOLT : LIGHT[G.cond?.time] || LIGHT.afternoon; curG = G;
     fsuTrack(G, dt);
     impacts(G, dt);
-    updateZoom(G, dt, view.aim);
-    updateCamera(G, dt, view.aim);
+    if (!fm){ updateZoom(G, dt, view.aim); updateCamera(G, dt, view.aim); }
     const sh = cam.shake > 0 ? cam.shake : 0; cam.shake = Math.max(0, cam.shake - dt * 10);
     const ox = sh ? Math.round((Math.random() - .5) * sh * 2) : 0, oy = sh ? Math.round((Math.random() - .5) * sh * 2) : 0;
     // The pixel-art layer.
     field(G);
+    sideline(G, dt);
     const P = G.play, mine = P && !G.kick && P.def.find(d => d.user || d.rusher);
     if (G.kick) kickPlayers(G);
     else if (P){
@@ -1317,10 +1444,37 @@ export function createRenderer(canvas){
     ctx.setTransform(k, 0, 0, k, 0, 0);
     if (view.stick) stick(view.stick);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (fm === 2) paintOv(G);
+  }
+  /* ---------- the pregame flyover (flyover.js paints it; this runs the clock and the handoff) ---------- */
+  function flyTick(G, dt, okey){
+    const F = fly;
+    if (!F.on){
+      F.wait += dt;
+      if (okey && ov?.key === okey){ F.on = true; F.t = 0; }
+      else if (F.wait > 1.8 || (!ovBake && !bake && F.wait > .3)) return endFly();   // not ready: skip the shot
+      else return 0;
+    }
+    if (F.skip){ F.sk += dt; if (F.sk >= .4) return endFly(); F.alpha = 1 - F.sk / .4; }
+    else {
+      F.t += dt; if (F.t >= FO.FLY_T) return endFly();
+      F.alpha = F.t < FO.FLY_FADE ? 1 : 1 - (F.t - FO.FLY_FADE) / (FO.FLY_T - FO.FLY_FADE);
+      if (!F.cheered && F.t >= FO.cheerAt(F.variant)){ F.cheered = true; sfx('td'); }
+    }
+    cam.x = 50; cam.y = MID; setZoom(WIDE);   // the live camera waits at the widest view, where the overview lands
+    return F.skip || F.t >= FO.FLY_FADE ? 2 : 1;
+  }
+  function endFly(){ const cb = fly?.done; fly = null; cb?.(); return 0; }
+  function paintOv(G){
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    FO.paintFly(ctx, { ov, cw, ch, portrait, k, t: fly.t, alpha: fly.alpha, art, logo, wind: G.cond?.wind, variant: fly.variant, match: { home: G.me, away: G.opp, cond: G.cond } });
   }
 
   return {
     resize, draw, toWorld, toScreen, dragToWorld, snapCamera,
+    flyStart(G, done, variant){ fly = { done, wait: 0, on: false, t: 0, sk: 0, skip: false, alpha: 1, cheered: false, variant: variant || (Math.random() < .125 ? 'b2' : 'jets') }; },
+    flySkip(){ if (!fly) return; if (fly.on) fly.skip = true; else endFly(); },
+    get flying(){ return !!fly; }, get flyLevel(){ return fly?.on ? FO.flyLevel(fly.t, fly.variant) : .05; },
     shake(a){ cam.shake = Math.max(cam.shake, a); },
     bolt(){ flash = 1; },   // lightning now (a storm rolls its own)
     get portrait(){ return portrait; }, get W(){ return Wu; }, get H(){ return Hu; }, S: OLD,

@@ -164,7 +164,7 @@ const game = await run(async () => {
   if (!window.__pb) return { err: 'the game did not open' };
   const P = window.__pb, out = {};
   // A Quick game, start to finish, pressing buttons and keys the way a player would.
-  $('[data-pb="start"]').click();
+  window.__pb.noFly = true; $('[data-pb="start"]').click();   // (the pregame flyover is skipped: it's driven by animation frames)
   let steps = 0;
   while (steps++ < 30000 && !vis('[data-pb="rematch"]')){
     if (['modal', 'wait'].includes(P.phase)) await w(25); else if (steps % 40 === 0) await w(0);
@@ -210,7 +210,7 @@ const game = await run(async () => {
   // frame through the renderer, the one place the field, players and overlays are exercised.
   $('[data-pb="back"]')?.click(); await w(200);
   if (!P.R.hd || !document.querySelector('.pb.hd')) return { ...out, hd: 'the game is not using the HD renderer and interface' };
-  $('[data-pb="start"]').click();
+  window.__pb.noFly = true; $('[data-pb="start"]').click();   // (the pregame flyover is skipped: it's driven by animation frames)
   let frames = 0;
   for (let n = 0; n < 4000 && P.G.stats.plays < 8 && !vis('[data-pb="rematch"]'); n++){
     if (['modal', 'wait'].includes(P.phase)) await w(10);
