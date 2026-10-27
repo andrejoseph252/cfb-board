@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-26T21:57:19+00:00",
+ "updated": "2026-10-27T01:01:57+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2594,50 +2594,6 @@
    "teams": [
     "Tulane",
     "Memphis"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Appalachian State @ Coastal Carolina (8:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x7uo3f/game_thread_appalachian_state_coastal_carolina/",
-   "published": "2026-10-16T23:00:07+00:00",
-   "gameId": null,
-   "teams": [
-    "Appalachian State",
-    "Coastal Carolina"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Washington @ Purdue (8:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x7uo2n/game_thread_washington_purdue_800_pm_et/",
-   "published": "2026-10-16T23:00:06+00:00",
-   "gameId": null,
-   "teams": [
-    "Washington",
-    "Purdue"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Memphis @ Tulane (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x7u0ez/game_thread_memphis_tulane_730_pm_et/",
-   "published": "2026-10-16T22:30:06+00:00",
-   "gameId": null,
-   "teams": [
-    "Memphis",
-    "Tulane"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Columbia @ Penn (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1x7tbgx/game_thread_columbia_penn_700_pm_et/",
-   "published": "2026-10-16T22:00:11+00:00",
-   "gameId": null,
-   "teams": [
-    "Columbia",
-    "Penn"
    ]
   }
  ],
