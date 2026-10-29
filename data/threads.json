@@ -1,6 +1,28 @@
 {
- "updated": "2026-10-29T17:07:21+00:00",
+ "updated": "2026-10-29T22:04:05+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Fort Valley State @ Miles (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xixlev/game_thread_fort_valley_state_miles_700_pm_et/",
+   "published": "2026-10-29T22:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Fort Valley State",
+    "Miles"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] South Carolina State @ Morgan State (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xixldw/game_thread_south_carolina_state_morgan_state_700/",
+   "published": "2026-10-29T22:00:12+00:00",
+   "gameId": null,
+   "teams": [
+    "South Carolina State",
+    "Morgan State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Jacksonville State Defeats New Mexico State 24-0",
