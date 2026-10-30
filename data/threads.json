@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-29T22:04:05+00:00",
+ "updated": "2026-10-30T02:12:05+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Miles Defeats Fort Valley State 35-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1xj338v/postgame_thread_miles_defeats_fort_valley_state/",
+   "published": "2026-10-30T02:04:09+00:00",
+   "gameId": "401906977",
+   "teams": [
+    "Miles",
+    "Fort Valley State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Troy @ James Madison (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xiyc57/game_thread_troy_james_madison_730_pm_et/",
+   "published": "2026-10-29T22:30:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Troy",
+    "James Madison"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] FAU @ North Texas (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xiyc4c/game_thread_fau_north_texas_730_pm_et/",
+   "published": "2026-10-29T22:30:06+00:00",
+   "gameId": null,
+   "teams": [
+    "FAU",
+    "North Texas"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Fort Valley State @ Miles (7:00 PM ET)",
