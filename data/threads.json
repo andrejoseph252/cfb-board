@@ -1,6 +1,39 @@
 {
- "updated": "2026-10-30T02:12:05+00:00",
+ "updated": "2026-10-30T09:07:28+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] North Texas Defeats FAU 48-41",
+   "url": "https://www.reddit.com/r/CFB/comments/1xj4trw/postgame_thread_north_texas_defeats_fau_4841/",
+   "published": "2026-10-30T03:30:16+00:00",
+   "gameId": "401862812",
+   "teams": [
+    "North Texas",
+    "FAU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Troy Defeats James Madison 24-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1xj4szz/postgame_thread_troy_defeats_james_madison_2421/",
+   "published": "2026-10-30T03:29:09+00:00",
+   "gameId": "401869963",
+   "teams": [
+    "Troy",
+    "James Madison"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] South Carolina State Defeats Morgan State 51-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1xj3lv7/postgame_thread_south_carolina_state_defeats/",
+   "published": "2026-10-30T02:29:08+00:00",
+   "gameId": "401867969",
+   "teams": [
+    "South Carolina State",
+    "Morgan State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Miles Defeats Fort Valley State 35-28",
