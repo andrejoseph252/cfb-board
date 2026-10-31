@@ -15,11 +15,16 @@ Standard library only.
 "stats" sums up, week by week, how sure the voters are as a group (see uncertainty() below):
 
     "stats": {"7": {"cons": 79.5, "slots": [2.7, 2.9, ...], "churn": 42.0, "new": 2.97,
-                    "most": [["Name", "Outlet", 71.3], ...], "least": [...]}}
+                    "most": [["Name", "Outlet", 71.3], ...], "least": [...],
+                    "cs": {"n": 70, "t": [["2390", 1, 1, 1, 1, 1], ...]}}}
+
+"cs" is the 95% confidence set for every team's rank (scripts/rank_cs.py: Mogstad et al. 2024), one row per team on
+any ballot, by rank: [id, rank by points, marginal L, marginal U, simultaneous L, simultaneous U]. "n" is the ballots
+it was worked out from; a week's sets are reused until that changes, since they take a few seconds a week.
 
     python3 scripts/ballots.py            # the GitHub Action: the current week if it's new (Sunday to Tuesday only)
     python3 scripts/ballots.py --all      # every week of the season the tracker has (fills in anything missing)
-    python3 scripts/ballots.py --stats    # just work out "stats" again from the saved ballots
+    python3 scripts/ballots.py --stats    # just work out "stats" again from the saved ballots (confidence sets too)
 """
 import html
 import itertools
@@ -31,6 +36,8 @@ import sys
 import time
 import urllib.request
 from datetime import datetime, timezone
+
+import rank_cs
 
 BASE = "https://collegepolltracker.com/football"
 ESPN_TEAMS = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=1000"   # every division: an FCS team gets votes now and then
@@ -113,12 +120,13 @@ def rbo(a, b, p=0.9):
     return x / k * p ** k + (1 - p) / p * s
 
 
-def uncertainty(weeks):
+def uncertainty(weeks, old=None):
     """Per week: "cons", the consensus index (0-100, how alike the average pair of ballots is); "slots", for each spot
     1st to 25th, the effective number of teams the voters put there (e^entropy: 1.0 is unanimous, 4.0 is as split as
     four teams sharing it evenly); and, against the week before, "churn" (0-100, how much the average voter's own
     ballot changed, on the same scale), "new" (how many teams the average voter added) and the voters who changed
-    theirs the "most" and "least". Voters are matched across weeks by name."""
+    theirs the "most" and "least". Voters are matched across weeks by name. "cs": the rank confidence sets, kept from
+    `old` (the stats saved before) while the week's ballot count is the same."""
     out, prev = {}, None
     for w in sorted(weeks, key=int):
         bs = {v["n"]: v["b"] for v in weeks[w]["voters"]}
@@ -139,6 +147,8 @@ def uncertainty(weeks):
             st["new"] = round(sum(len(set(b) - set(a)) for _, a, b in same) / len(same), 2)
             st["most"] = [[n, outlet[n], round(m, 1)] for n, m in moved[:3]]
             st["least"] = [[n, outlet[n], round(m, 1)] for n, m in moved[::-1][:3]]
+        kept = (old or {}).get(w, {}).get("cs")
+        st["cs"] = kept if kept and kept["n"] == len(ballots) else {"n": len(ballots), "t": rank_cs.sets(ballots)}
         out[w] = st
         prev = bs
     return out
@@ -183,7 +193,7 @@ def main():
     unmatched = sorted({t for wk in weeks.values() for v in wk["voters"] for t in v["b"] if t.startswith("?")})
     if unmatched:
         print("not matched to ESPN:", ", ".join(unmatched))
-    data["stats"] = uncertainty(weeks)
+    data["stats"] = uncertainty(weeks, data.get("stats"))
     data["updated"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     OUT.write_text(json.dumps(data, separators=(",", ":")) + "\n")
 

@@ -40,3 +40,27 @@ export function teamWeek(d, w, id){
   return { w, wk, votes, n, on, avg, sd, med, q1: q(.25), q3: q(.75), hi: rs[0], lo: rs[n - 1], near, dist, pts: points(wk, id), fpv: dist[1] };
 }
 export const rankText = r => r >= NR ? 'NR' : '#' + r;
+
+/* The 95% confidence set for a team's rank (scripts/rank_cs.py): where it would land if another panel of voters like
+   these had voted. Marginal (L, U) is for one team on its own; simultaneous (sL, sU) holds for all teams at once. */
+export function rankSet(d, w, id){
+  const row = d?.stats?.[w]?.cs?.t.find(r => r[0] === String(id));
+  return row ? { rank: row[1], L: row[2], U: row[3], sL: row[4], sU: row[5], n: d.stats[w].cs.n } : null;
+}
+
+/* The poll cut into tiers the voters surely separate: a break after #r when every team at #r or better is surely in
+   the top r and every team below surely isn't (simultaneous sets). id -> { at: 'solo' | 'top' | 'mid' | 'end', from, to }. */
+export function tiers(d, w){
+  const t = d?.stats?.[w]?.cs?.t; if (!t) return null;
+  const out = new Map();
+  let start = 0, hiU = 0;
+  for (let i = 0; i < t.length; i++){
+    hiU = Math.max(hiU, t[i][5]);
+    const next = t[i + 1];
+    if (next && !(hiU <= t[i][1] && next[4] > t[i][1])) continue;
+    for (let k = start; k <= i; k++)
+      out.set(t[k][0], { at: start === i ? 'solo' : k === start ? 'top' : k === i ? 'end' : 'mid', from: t[start][1], to: t[i][1] });
+    start = i + 1; hiU = 0;
+  }
+  return out;
+}

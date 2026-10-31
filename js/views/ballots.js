@@ -3,8 +3,8 @@
    week (the "stats" scripts/ballots.py works out). */
 import { esc } from '../util.js';
 import { state } from '../state.js';
-import { ballots, weeksOf, teamWeek, matchesPoll, rankText, NR } from '../ballots.js';
-import { detailHead, panel, chips } from './components.js';
+import { ballots, weeksOf, teamWeek, matchesPoll, rankText, NR, rankSet, tiers } from '../ballots.js';
+import { detailHead, panel, chips, visibleColor } from './components.js';
 
 const f1 = x => x.toFixed(1).replace(/\.0$/, '');
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -28,6 +28,24 @@ function consensus(t){
   return `<b>${word}:</b> ${t.near} of ${t.n} voters (${Math.round(share * 100)}%) have them within two spots of #${m}.`;
 }
 
+/* Where another panel of voters like these would put them: the rank's 95% confidence set on a 1-25 rail (longer when
+   the set runs past 25), the printed rank as a dot, and the tier around it. */
+function rankRange(d, w, id, color){
+  const cs = rankSet(d, w, id); if (!cs) return '';
+  const x = tiers(d, w)?.get(String(id)), max = Math.max(25, Math.ceil(cs.U / 5) * 5);
+  const pos = r => ((r - 1) / (max - 1) * 100).toFixed(2) + '%';
+  const ticks = [1, ...Array.from({ length: max / 5 }, (_, i) => (i + 1) * 5)].map(r => `<span style="left:${pos(r)}">${r}</span>`).join('');
+  const rail = `<div class="csr" style="--m:${max - 1}${color ? `;--tc:${esc(color)}` : ''}"><div class="csr-rail">
+      <i class="csr-set" style="left:${pos(cs.L)};width:calc(${pos(cs.U)} - ${pos(cs.L)})"></i><i class="csr-dot" style="left:${pos(cs.rank)}"></i></div>
+    <div class="csr-ticks">${ticks}</div></div>`;
+  const head = cs.L === cs.U ? `<b>Settled at #${cs.rank}.</b> Any panel of writers like these would put them here.`
+    : `<b>Anywhere from #${cs.L} to #${cs.U}.</b> That's where another panel of ${cs.n} writers like these could put them.`;
+  const pack = x && x.from !== x.to ? ` They're in a pack from #${x.from} to #${x.to} the voters can't separate.`
+    : x && cs.L !== cs.U ? ' Taken together with the rest of the poll, though, the voters do set them apart.' : '';
+  return panel('If others had voted', `${rail}<p class="bcons">${head}${pack}</p>
+    <p class="note">95% confidence, treating the voters as a sample of AP-like writers (Mogstad et al., 2024). It's about how settled the poll's order is, not which team is better.</p>`);
+}
+
 /* Every ballot as a bar per rank (1st to 25th, then not ranked); the median rank is marked. */
 function histogram(t){
   const W = 380, H = 150, top = 16, base = H - 22, bw = (W - 2 * (NR - 1)) / NR, max = Math.max(...t.dist.slice(1));
@@ -35,7 +53,7 @@ function histogram(t){
     const r = i + 1, x = i * (bw + 2), hgt = c ? Math.max(3, (base - top) * c / max) : 0, isMed = r === Math.round(t.med);
     const label = `${r >= NR ? 'Not ranked' : '#' + r}: ${plural(c, 'voter')}`;
     return `<g class="hb${isMed ? ' med' : ''}"><title>${label}</title><rect class="hit" x="${x}" y="${top - 12}" width="${bw}" height="${base - top + 12}"/>
-      ${c ? `<path class="bar" style="fill:${heat(v / hi)}" d="M${x},${base}V${base - hgt + 3}q0,-3 3,-3h${bw - 6}q3,0 3,3V${base}Z"/><text class="cnt" x="${x + bw / 2}" y="${base - hgt - 4}">${c}</text>` : ''}</g>`;
+      ${c ? `<path class="bar" d="M${x},${base}V${base - hgt + 3}q0,-3 3,-3h${bw - 6}q3,0 3,3V${base}Z"/><text class="cnt" x="${x + bw / 2}" y="${base - hgt - 4}">${c}</text>` : ''}</g>`;
   }).join('');
   const ticks = [1, 5, 10, 15, 20, 25, NR].map(r => `<text class="ax" x="${(r - 1) * (bw + 2) + bw / 2}" y="${H - 6}">${r >= NR ? 'NR' : r}</text>`).join('');
   return `<svg class="bhist" viewBox="0 0 ${W} ${H}" role="img" aria-label="How many voters ranked them at each spot"><line class="base" x1="0" x2="${W}" y1="${base + .5}" y2="${base + .5}"/>${bars}${ticks}</svg>`;
@@ -188,7 +206,7 @@ export function viewBallots(id){
   const groups = [...new Set(byRank.map(v => v.r))].map(rk => { const vs = byRank.filter(v => v.r === rk);
     return `<div class="bgrp${Math.abs(rk - m) >= 3 ? ' off' : ''}"><b>${rk >= NR ? 'NR' : '#' + rk}</b><i>${vs.length}</i><p>${vs.map(v => `<span title="${esc(v.o)}">${esc(v.n)}</span>`).join('')}</p></div>`; }).join('');
   return head + weekChips + stale +
-    panel('How the voters see them', `<div class="btiles">${tiles}</div><p class="bcons">${consensus(t)}</p>`) +
+    panel('How the voters see them', `<div class="btiles">${tiles}</div><p class="bcons">${consensus(t)}</p>`) + rankRange(d, w, id, g && visibleColor(g)) +
     panel('Every ballot', `${histogram(t)}<p class="note">Voters at each spot (NR: left off). Bright bar: the median.</p>`) +
     (season.length > 1 ? panel('Week by week', `<ul class="bseason">${seasonRows}</ul><div class="bscale"><span>#1</span><span>${smax >= NR ? 'NR' : '#' + smax}</span></div><p class="note">Line: best to worst ballot · box: middle half · tick: median.</p>`) : '') +
     outliers +

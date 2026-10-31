@@ -54,6 +54,9 @@ export const chips = (items, active, attr) => `<div class="chips" role="group">$
 
 function hex2rgb(h){ h = h.replace('#',''); if (h.length === 3) h = [...h].map(c => c + c).join(''); const n = parseInt(h, 16) || 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
 const cdist = (a, b) => { const p = hex2rgb(a), q = hex2rgb(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
+// A team's color that shows up on the current theme: primary, else alternate (UCF's black on a dark page, say).
+const lum = c => { const n = parseInt(String(c).slice(1), 16), ch = v => (v /= 255) <= .04 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; return .2126 * ch(n >> 16 & 255) + .7152 * ch(n >> 8 & 255) + .0722 * ch(n & 255); };
+export function visibleColor(t){ const ok = c => /^#[0-9a-f]{6}$/i.test(c || '') && (darkUI() ? lum(c) > .06 : lum(c) < .6); return ok(t?.color) ? t.color : ok(t?.alt) ? t.alt : 'var(--accent)'; }
 export function barColors(g){ const a = g.away.color; let h = g.home.color; if (cdist(a, h) < 90){ h = g.home.alt; if (cdist(a, h) < 90) h = '#9aa39d'; } return [a, h]; }
 
 const PIN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 3l5 5-3 1-3.5 3.5L15 17l-2 2-4-4-5 5-1-1 5-5-4-4 2-2 4.5.5L13 5l3-2z"/></svg>';

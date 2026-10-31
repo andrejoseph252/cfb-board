@@ -1,7 +1,8 @@
 /* Scrubbable probability chart for the game drawer: drag, hover, tap or use arrow keys to see each play. */
 import { esc, pct } from '../util.js';
 import { state, invalidate } from '../state.js';
-import { barColors } from './components.js';
+import { barColors, visibleColor } from './components.js';
+import { playHTML } from '../plays.js';
 
 const charts = new Map();
 const W = 600, H = 140;
@@ -18,10 +19,10 @@ export function chartHTML(g, pts, plays, line){
   const [ca, ch] = barColors(g);
 
   // Carry the last known game situation forward for points without a matching play (timeouts, reviews).
-  let last = { q: 1, clock: '15:00', text: 'Kickoff', away: 0, home: 0 };
+  let last = { q: 1, clock: '15:00', play: null, away: 0, home: 0 };
   const series = pts.filter(p => p[key] != null).map(p => {
     const pl = plays.get(p.pid);
-    if (pl) last = { q: pl.q ?? last.q, clock: pl.clock ?? last.clock, text: pl.text || last.text, away: pl.away ?? last.away, home: pl.home ?? last.home };
+    if (pl) last = { q: pl.q ?? last.q, clock: pl.clock ?? last.clock, play: pl.text ? pl : last.play, away: pl.away ?? last.away, home: pl.home ?? last.home };
     return { v: p[key], ...last, fresh: !!pl };
   });
   if (series.length < 2) return '';
@@ -29,7 +30,7 @@ export function chartHTML(g, pts, plays, line){
   const hl = line?.spread, top = mode === 'win' ? g.home.abbr : mode === 'cover' ? `${g.home.abbr} ${fmtLine(hl)}` : `Over ${line.ou}`;
   const bot = mode === 'win' ? g.away.abbr : mode === 'cover' ? `${g.away.abbr} ${fmtLine(-hl)}` : `Under ${line.ou}`;
   const [cTop, cBot] = mode === 'total' ? ['var(--accent)', 'var(--muted)'] : [ch, ca];
-  charts.set(g.id, { series, g, mode, top, bot, cTop, cBot });
+  charts.set(g.id, { series, g, mode, top, bot, cTop, cBot, ca, ch });
 
   const n = series.length, x = i => i / (n - 1) * W;
   const path = series.map((p, i) => `${x(i).toFixed(1)},${((1 - p.v) * H).toFixed(1)}`).join(' ');
@@ -61,7 +62,7 @@ function readout(gid, i){
   const when = i === 0 && !p.fresh ? 'Pregame' : `${p.q <= 4 ? 'Q' + p.q : 'OT'} ${esc(p.clock)}`;
   return `<div class="wpc-big"><i style="background:${esc(color)}"></i><b>${esc(who)}</b> <span class="wpc-pct">${(v * 100).toFixed(1)}%</span> <span class="muted">${what}</span></div>
     <div class="wpc-sit"><span>${when}</span><span>${esc(g.away.abbr)} ${esc(p.away)} – ${esc(g.home.abbr)} ${esc(p.home)}</span></div>
-    <div class="wpc-play">${esc(i === 0 && !p.fresh ? 'Before kickoff' : p.text.replace(/^\(\d+:\d+\)\s*/, ''))}</div>`;
+    <div class="wpc-play">${i === 0 && !p.fresh || !p.play ? 'Before kickoff' : playHTML(p.play, { dot: p.play.side ? visibleColor(g[p.play.side]) : null })}</div>`;
 }
 
 function scrubTo(plot, i){

@@ -5,8 +5,9 @@ import { parseSummary, parseProbabilities } from '../models.js';
 import { loadPredictions } from '../data.js';
 import { realizedExcitement } from '../excitement.js';
 import { useData } from '../resource.js';
-import { teamLink, logo, panel, fmtDelay } from './components.js';
+import { teamLink, logo, panel, fmtDelay, visibleColor } from './components.js';
 import { chartHTML } from './wpchart.js';
+import { playHTML } from '../plays.js';
 import { banner, theLine, lineChart, hype, tape, recentForm } from './preview.js';
 import { threadsFor, searchUrl } from '../threads.js';
 import { lineFor } from '../lines.js';
@@ -44,14 +45,14 @@ export function viewGame(id){
     // Finished and live games only show the pregame line when it actually moved.
     const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';
     if (s.synced) h += '<p class="note">Synced to your stream: team and player stats are hidden, since they would run ahead of it.</p>';
-    h += atsNote(g, s) + betPanel(g) + lineScore(g) + wpPanel(g, s) + scoring(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + drives(g, s) + players(g, s);
+    h += atsNote(g, s) + betPanel(g) + lineScore(g) + wpPanel(g, s) + drives(g, s) + (pregame ? panel('How the line moved', pregame) : '') + teamStats(g, s) + players(g, s);
   }
   return h;
 }
 
 /* ---------- stream sync (sync.js) ---------- */
-/* A synced game's summary is cut to the moment your stream is at: plays and drives by when they happened, scoring
-   by the shown quarter, clock and score, the win % chart to those plays, and the line score rebuilt from the shown
+/* A synced game's summary is cut to the moment your stream is at: plays and drives by when they happened (or by the
+   shown quarter, clock and score), the win % chart to those plays, and the line score rebuilt from the shown
    score. The cumulative box score can't be wound back, so it's left out. */
 const clockSecs = c => { const [m, x] = String(c || '0:00').split(':').map(Number); return (m || 0) * 60 + (x || 0); };
 function cutToBoard(b, s){
@@ -70,7 +71,7 @@ function cutToBoard(b, s){
     const before = (s.game[side].lines || []).slice(0, Math.min(P, 5) - 1).map(Number), sum = before.reduce((a, x) => a + (x || 0), 0);
     return [...before, Number(b[side].score) - sum];
   };
-  return { ...s, drives, scoring: s.scoring.filter(byClock), wp: s.wp.filter(p => ids.has(String(p.pid))), keep: ids, teamStats: {}, players: {}, synced: true,
+  return { ...s, drives, wp: s.wp.filter(p => ids.has(String(p.pid))), keep: ids, teamStats: {}, players: {}, synced: true,
     game: { ...s.game, home: { ...s.game.home, lines: lines('home') }, away: { ...s.game.away, lines: lines('away') } } };
 }
 
@@ -251,18 +252,6 @@ function wpPanel(g, s){
     <span>Favorite flipped <b>${x.flips}</b> time${x.flips === 1 ? '' : 's'}</span></div>`);
 }
 
-function scoring(g, s){
-  if (!s.scoring.length) return '';
-  let q = 0;
-  const items = s.scoring.map(p => {
-    const hdr = p.q !== q ? `<li class="qhdr">${p.q <= 4 ? 'Quarter ' + p.q : 'Overtime'}</li>` : ''; q = p.q;
-    const t = g[p.side];
-    return hdr + `<li class="play">${logo(t?.logo, 'logo sm')}<span class="ptype">${esc(p.type || '')}</span><span class="ptext">${esc(p.text)}<span class="muted small"> ${esc(p.clock || '')}</span></span>
-      <span class="pscore">${esc(p.away)}-${esc(p.home)}</span></li>`;
-  }).join('');
-  return panel('Scoring plays', `<ol class="plays">${items}</ol>`);
-}
-
 function teamStats(g, s){
   const a = s.teamStats.away || [], h = s.teamStats.home || [];
   if (!a.length && !h.length) return '';
@@ -272,11 +261,12 @@ function teamStats(g, s){
 
 function drives(g, s){
   if (!s.drives.length) return '';
+  const tc = { away: visibleColor(g.away), home: visibleColor(g.home) };
   const items = s.drives.map((d, i) => [d, i]).reverse().map(([d, i]) => {
     const t = g[d.side];
     return `<li><details data-k="drive-${i}"><summary>${logo(t?.logo, 'logo sm')}<span class="dres ${d.isScore ? 'score' : ''}">${esc(d.result || '')}</span>
       <span class="ddesc">${esc(d.desc || '')}</span><span class="muted small">Q${esc(d.q ?? '')} ${esc(d.clock || '')}${d.start ? ' · from ' + esc(d.start) : ''}</span></summary>
-      <ol class="dplays">${d.plays.map(p => `<li><span class="muted small">${esc(p.clock || '')}</span> ${esc(p.text)}</li>`).join('')}</ol></details></li>`;
+      <ol class="dplays">${d.plays.map(p => `<li>${playHTML(p, { clock: true, color: tc[p.side] || tc[d.side] })}</li>`).join('')}</ol></details></li>`;
   }).join('');
   return panel(`Drives (${s.drives.length})`, `<ol class="drives">${items}</ol><p class="note">Most recent first. Tap a drive to see every play.</p>`);
 }

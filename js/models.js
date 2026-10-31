@@ -161,21 +161,19 @@ export function parseSummary(j){
     name: c.name, title: c.text || c.name, labels: c.labels || [],
     rows: (c.athletes || []).map(a => ({ who: a.athlete?.shortName || a.athlete?.displayName, stats: a.stats || [] }))
   }));
-  const scoring = (j.scoringPlays || []).map(p => ({
-    q: p.period?.number, clock: p.clock?.displayValue, text: p.text, type: p.type?.abbreviation || p.type?.text,
-    side: teamSide(p.team?.id), away: p.awayScore, home: p.homeScore
-  }));
   const drive = d => ({
     side: teamSide(d.team?.id), desc: d.description, result: d.displayResult || d.result, isScore: !!d.isScore,
     q: d.start?.period?.number, start: d.start?.text, clock: d.start?.clock?.displayValue,
-    plays: (d.plays || []).map(p => ({ id: p.id, text: p.text, clock: p.clock?.displayValue, q: p.period?.number, away: p.awayScore, home: p.homeScore, w: Date.parse(p.wallclock) || null }))
+    plays: (d.plays || []).map(p => ({ id: p.id, text: p.text, clock: p.clock?.displayValue, q: p.period?.number, away: p.awayScore, home: p.homeScore, w: Date.parse(p.wallclock) || null,
+      type: p.type?.text, dd: p.start?.shortDownDistanceText, spot: p.start?.possessionText, yds: p.statYardage, scoring: !!p.scoringPlay, turnover: !!p.isTurnover,
+      side: teamSide(p.start?.team?.id), y0: p.start?.yardsToEndzone, y1: p.end?.team?.id === p.start?.team?.id ? p.end?.yardsToEndzone : null }))
   });
   const drives = [...(j.drives?.previous || []).map(drive), ...(j.drives?.current && !j.drives.previous?.some(d => d.id === j.drives.current.id) ? [drive(j.drives.current)] : [])];
   const wp = smooth((j.winprobability || []).filter(p => p.homeWinPercentage != null).map(p => ({ pid: p.playId, home: p.homeWinPercentage })), ['home']);
   const pc = j.pickcenter?.[0];
   const pred = j.predictor ? { pHome: Number(j.predictor.homeTeam?.gameProjection) / 100 || null } : null;
   return {
-    game: g, teamStats, players, scoring, drives, wp, pred,
+    game: g, teamStats, players, drives, wp, pred,
     line: pc ? { details: pc.details, ou: pc.overUnder, spread: pc.spread ?? null, provider: pc.provider?.name } : null,
     venue: j.gameInfo?.venue?.fullName, city: [j.gameInfo?.venue?.address?.city, j.gameInfo?.venue?.address?.state].filter(Boolean).join(', '),
     weather: j.gameInfo?.weather?.temperature != null ? `${j.gameInfo.weather.temperature}°` : null,
