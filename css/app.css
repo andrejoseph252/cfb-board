@@ -422,12 +422,44 @@ img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
 .wplab{position:absolute;left:0;font-size:11.5px;font-weight:700;color:var(--muted)}
 .wplab.top{top:4px} .wplab.bot{bottom:4px}
 .drives,.dplays{list-style:none;margin:0;padding:0}
-.drives > li{border-bottom:1px solid var(--soft)}
-.drives summary{display:grid;grid-template-columns:20px 5.5em minmax(0,1fr);gap:2px 8px;align-items:center;padding:8px 0;cursor:pointer;list-style:none;font-size:13.5px}
+.drives{display:grid;gap:3px}
+.drives > li{--drive-tone:var(--muted);border:1px solid var(--line);border-radius:6px;overflow:hidden;background:color-mix(in srgb,var(--bg) 45%,var(--surface))}
+.drives > .drive-touchdown{--drive-tone:var(--good)}
+.drives > .drive-fieldgoal{--drive-tone:var(--cover)}
+.drives > .drive-interception,.drives > .drive-defense{--drive-tone:var(--bad)}
+.drives > .drive-defense{background:color-mix(in srgb,var(--bad) 5%,var(--surface))}
+.drives > .drive-live{--drive-tone:var(--live);background:color-mix(in srgb,var(--live) 3%,var(--surface))}
+.drives summary{box-sizing:border-box;display:grid;grid-template-columns:28px minmax(0,1fr) auto 8px;gap:9px;align-items:center;min-height:48px;padding:4px 9px;cursor:pointer;list-style:none}
 .drives summary::-webkit-details-marker{display:none}
-.drives summary > .muted{grid-column:3}
-.dres{font-weight:700;font-size:12.5px}
-.dres.score{color:var(--good)}
+.drives summary:focus-visible{outline-offset:-3px}
+.drives summary:hover{background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.drives .drive-team{display:grid;justify-items:center;gap:2px}
+.drives .drive-team .logo{width:22px;height:22px}
+.drives .drive-team>span{font-size:8px;font-weight:700;letter-spacing:.03em;color:var(--muted)}
+.drives .drive-body{display:grid;gap:2px;min-width:0}
+.drives .drive-result{font:800 20px/1.05 var(--display)}
+.drives :is(.drive-touchdown,.drive-fieldgoal,.drive-defense,.drive-interception) .drive-result{color:var(--drive-tone)}
+.drives .drive-conceded{color:var(--bad);font-size:11px;font-weight:600;line-height:1.4}
+.drives .drive-desc{font-size:11px;line-height:1.5;color:var(--ink);font-variant-numeric:tabular-nums}
+.drives .drive-status{display:grid;justify-items:end;gap:4px}
+.drives .drive-meta{font-size:9px;line-height:1;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.drives .drive-start{margin:7px 10px 6px 37px;color:var(--muted);font-size:10px}
+.drives .drive-badge{display:inline-flex;gap:6px;align-items:center;justify-content:center;min-width:44px;padding:5px 7px;border:1px solid color-mix(in srgb,var(--drive-tone) 35%,var(--line));border-radius:5px;background:color-mix(in srgb,var(--drive-tone) 8%,var(--surface));color:var(--drive-tone);font:800 10px/1 var(--body);letter-spacing:.04em;white-space:nowrap}
+.drives .drive-touchdown .drive-badge{background:var(--good);border-color:var(--good);color:var(--bg)}
+.drives .drive-defense .drive-badge{background:var(--bad);border-color:var(--bad);color:var(--bg)}
+.drives .drive-end .drive-badge{border-color:var(--line);background:none;font-size:9px}
+.drives .drive-live .drive-badge i{height:5px;width:5px;background:currentColor;border-radius:50%;box-shadow:0 0 0 3px color-mix(in srgb,var(--live) 12%,transparent)}
+.drives .drive-chevron{width:6px;height:6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+.drives details[open]>summary .drive-chevron{transform:rotate(225deg)}
+.drives details[open]>summary{border-bottom:1px solid var(--line);margin-bottom:7px}
+@media (max-width:480px){
+  .drives summary{grid-template-columns:24px minmax(0,1fr) auto 6px;gap:7px;padding:4px 7px}
+  .drives .drive-result{font-size:20px}
+  .drives .drive-desc{font-size:10.5px}
+  .drives .drive-conceded{font-size:10px}
+  .drives .drive-badge{font-size:9px;min-width:38px;padding:5px 6px}
+}
+@media (prefers-reduced-motion:reduce){.drives .drive-chevron{transition:none}}
 .dplays{padding:0 0 10px 28px;display:grid;font-size:13px}
 .dplays > li + li > .pl:not(.pl-td,.pl-big,.pl-lost){border-top:1px solid var(--soft);border-radius:0}
 /* play-by-play ticker (js/plays.js) */

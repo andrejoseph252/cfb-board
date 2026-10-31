@@ -8,6 +8,7 @@ import { useData } from '../resource.js';
 import { teamLink, logo, panel, fmtDelay, visibleColor } from './components.js';
 import { chartHTML } from './wpchart.js';
 import { playHTML } from '../plays.js';
+import { driveOutcome } from '../drive-result.js';
 import { banner, theLine, lineChart, hype, tape, recentForm } from './preview.js';
 import { threadsFor, searchUrl } from '../threads.js';
 import { lineFor } from '../lines.js';
@@ -65,7 +66,7 @@ function cutToBoard(b, s){
     const plays = d.plays.filter(keep); if (!plays.length) return null;
     plays.forEach(p => ids.add(String(p.id)));
     const open = plays.length < d.plays.length;
-    return open ? { ...d, plays, result: 'In progress', isScore: false, desc: `${plays.length} play${plays.length === 1 ? '' : 's'} so far` } : d;
+    return open ? { ...d, plays, result: 'In progress', active: true, isScore: false, desc: `${plays.length} play${plays.length === 1 ? '' : 's'} so far` } : d;
   }).filter(Boolean);
   const lines = side => {
     const before = (s.game[side].lines || []).slice(0, Math.min(P, 5) - 1).map(Number), sum = before.reduce((a, x) => a + (x || 0), 0);
@@ -263,9 +264,16 @@ function drives(g, s){
   if (!s.drives.length) return '';
   const tc = { away: visibleColor(g.away), home: visibleColor(g.home) };
   const items = s.drives.map((d, i) => [d, i]).reverse().map(([d, i]) => {
-    const t = g[d.side];
-    return `<li><details data-k="drive-${i}"><summary>${logo(t?.logo, 'logo sm')}<span class="dres ${d.isScore ? 'score' : ''}">${esc(d.result || '')}</span>
-      <span class="ddesc">${esc(d.desc || '')}</span><span class="muted small">Q${esc(d.q ?? '')} ${esc(d.clock || '')}${d.start ? ' · from ' + esc(d.start) : ''}</span></summary>
+    const t = g[d.side], r = driveOutcome(d), opponent = d.side === 'away' ? g.home : d.side === 'home' ? g.away : null;
+    const scored = r.conceded ? `<span class="drive-conceded">${esc(opponent?.abbr || 'Opponent')} ${r.badge === 'SAFETY' ? 'scores a safety' : 'scores on the return'}</span>` : '';
+    const period = d.q == null ? '' : d.q <= 4 ? `Q${d.q}` : d.q === 5 ? 'OT' : `${d.q - 4}OT`;
+    const when = [period, d.clock].filter(Boolean).join(' · ');
+    const start = [when, d.start ? `from ${d.start}` : ''].filter(Boolean).join(' · ');
+    return `<li class="drive-${r.kind}${r.badge === 'INT' ? ' drive-interception' : ''}"><details data-k="drive-${i}"><summary>
+      <span class="drive-team">${logo(t?.logo, 'logo sm')}<span>${esc(t?.abbr || '')}</span></span>
+      <span class="drive-body"><span class="drive-result">${esc(r.label)}</span>${scored}<span class="drive-desc">${esc(d.desc || '').replace(/, /g, ' · ')}</span></span>
+      <span class="drive-status"><span class="drive-badge">${r.kind === 'live' ? '<i aria-hidden="true"></i>' : ''}${esc(r.badge)}</span>${when ? `<span class="drive-meta" title="Drive started ${esc(when)}">${esc(when)}</span>` : ''}</span><span class="drive-chevron" aria-hidden="true"></span></summary>
+      ${start ? `<p class="drive-start">Drive started ${esc(start)}</p>` : ''}
       <ol class="dplays">${d.plays.map(p => `<li>${playHTML(p, { clock: true, color: tc[p.side] || tc[d.side] })}</li>`).join('')}</ol></details></li>`;
   }).join('');
   return panel(`Drives (${s.drives.length})`, `<ol class="drives">${items}</ol><p class="note">Most recent first. Tap a drive to see every play.</p>`);

@@ -163,10 +163,13 @@ export function parseSummary(j){
   }));
   const drive = d => ({
     side: teamSide(d.team?.id), desc: d.description, result: d.displayResult || d.result, isScore: !!d.isScore,
+    active: g.state === 'in' && d.id != null && String(d.id) === String(j.drives?.current?.id) && !(d.displayResult || d.result),
     q: d.start?.period?.number, start: d.start?.text, clock: d.start?.clock?.displayValue,
     plays: (d.plays || []).map(p => ({ id: p.id, text: p.text, clock: p.clock?.displayValue, q: p.period?.number, away: p.awayScore, home: p.homeScore, w: Date.parse(p.wallclock) || null,
-      type: p.type?.text, dd: p.start?.shortDownDistanceText, spot: p.start?.possessionText, yds: p.statYardage, scoring: !!p.scoringPlay, turnover: !!p.isTurnover,
-      side: teamSide(p.start?.team?.id), y0: p.start?.yardsToEndzone, y1: p.end?.team?.id === p.start?.team?.id ? p.end?.yardsToEndzone : null }))
+      type: p.type?.text, dd: p.start?.shortDownDistanceText, spot: p.start?.possessionText, yds: p.statYardage, scoring: !!p.scoringPlay, scoreType: p.scoringType?.name, turnover: !!p.isTurnover,
+      side: teamSide(p.start?.team?.id),
+      possessionChanged: p.start?.team?.id != null && p.end?.team?.id != null && String(p.start.team.id) !== String(p.end.team.id),
+      y0: p.start?.yardsToEndzone, y1: p.end?.team?.id === p.start?.team?.id ? p.end?.yardsToEndzone : null }))
   });
   const drives = [...(j.drives?.previous || []).map(drive), ...(j.drives?.current && !j.drives.previous?.some(d => d.id === j.drives.current.id) ? [drive(j.drives.current)] : [])];
   const wp = smooth((j.winprobability || []).filter(p => p.homeWinPercentage != null).map(p => ({ pid: p.playId, home: p.homeWinPercentage })), ['home']);

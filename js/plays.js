@@ -73,7 +73,7 @@ export function readPlay(p){
 
   // Fumbles can ride on any play.
   if ((x = m(String.raw`(fumbled?|muffed) by NAME.*?recovered by (\S+)\s+NAME`, body))) {
-    const lost = p.turnover || /Opponent/i.test(type), what = /muff/i.test(x[1]) ? 'muffed' : 'fumble';
+    const lost = p.turnover || p.possessionChanged || /Opponent/i.test(type), what = /muff/i.test(x[1]) ? 'muffed' : 'fumble';
     line += ` · ${what}${lost ? `, recovered by ${who(x[4])}` : ', recovered'}`;
     if (lost) tags.push(['bad', 'FUMBLE']);
   }
@@ -103,7 +103,8 @@ export function readPlay(p){
 function field(p, r){
   if (!Number.isFinite(p.y0) || p.y0 <= 0 || p.y0 >= 100 || !['play', 'dud', 'flag'].includes(r.kind)) return '';
   const a = 100 - p.y0, td = r.tags.some(([, l]) => l === 'TOUCHDOWN');
-  const b = Math.max(0, Math.min(100, td ? 100 : Number.isFinite(p.y1) && p.y1 > 0 ? 100 - p.y1 : a + (r.yds ?? 0)));
+  const returned = td && (p.possessionChanged || p.turnover || /interception|fumble recovery \(opponent\)/i.test(p.type || ''));
+  const b = Math.max(0, Math.min(100, td ? returned ? 0 : 100 : Number.isFinite(p.y1) && p.y1 > 0 ? 100 - p.y1 : a + (r.yds ?? 0)));
   const x = y => (100 + y * 10) / 12, lo = x(Math.min(a, b)), w = x(Math.max(a, b)) - lo; // yards -> % of a field with 10-yd end zones
   return `<span class="pl-fld" title="${esc(p.spot || '')}">${w ? `<i class="pl-seg${b < a ? ' loss' : ''}" style="left:${lo.toFixed(1)}%;width:${w.toFixed(1)}%"></i>` : ''}<i class="pl-ball" style="left:${x(b).toFixed(1)}%"></i></span>`;
 }
