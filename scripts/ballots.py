@@ -120,11 +120,33 @@ def rbo(a, b, p=0.9):
     return x / k * p ** k + (1 - p) / p * s
 
 
+def rank_disagreement(ballots):
+    """Mean absolute rank gap over voter pairs and teams ranked <=25 by AP points.
+
+    Each team has equal weight; omitted teams count as 26th. Include every team tied
+    at the cutoff so team ids cannot decide which ballots contribute to the score.
+    """
+    if len(ballots) < 2:
+        raise ValueError("Consensus requires at least two ballots")
+    ranks = [{t: r for r, t in enumerate(b, 1)} for b in ballots]
+    points = {}
+    for ballot in ranks:
+        for t, r in ballot.items():
+            points[t] = points.get(t, 0) + 26 - r
+    totals = sorted(points.values(), reverse=True)
+    cutoff = totals[min(24, len(totals) - 1)]
+    teams = [t for t in points if points[t] >= cutoff]
+    gaps = [sum(abs(a.get(t, 26) - b.get(t, 26)) for t in teams) / len(teams)
+            for a, b in itertools.combinations(ranks, 2)]
+    return sum(gaps) / len(gaps)
+
+
 def uncertainty(weeks, old=None):
-    """Per week: "cons", the consensus index (0-100, how alike the average pair of ballots is); "slots", for each spot
+    """Per week: "cons", 100 * (1 - mean pairwise rank gap / 25), equally weighting the AP top 25;
+    "gap", that mean gap in places (omissions count as 26th); "slots", for each spot
     1st to 25th, the effective number of teams the voters put there (e^entropy: 1.0 is unanimous, 4.0 is as split as
     four teams sharing it evenly); and, against the week before, "churn" (0-100, how much the average voter's own
-    ballot changed, on the same scale), "new" (how many teams the average voter added) and the voters who changed
+    ballot changed, using top-weighted rank-biased overlap), "new" (how many teams the average voter added) and the voters who changed
     theirs the "most" and "least". Voters are matched across weeks by name. "cs": the rank confidence sets, kept from
     `old` (the stats saved before) while the week's ballot count is the same."""
     out, prev = {}, None
@@ -132,8 +154,8 @@ def uncertainty(weeks, old=None):
         bs = {v["n"]: v["b"] for v in weeks[w]["voters"]}
         outlet = {v["n"]: v["o"] for v in weeks[w]["voters"]}
         ballots = list(bs.values())
-        pairs = list(itertools.combinations(ballots, 2))
-        st = {"cons": round(100 * sum(rbo(a, b) for a, b in pairs) / len(pairs), 1), "slots": []}
+        gap = rank_disagreement(ballots)
+        st = {"cons": round(100 * (1 - gap / 25), 1), "gap": round(gap, 2), "slots": []}
         for r in range(25):
             counts = {}
             for b in ballots:

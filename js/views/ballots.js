@@ -67,39 +67,43 @@ const heat = t => (t = Math.max(0, t) ** 1.7) <= .5 ? `color-mix(in oklab,var(--
 /* The poll as a whole: a line (consensus) or bars (churn) per week, one x position per week so the two line up.
    The chosen week is drawn solid; hover a week for its number. */
 function weekChart(st, weeks, w, key, bars){
-  const W = 380, H = 130, L = 26, top = 18, base = H - 20, step = (W - L) / weeks.length;
+  const W = 480, H = 160, L = 32, top = 22, base = H - 24, step = (W - L) / weeks.length;
   const x = wk => L + step * (weeks.indexOf(wk) + .5);
   const vals = weeks.map(wk => st[wk]?.[key]).filter(v => v != null);
-  const lo = bars ? 0 : Math.floor((Math.min(...vals) - 3) / 10) * 10, hi = Math.ceil((Math.max(...vals) + 3) / 10) * 10;   // tens, so the middle line is a round number
+  // Zoom consensus to this season's range, with padding and the same scale for every selected week.
+  // Churn bars retain a zero baseline and their existing scale.
+  const zoom = key === 'cons' && !bars;
+  const pad = zoom ? Math.max(.25, (Math.max(...vals) - Math.min(...vals)) * .15) : 3;
+  const lo = zoom ? Math.max(0, Math.floor(Math.min(...vals) - pad)) : bars ? 0 : Math.floor((Math.min(...vals) - 3) / 10) * 10;
+  const hi = zoom ? Math.min(100, Math.ceil(Math.max(...vals) + pad)) : Math.ceil((Math.max(...vals) + 3) / 10) * 10;
   const y = v => base - (v - lo) / (hi - lo) * (base - top);
   const grid = [lo, (lo + hi) / 2, hi].map(v => `<line class="gr" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="ay" x="${L - 5}" y="${y(v) + 3.5}">${f1(v)}</text>`).join('');
   const axis = weeks.map(wk => `<text class="ax${wk === w ? ' on' : ''}" x="${x(wk)}" y="${H - 5}">Wk ${wk}</text>`).join('');
   const pts = weeks.filter(wk => st[wk]?.[key] != null);
-  const label = wk => `${esc(st[wk].label || 'Week ' + wk)}: ${f1(st[wk][key])}`;
   let marks;
   if (bars){
-    const bw = Math.min(28, step - 8);
+    const bw = Math.max(4, Math.min(30, step - 8));
     marks = pts.map(wk => { const v = st[wk][key], bx = x(wk) - bw / 2, h = Math.max(3, base - y(v));
       return `<g class="hb${wk === w ? ' med' : ''}"><title>Week ${wk}: ${f1(v)}</title><rect class="hit" x="${x(wk) - step / 2}" y="${top - 12}" width="${step}" height="${base - top + 12}"/>
         <path class="bar" style="fill:${heat(v / hi)}" d="M${bx},${base}V${base - h + 3}q0,-3 3,-3h${bw - 6}q3,0 3,3V${base}Z"/><text class="cnt" x="${x(wk)}" y="${base - h - 4}">${f1(v)}</text></g>`; }).join('');
   } else {
     const path = pts.map((wk, i) => `${i ? 'L' : 'M'}${x(wk)},${y(st[wk][key])}`).join('');
     const shown = new Set([pts[0], pts[pts.length - 1], w]);
-    marks = `<path class="ln" d="${path}"/>` + pts.map(wk => `<g class="pt${wk === w ? ' on' : ''}"><title>Week ${wk}: ${f1(st[wk][key])}</title>
+    marks = `<path class="pc-area" d="${path}L${x(pts[pts.length - 1])},${base}L${x(pts[0])},${base}Z"/><path class="ln" d="${path}"/>` + pts.map(wk => `<g class="pt${wk === w ? ' on' : ''}"><title>Week ${wk}: ${f1(st[wk][key])}${key === 'cons' && st[wk].gap != null ? ` · voters differ by ${f1(st[wk].gap)} places on average` : ''}</title>
       <rect class="hit" x="${x(wk) - step / 2}" y="${top - 12}" width="${step}" height="${base - top + 12}"/><circle cx="${x(wk)}" cy="${y(st[wk][key])}" r="${wk === w ? 5 : 4}"/>
-      ${shown.has(wk) ? `<text class="cnt" x="${x(wk)}" y="${y(st[wk][key]) - 9}">${f1(st[wk][key])}</text>` : ''}</g>`).join('');
+      ${shown.has(wk) ? `<text class="cnt" x="${x(wk)}" y="${y(st[wk][key]) - 12}">${f1(st[wk][key])}</text>` : ''}</g>`).join('');
   }
   return `<svg class="bhist pchart ${bars ? 'churn' : 'cons'}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${bars ? 'Churn' : 'Consensus'} by week: ${pts.map(wk => `week ${wk} ${f1(st[wk][key])}`).join(', ')}">${grid}${marks}${axis}</svg>`;
 }
 
 /* Every week (a row) by every spot on the ballot (1st to 25th): the darker, the more teams the voters split it among. */
 function slotMap(st, weeks, w){
-  const W = 380, L = 36, gap = 2, cw = (W - L - gap * 24) / 25, rh = 14, H = weeks.length * (rh + gap) + 16;
+  const W = 480, L = 36, gap = 3, cw = (W - L - gap * 24) / 25, rh = 17, H = weeks.length * (rh + gap) + 22;
   const max = Math.max(...weeks.flatMap(wk => st[wk].slots));
   const rows = weeks.map((wk, i) => {
     const y = i * (rh + gap);
-    return `<text class="ax rl${wk === w ? ' on' : ''}" x="0" y="${y + rh - 3}">Wk ${wk}</text>` + st[wk].slots.map((v, r) =>
-      `<rect class="hc" x="${L + r * (cw + gap)}" y="${y}" width="${cw}" height="${rh}" rx="2" style="fill:${heat((v - 1) / (max - 1))}"><title>Week ${wk}, #${r + 1}: ${v === 1 ? 'unanimous' : `split like ${f1(v)} teams`}</title></rect>`).join('');
+    return `${wk === w ? `<rect class="pc-map-selected" x="${L - 3}" y="${y - 2}" width="${W - L + 6}" height="${rh + 4}" rx="3"/>` : ''}<text class="ax rl${wk === w ? ' on' : ''}" x="0" y="${y + rh - 3}">Wk ${wk}</text>` + st[wk].slots.map((v, r) =>
+      `<rect class="hc" x="${L + r * (cw + gap)}" y="${y}" width="${cw}" height="${rh}" rx="2" style="fill:${heat((v - 1) / Math.max(1, max - 1))}"><title>Week ${wk}, #${r + 1}: ${v === 1 ? 'unanimous' : `split like ${f1(v)} teams`}</title></rect>`).join('');
   }).join('');
   const ticks = [1, 5, 10, 15, 20, 25].map(r => `<text class="ax" x="${L + (r - 1) * (cw + gap) + cw / 2}" y="${H - 3}">${r}</text>`).join('');
   return `<svg class="bhist pmap" viewBox="0 0 ${W} ${H}" role="img" aria-label="How split the voters are at each spot, week by week">${rows}${ticks}</svg>
@@ -117,43 +121,58 @@ function viewPoll(d){
   const st = d.stats, weeks = weeksOf(d).filter(x => st?.[x]);
   if (!weeks.length) return panel('', '<p class="muted">No ballots yet this season.</p>');
   const w = weeks.includes(state.bWeek) ? state.bWeek : weeks[weeks.length - 1], s = st[w], wk = d.weeks[w], p = st[weeks[weeks.indexOf(w) - 1]];
-  const head = detailHead({ title: 'How sure are the voters?', label: 'AP poll · voter certainty',
-    sub: [`${esc(wk.label)}${wk.date ? ` · ${esc(wk.date)}` : ''}`, `<b>${wk.voters.length}</b> ballots`].map(x => `<span>${x}</span>`).join('') });
-  const weekChips = weeks.length > 1 ? chips(weeks.map(x => [x, `Wk ${x}`]), w, 'bweek') : '';
-
+  const delta = p ? s.cons - p.cons : 0, changed = p && Math.abs(delta) >= .05;
   const soft = s.slots.indexOf(Math.max(...s.slots));
-  const delta = p ? s.cons - p.cons : 0;
-  const tiles = [
-    [f1(s.cons), 'Consensus', p && Math.abs(delta) >= .1 ? `<small class="${delta > 0 ? 'up' : 'dn'}">${delta > 0 ? '▲' : '▼'}${f1(Math.abs(delta))}</small>` : ''],
-    [s.churn != null ? f1(s.churn) : '–', 'Churn', ''],
-    [f1(s.slots[0]), 'Teams at #1', ''],
-    [s.new != null ? f1(s.new) : '–', 'New per ballot', '']
-  ].map(([v, k, x]) => `<div><b>${v}${x}</b><span>${k}</span></div>`).join('');
+  const extreme = changed ? since(st, weeks, w, 'cons', delta < 0) : null;
+  const context = !p ? 'The season starts here.' : !changed ? 'Agreement holds steady.'
+    : extreme === 0 ? `${delta < 0 ? 'Lowest' : 'Highest'} agreement this season.`
+    : `Voters agree ${delta < 0 ? 'less' : 'more'} than last week.`;
+  const badge = p ? `<span class="pc-delta ${changed ? delta > 0 ? 'pos' : 'neg' : ''}">${changed ? `${delta > 0 ? '↑' : '↓'} ${f1(Math.abs(delta))}` : '—'} <span>vs. last week</span></span>`
+    : '<span class="pc-delta">Opening poll</span>';
+  const sectionHead = (n, title, meta = '') => `<div class="pc-section-head"><span class="pc-index">${n}</span><h3>${title}</h3>${meta ? `<span class="pc-section-meta">${meta}</span>` : ''}</div>`;
+  const weekNav = weeks.length > 1 ? `<nav class="pc-weeks" aria-label="Poll week">${weeks.map(x =>
+    `<button type="button" data-bweek="${x}" aria-pressed="${x === w}" aria-label="Week ${x}">Wk ${x}</button>`).join('')}</nav>` : '';
+  const gap = s.gap != null ? `<div><dt>Places apart</dt><dd>${f1(s.gap)}</dd><span>Average voter difference</span></div>` : '';
+  const churn = s.churn != null ? `<section class="pc-section pc-movement">
+    ${sectionHead('02', 'Ballots in motion', esc(wk.label))}
+    <div class="pc-movement-stats"><div><span class="pc-kicker">Churn index</span><b>${f1(s.churn)}</b><span>How much ballots changed</span></div>
+      <div><span class="pc-kicker">New per ballot</span><b>${f1(s.new)}</b><span>Teams added on average</span></div></div>
+    ${weekChart(st, weeks, w, 'churn', true)}
+    <p class="pc-caption">Big moves can happen together. Churn measures change; consensus measures agreement.</p>
+  </section>` : '';
+  const who = ([n, o, m], i) => `<li><span class="pc-voter-num">${String(i + 1).padStart(2, '0')}</span><span class="pc-voter-name">${esc(n)}<small>${esc(o)}</small></span><b>${f1(m)}</b></li>`;
+  const movers = s.most ? `<section class="pc-section pc-voters">${sectionHead('04', 'Behind the ballots', 'Churn index')}
+    <div class="pc-voter-columns"><div><h4><i class="pc-dot warm"></i>Biggest changes</h4><ol>${s.most.map(who).join('')}</ol></div>
+      <div><h4><i class="pc-dot"></i>Smallest changes</h4><ol>${s.least.map(who).join('')}</ol></div></div></section>` : '';
 
-  // In words: this week's agreement and churn against the rest of the season so far.
-  const words = [];
-  if (!p) words.push('The first poll, when voters have the least to go on.');
-  else {
-    const lo = since(st, weeks, w, 'cons', true), hi = since(st, weeks, w, 'cons', false);
-    words.push(delta < 0 ? `Voters agree <b>less</b> than the week before${lo === 0 ? ', the least all season' : lo ? `, the least since Week ${lo}` : ''}.`
-      : `Voters agree <b>more</b> than the week before${hi === 0 ? ', the most all season' : hi ? `, the most since Week ${hi}` : ''}.`);
-    const ch = since(st, weeks, w, 'churn', false);
-    if (s.churn != null) words.push(ch === 0 ? `They reworked their own ballots more than in any week yet.` : `The average voter added ${f1(s.new)} new team${s.new === 1 ? '' : 's'}.`);
-  }
-  words.push(s.slots[0] <= 1.05 ? 'The top spot is unanimous.' : s.slots[0] < 1.5 ? 'The top spot is all but settled.' : `#1 is contested: split like ${f1(s.slots[0])} teams.`);
-  words.push(`Softest spot: <b>#${soft + 1}</b>.`);
-
-  const who = ([n, o, m]) => `<li><b>${f1(m)}</b><span>${esc(n)}<small> · ${esc(o)}</small></span></li>`;
-  const movers = s.most ? panel(`Who changed most · Week ${w}`, `<div class="bout">
-      <div><h4>Reworked their ballot</h4><ul>${s.most.map(who).join('')}</ul></div>
-      <div><h4>Stood pat</h4><ul>${s.least.map(who).join('')}</ul></div></div>`) : '';
-
-  return head + weekChips +
-    panel('', `<div class="btiles b4">${tiles}</div><p class="bcons">${words.join(' ')}</p>`) +
-    panel('Consensus', `${weekChart(st, weeks, w, 'cons')}<p class="note">How alike two voters' ballots are, on average over every pair of voters (100: identical). Agreeing on the top counts most: the top 10 carry most of the weight.</p>`) +
-    (weeks.length > 1 ? panel('Churn', `${weekChart(st, weeks, w, 'churn', true)}<p class="note">How much each voter changed their own ballot from the week before, averaged (0: no change, on the same scale as consensus).</p>`) : '') +
-    panel('Where the poll is soft', `${slotMap(st, weeks, w)}<p class="note">For each spot on the ballot, how many teams the voters split it among, counted as if evenly (1: every voter has the same team there). Hover a square for its number.</p>`) +
-    movers;
+  return `<div class="poll-certainty" data-title="AP poll · voter certainty">
+    <header class="pc-header"><div class="pc-kicker">AP Top 25 <span> / </span> ${esc(d.season)} season</div><h2>Voter consensus</h2>
+      <p>${esc(wk.label)}${wk.date ? ` <span>·</span> ${esc(wk.date)}` : ''}<span>·</span> ${wk.voters.length} ballots</p></header>
+    ${weekNav}
+    <section class="pc-section pc-overview" aria-label="Consensus overview">
+      <div class="pc-overview-top"><div class="pc-score"><span class="pc-kicker">Consensus index</span><div><strong>${f1(s.cons)}</strong><span>/ 100</span></div>${badge}</div>
+        <dl class="pc-facts">${gap}<div><dt>Compared equally</dt><dd>25<span> teams</span></dd><span>Every spot carries equal weight</span></div></dl></div>
+      <div class="pc-verdict"><span class="pc-dot"></span><p>${context}${extreme > 0 ? ` <span>${delta < 0 ? 'Lowest' : 'Highest'} since Week ${extreme}.</span>` : ''}</p></div>
+      ${sectionHead('01', 'Agreement through the season', `${weeks.length} ${weeks.length === 1 ? 'poll' : 'polls'}`)}
+      ${weekChart(st, weeks, w, 'cons')}
+      <div class="pc-chart-foot"><span>Higher = more agreement</span><span>Zoomed scale · 0–100 index</span></div>
+    </section>
+    ${churn}
+    <section class="pc-section pc-contested">${sectionHead(churn ? '03' : '02', 'Where opinion splits', 'Ballot position →')}
+      <div class="pc-split-stats"><div><span class="pc-kicker">The top spot</span><b>${s.slots[0] === 1 ? 'Unanimous' : `${f1(s.slots[0])}<small> effective teams</small>`}</b></div>
+        <div><span class="pc-kicker">Most contested</span><b>#${soft + 1}<small>${f1(s.slots[soft])} effective teams</small></b></div></div>
+      <div class="pc-map">${slotMap(st, weeks, w)}</div>
+      <p class="pc-caption">Neutral means agreement. Warmer means a spot is split among more teams.</p>
+    </section>
+    ${movers}
+    <details class="pc-method" data-k="poll-method"><summary><span>How to read these numbers</span><span class="pc-kicker">Methodology</span></summary>
+      <div><h4>Consensus · equal weight, all 25 teams</h4><p>For every team in the AP Top 25, average the difference in placement across all pairs of voters. A team left off counts as #26. Ties at #25 are included.</p>
+        <p class="pc-formula">100 × (1 − average difference ÷ 25)</p><p>100 means identical placements for these teams. The chart zooms to this season's scores, using the same scale for every selected week.</p>
+        <h4>Churn · movement from the previous poll</h4><p>Average change in each returning voter's ballot, using top-weighted rank-biased overlap. Zero means no change; movement near #1 counts most. It uses a different scale from consensus.</p>
+        <h4>Effective teams · how split is a spot?</h4><p>The number of teams sharing a position, adjusted for how evenly votes are split (exponentiated entropy). One means unanimous; four means as split as four teams sharing it evenly. Hover a cell for its value.</p></div>
+    </details>
+    <footer class="pc-source">${wk.voters.length} AP ballots <span>·</span> Via CollegePollTracker</footer>
+  </div>`;
 }
 
 let shownId = null;
