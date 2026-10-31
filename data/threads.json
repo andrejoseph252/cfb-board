@@ -1,6 +1,61 @@
 {
- "updated": "2026-10-31T01:07:42+00:00",
+ "updated": "2026-10-31T07:36:45+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Sacramento State Defeats Kent State 31-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1xk2rb1/postgame_thread_sacramento_state_defeats_kent/",
+   "published": "2026-10-31T06:17:08+00:00",
+   "gameId": "401866451",
+   "teams": [
+    "Sacramento State",
+    "Kent State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Baylor Defeats UCF 41-9",
+   "url": "https://www.reddit.com/r/CFB/comments/1xjzcg9/postgame_thread_baylor_defeats_ucf_419/",
+   "published": "2026-10-31T03:05:12+00:00",
+   "gameId": "401856844",
+   "teams": [
+    "Baylor",
+    "UCF"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Tulane Defeats Charlotte 38-31",
+   "url": "https://www.reddit.com/r/CFB/comments/1xjz6s9/postgame_thread_tulane_defeats_charlotte_3831/",
+   "published": "2026-10-31T02:57:13+00:00",
+   "gameId": "401862813",
+   "teams": [
+    "Tulane",
+    "Charlotte"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Dartmouth Defeats Harvard 24-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xjyfkl/postgame_thread_dartmouth_defeats_harvard_2414/",
+   "published": "2026-10-31T02:18:19+00:00",
+   "gameId": "401867838",
+   "teams": [
+    "Dartmouth",
+    "Harvard"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Kent State @ Sacramento State (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xjxgdx/game_thread_kent_state_sacramento_state_1030_pm_et/",
+   "published": "2026-10-31T01:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Kent State",
+    "Sacramento State"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Baylor @ UCF (7:30 PM ET)",
@@ -1508,39 +1563,6 @@
    "teams": [
     "New Mexico State",
     "Sam Houston"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Marshall Defeats South Alabama 20-13",
-   "url": "https://www.reddit.com/r/CFB/comments/1xbc1cm/postgame_thread_marshall_defeats_south_alabama/",
-   "published": "2026-10-21T03:05:38+00:00",
-   "gameId": "401871092",
-   "teams": [
-    "Marshall",
-    "South Alabama"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Delaware Defeats Missouri State 61-38",
-   "url": "https://www.reddit.com/r/CFB/comments/1xbbfmq/postgame_thread_delaware_defeats_missouri_state/",
-   "published": "2026-10-21T02:35:47+00:00",
-   "gameId": "401871069",
-   "teams": [
-    "Delaware",
-    "Missouri State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Middle Tennessee Defeats FIU 26-23",
-   "url": "https://www.reddit.com/r/CFB/comments/1xbbfml/postgame_thread_middle_tennessee_defeats_fiu_2623/",
-   "published": "2026-10-21T02:35:46+00:00",
-   "gameId": "401871055",
-   "teams": [
-    "Middle Tennessee",
-    "FIU"
    ]
   }
  ],
