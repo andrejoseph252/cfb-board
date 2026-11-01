@@ -1121,6 +1121,7 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 
 /* News: header button (dot = stories you haven't seen), the drawer list and the My team panel */
 .newsbtn{position:relative}
+:root[data-news="hide"] .newsbtn{display:none}
 .news-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 2px var(--surface)}
 .news-dot[hidden]{display:none}
 .news-list{display:grid}

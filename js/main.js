@@ -106,8 +106,11 @@ function mainHTML(){
 function renderMain(){
   const html = mainHTML();
   if (html === lastMain) return;
-  const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq';
+  const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq', y = window.scrollY;
   v.innerHTML = html; lastMain = html;
+  // A refresh never moves the page (phones can lose the spot when the tapped element is replaced); a new tab
+  // scrolls to the top in setTab, before this runs.
+  if (window.scrollY !== y) window.scrollTo(0, y);
   // A new tab eases in (a refresh of the same tab never does).
   if (entering){ entering = false; v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); }
   if (!firstPaint && state.games.length){ firstPaint = true; settle(); }

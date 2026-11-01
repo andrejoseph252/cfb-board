@@ -150,6 +150,8 @@ function toggle(id){
   const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id].slice(-MAX);
   store.set('rk.mv', next); invalidate('main');
 }
+// A tap on the chart never focuses its buttons: they're replaced on the re-render, and a phone can scroll after them.
+document.addEventListener('pointerdown', e => { if (e.target.closest('.mv-chart [data-mvt]')) e.preventDefault(); });
 /* The line nearest a tap: the poll column under it, then the team ranked closest to that height. */
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-mvt]'); if (t){ toggle(t.dataset.mvt); return; }
