@@ -1,6 +1,17 @@
 {
- "updated": "2026-11-01T13:54:16+00:00",
+ "updated": "2026-11-01T18:38:19+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Delaware Valley @ King's (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xl870t/game_thread_delaware_valley_kings_100_pm_et/",
+   "published": "2026-11-01T17:00:11+00:00",
+   "gameId": null,
+   "teams": [
+    "Delaware Valley",
+    "King's"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Fresno State Defeats Oregon State 38-22",
