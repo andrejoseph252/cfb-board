@@ -336,6 +336,8 @@ export function step(G, dt, inp){
     } else if (p === qb){
       if (holder === qb && inp.qbMove) moveToward(p, inp.qbMove.x, inp.qbMove.y, p.spd * .75, dt, 10);
       else if (holder === qb && inp.qbKeys) moveToward(p, p.x + inp.qbKeys.x * 3, p.y + inp.qbKeys.y * 3, p.spd * .7, dt, 10);
+      // The movement pad: analog, a gentle push slides him in the pocket, the full push scrambles.
+      else if (holder === qb && inp.qbPad){ const m = Math.min(1, Math.hypot(inp.qbPad.x, inp.qbPad.y)) || 1; moveToward(p, p.x + inp.qbPad.x / m * 3, p.y + inp.qbPad.y / m * 3, p.spd * (.3 + .55 * m), dt, 10); }
       else if (P.pa && P.t < .7 && holder === qb) moveToward(p, p.x, p.y, 0, dt);   // play action: show the ball to the back
       else if (!P.draw && P.t < (P.formation === 'under' ? 1 : .6) && holder === qb) moveToward(p, P.los - (P.formation === 'under' ? 7.5 : 6), p.y, P.formation === 'under' ? 6 : 3, dt);   // the drop back
       else moveToward(p, p.x, p.y, 0, dt);

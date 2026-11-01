@@ -177,6 +177,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
     <button class="pb-jump" type="button" hidden aria-label="Jump the route">JUMP</button>
     <button class="pb-rp" type="button" hidden aria-label="Watch the replay">▶ REPLAY</button><div class="pb-rlabel" aria-hidden="true">REPLAY</div>
+    <div class="pb-pad" hidden aria-label="Move the quarterback"><i></i><span>MOVE</span></div>
     <div class="pb-moves" hidden><button class="pb-mv" type="button" data-mv="juke" aria-label="Juke">JUKE</button><button class="pb-mv" type="button" data-mv="truck" aria-label="Truck">TRUCK</button></div>
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
@@ -191,6 +192,17 @@ export function open({ prefill = null, exit = () => {} } = {}){
   $('.pb-jump').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); resume(); jumpRoute(); });
   $('.pb-rp').addEventListener('click', e => { e.stopPropagation(); startReplay(); });
   canvas.addEventListener('pointerdown', () => { if (phase === 'replay') endReplay(); });   // tap to skip the replay
+  // The quarterback's movement pad: its own element, so one thumb moves him while the other aims on the field.
+  const padEl = $('.pb-pad');
+  padEl.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation(); resume();
+    if (!padReady()) return;
+    try{ padEl.setPointerCapture(e.pointerId); }catch{}
+    const r = padEl.getBoundingClientRect(); pad = { id: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 };
+    padAt(e);
+  });
+  padEl.addEventListener('pointermove', e => { if (pad?.id === e.pointerId) padAt(e); });
+  for (const t of ['pointerup', 'pointercancel']) padEl.addEventListener(t, e => { if (pad?.id === e.pointerId) padOff(); });
   // With the ball: moves on their own buttons, so a press on the field only ever steers.
   $('.pb-moves').addEventListener('pointerdown', e => {
     const b = e.target.closest('[data-mv]'); if (!b) return;
@@ -198,6 +210,10 @@ export function open({ prefill = null, exit = () => {} } = {}){
     if (!carrierLive()) return;
     if (b.dataset.mv === 'juke') input.juke = Math.sign(input.carStick?.y || 0) || 1; else input.truck = true;
   });
+  // Two thumbs at once (the MOVE pad and the slingshot) must never read as a pinch: everything you can touch has
+  // touch-action: none, and Safari's own pinch gesture is cancelled while the game is open (it ignores the
+  // viewport's zoom setting).
+  if (!gestureGuard){ gestureGuard = true; for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, e => { if (document.body.classList.contains('pb-open')) e.preventDefault(); }, { passive: false }); }
   root.addEventListener('click', onClick); root.addEventListener('input', onInput);
   window.addEventListener('resize', onResize); window.addEventListener('orientationchange', onResize); window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
   document.addEventListener('visibilitychange', onHide);
@@ -256,7 +272,7 @@ function loop(ts){
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick && !G.play?.noHandoff || phase === 'live' && S.canHandoff(G)),
     readKey: phase === 'live' && G.play?.option && !G.play.carrier ? G.play.option.key : null });
   if (G) drain();
-  hud(); syncJump(); syncMoves(); syncReplay();
+  hud(); syncJump(); syncMoves(); syncPad(); syncReplay();
 }
 
 function update(dt){
@@ -1598,7 +1614,7 @@ function hintText(){
   if (phase === 'presnap') return S.RUN_CALLS[G.call] ? (touch ? 'Tap to snap and run' : 'Click or press Space to snap and run') : touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
   if (phase === 'live'){
     if (G.play.carrier) return touch ? 'Drag to steer · JUKE as he closes in · TRUCK through him' : 'Arrows to steer · Space juke (time it as he closes) · X truck, or dive with no one in front';
-    if (S.canThrow(G)) return touch ? 'Pull back to throw · tap a receiver for a quick throw · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · H hand off';
+    if (S.canThrow(G)) return touch ? 'Pull back to throw · MOVE pad slides the quarterback (past the line, he runs) · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · arrows (or the MOVE pad) move the quarterback · H hand off';
   }
   return '';
 }
@@ -1812,21 +1828,46 @@ function up(e){
   if (!ptr || ptr.id !== e.pointerId) return;
   if (ptr.mode === 'aim' && aim?.active && S.canThrow(G)) S.userThrow(G, aim.target.x, aim.target.y);
   else if (ptr.mode === 'aim' && ptr.tapRec && performance.now() - ptr.t0 < 400 && S.canThrow(G)) S.throwToReceiver(G, ptr.tapRec);
-  aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; input.carStick = null; ptr = null;
+  aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; if (!pad) input.carStick = null; ptr = null;
 }
-function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; input.carStick = null; ptr = null; }
-function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, truck: false, qbMove: null, qbKeys: null, defStick: null, carStick: null }); ptr = null; aim = null; }
+function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; if (!pad) input.carStick = null; ptr = null; }
+function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, truck: false, qbMove: null, qbKeys: null, qbPad: null, defStick: null, carStick: null }); ptr = null; aim = null; if (pad) padOff(); }
 
 /* With the ball (yours, not on defense): the JUKE and TRUCK buttons. JUKE glows gold when a defender is in the
    sweet spot for one (about two yards out); TRUCK reads DIVE when nobody's in front to run through. */
 /* Coach mode: your players run the snap unless you've touched the field to take it. */
 const coaching = () => G?.coach && !G.youDefend && !G.practice && G.play && !G.play.userCtl;
 const carrierLive = () => G?.play?.carrier && !G.youDefend && phase === 'live' && !G.play.result && !coaching();
+/* The movement pad (bottom left on pass plays): slide the quarterback in the pocket, and once he's past the line
+   it keeps steering him as a runner until the thumb lifts. Shown from the snap until the ball is gone (before the
+   snap that corner is the play-call bar's). */
+let pad = null, padState = '', gestureGuard = false;
+const padReady = () => G?.play && !G.youDefend && !G.kick && !coaching() && !G.play.result && G.play.ball.holder === G.play.qb
+  && phase === 'live' && (S.canThrow(G) || G.play.carrier === G.play.qb);
+function padAt(e){
+  let dx = e.clientX - pad.cx, dy = e.clientY - pad.cy, len = Math.hypot(dx, dy);
+  if (len > pad.r){ dx = dx / len * pad.r; dy = dy / len * pad.r; len = pad.r; }
+  $('.pb-pad i').style.transform = `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px)`;
+  const dead = pad.r * .2;
+  if (phase !== 'live' || len < dead){ input.qbPad = null; if (G?.play?.carrier) input.carStick = null; return; }
+  const v = R.dragToWorld(dx, dy), n = Math.hypot(v.x, v.y) || 1, m = Math.min(1, (len - dead) / (pad.r - dead)), w = { x: v.x / n * m, y: v.y / n * m };
+  if (G.play.carrier === G.play.qb){ input.qbPad = null; input.carStick = w; } else input.qbPad = w;
+}
+function padOff(){ if (G?.play?.carrier === G?.play?.qb) input.carStick = null; pad = null; input.qbPad = null; const k = $('.pb-pad i'); if (k) k.style.transform = ''; }
+function syncPad(){
+  const el = $('.pb-pad'); if (!el) return;
+  const st = !paused && !$('.pb-modal').classList.contains('on') && (pad || padReady()) ? 'live' : 'off';
+  // A finger held through a frame where the pad goes away (the throw, a sack) still lifts cleanly.
+  if (st === 'off' && pad) padOff();
+  else if (pad && phase === 'live' && G.play.carrier !== G.play.qb && !S.canThrow(G)) padOff();
+  if (st === padState) return; padState = st;
+  el.hidden = st === 'off';
+}
 let movesState = '';
 function syncMoves(){
   const box = $('.pb-moves'); if (!box) return;
   let st = 'off';
-  if (carrierLive() && !paused && !$('.pb-modal').classList.contains('on')){
+  if (carrierLive() && !pad && !paused && !$('.pb-modal').classList.contains('on')){
     const c = G.play.carrier, sp = Math.hypot(c.vx, c.vy) || 1;
     const ahead = G.play.def.filter(d => !d.down && d.stun <= 0 && !d.eng && ((d.x - c.x) * c.vx + (d.y - c.y) * c.vy) / sp > -.3).map(d => Math.hypot(d.x - c.x, d.y - c.y));
     const near = Math.min(99, ...ahead);
@@ -1905,7 +1946,7 @@ function readKeys(){
   input.qbKeys = lat || fwd ? { x: fwd, y: lat } : null;
   input.defKeys = input.qbKeys;
   // Arrow keys steer the ball carrier like the stick (unless a finger is already steering).
-  if (ptr?.mode !== 'cstick'){ const n = Math.hypot(fwd, lat); input.carStick = n ? { x: fwd / n, y: lat / n } : null; }
+  if (ptr?.mode !== 'cstick' && !pad){ const n = Math.hypot(fwd, lat); input.carStick = n ? { x: fwd / n, y: lat / n } : null; }
 }
 
 /* ---------- copy and styles ---------- */
@@ -1967,6 +2008,13 @@ body.pb-open{overflow:hidden}
 /* With the ball: JUKE and TRUCK, bottom left. JUKE glows when a defender is in the sweet spot. */
 .pb-moves{position:absolute;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);display:flex;gap:12px}
 .pb-moves[hidden]{display:none}
+/* The quarterback's movement pad, same corner (JUKE and TRUCK take over once someone's running with it). */
+.pb-pad{position:absolute;left:calc(env(safe-area-inset-left,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);width:92px;height:92px;border-radius:50%;
+  background:rgba(16,18,21,.55);border:2px solid rgba(0,0,0,.7);box-shadow:0 0 0 3px rgba(58,64,72,.85);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:opacity .2s}
+.pb-pad[hidden]{display:none}
+.pb-tools,.pb-grade,.pb-rlabel,.pb-rp,.pb-jump{touch-action:none;-webkit-touch-callout:none}
+.pb-pad i{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#e8eaec;border:2px solid #000;box-shadow:0 3px 0 #000;pointer-events:none}
+.pb-pad span{position:absolute;left:0;right:0;bottom:-17px;text-align:center;font-size:8px;letter-spacing:.06em;color:#c9d1d9;pointer-events:none}
 .pb-mv{width:70px;height:70px;border-radius:50%;display:grid;place-items:center;background:#101215;border:2px solid #000;box-shadow:0 0 0 3px #3a4048,0 4px 0 #000;
   color:#e8eaec;font-size:9px;letter-spacing:.04em;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .pb-mv:active{transform:translateY(3px);box-shadow:0 0 0 3px #3a4048,0 1px 0 #000}
