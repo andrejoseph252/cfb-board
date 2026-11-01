@@ -82,6 +82,18 @@ export const CSS = `
   background:radial-gradient(circle at 14px 50%,#fff 0 10.5px,transparent 11px),rgba(255,255,255,.18);transition:background-color .15s}
 .pb.hd .pb-checks input:checked{background:radial-gradient(circle at 32px 50%,#fff 0 10.5px,transparent 11px),var(--hd-green)}
 .pb.hd .pb-checks input:focus-visible{outline:2px solid var(--hd-yellow);outline-offset:2px}
+/* The Crowd & music row: label and level on top, the slider under it, in the toggles' look (rounded track filling
+   green, a round white knob). --p is the fill, set as it moves. */
+.pb.hd .pb-checks label.pb-vol{display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;flex-direction:initial;gap:12px;padding:13px 16px 15px}
+.pb.hd .pb-vol span{display:flex;justify-content:space-between;align-items:baseline}
+.pb.hd .pb-vol b{font-weight:600;color:var(--hd-mute);font-variant-numeric:tabular-nums}
+.pb.hd .pb-checks .pb-vol input{width:100%;height:28px;border-radius:0;background:none}
+.pb.hd .pb-checks .pb-vol input::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--hd-green) var(--p),rgba(255,255,255,.18) var(--p))}
+.pb.hd .pb-checks .pb-vol input::-moz-range-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--hd-green) var(--p),rgba(255,255,255,.18) var(--p))}
+.pb.hd .pb-checks .pb-vol input::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-10px;border-radius:50%;background:#fff;border:0;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+.pb.hd .pb-checks .pb-vol input::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:0;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+.pb.hd .pb-checks .pb-vol input:focus-visible{outline:none}
+.pb.hd .pb-checks .pb-vol input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--hd-yellow),0 2px 6px rgba(0,0,0,.45)}
 
 /* ---------- the main menu ---------- */
 .pb.hd .pb-setup:has(.pb-logo){gap:12px}
