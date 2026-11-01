@@ -3,7 +3,7 @@ import { state, invalidate } from '../state.js';
 import * as api from '../api.js';
 import { parseSummary, parseProbabilities } from '../models.js';
 import { loadPredictions } from '../data.js';
-import { realizedExcitement } from '../excitement.js';
+import { realizedExcitement, seasonRank } from '../excitement.js';
 import { useData } from '../resource.js';
 import { teamLink, panel, fmtDelay } from './components.js';
 import { chartHTML } from './wpchart.js';
@@ -247,8 +247,9 @@ function wpPanel(g, s){
   for (const d of s.drives) for (const p of d.plays) if (p.id) plays.set(String(p.id), p);
   const chart = chartHTML(g, pts, plays, s.line);
   if (!chart) return '';
-  const x = realizedExcitement(pts), live = g.state === 'in';
+  const x = realizedExcitement(pts), live = g.state === 'in', rank = live ? null : seasonRank(x.index);
   return panel('Win probability', chart + `<div class="facts"><span>${live ? 'Excitement so far' : 'Excitement index'} <b>${x.index.toFixed(1)}</b> · ${x.label}</span>
+    ${rank != null ? `<span>More dramatic than <b>${rank}%</b> of games this season</span>` : ''}
     <span>Favorite flipped <b>${x.flips}</b> time${x.flips === 1 ? '' : 's'}</span></div>`);
 }
 

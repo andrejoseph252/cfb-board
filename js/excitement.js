@@ -5,7 +5,8 @@
    Scoring pace     up to 10  sportsbook over/under, else both teams' points per game
    Stakes           up to 10  ranked teams, conference game, both teams with 1 loss or fewer
 */
-import { state } from './state.js';
+import * as api from './api.js';
+import { state, invalidate } from './state.js';
 import { primaryMarket, sourceLabel } from './markets.js';
 import { clamp, parseRecord, pct } from './util.js';
 
@@ -86,8 +87,9 @@ export function watchHeat(g){
 export const isHot = g => watchHeat(g) >= .55;
 
 /* In-game: total win-probability movement (sum of |ΔWP| across plays).
-   Calibrated on 2026 week 3: blowouts < 0.5, competitive 1-2, thrillers 2.2+, instant classics 3.5+. */
-export const REALIZED_TIERS = [[3.5, 'Instant classic'], [2.2, 'Thriller'], [1, 'Competitive'], [0, 'Mostly one-sided']];
+   Cutoffs from 2026 weeks 1-9 (622 FBS games): instant classics are the top ~3%, thrillers the next ~12%,
+   one-sided the bottom ~40%. Kept fixed so a game's label doesn't drift as the season goes on. */
+export const REALIZED_TIERS = [[4.1, 'Instant classic'], [3.1, 'Thriller'], [.9, 'Competitive'], [0, 'Mostly one-sided']];
 export function realizedExcitement(wp){
   wp = wp?.map(p => typeof p === 'number' ? p : p.home);
   if (!wp || wp.length < 5) return null;
@@ -96,4 +98,24 @@ export function realizedExcitement(wp){
   let flips = 0, side = wp[0] >= .5 ? 1 : -1;
   for (const p of wp){ if (side > 0 && p <= .45){ flips++; side = -1; } else if (side < 0 && p >= .55){ flips++; side = 1; } }
   return { index: s, flips, label: REALIZED_TIERS.find(([t]) => s >= t)[1] };
+}
+
+/* Finished games: the index the GitHub Action saved (data/excitement.json), the same number as the game drawer's. */
+let finals = null, sorted = [];
+export function loadFinalExcitement(){
+  return api.finals().then(j => {
+    if (j?.g === finals) return;
+    finals = j?.g || {}; sorted = Object.values(finals).map(x => x[0]).sort((a, b) => a - b); invalidate();
+  }).catch(() => {});
+}
+/* Share of this season's finished games with a lower index, 0-100, or null before the file loads. */
+export function seasonRank(index){
+  if (!sorted.length) return null;
+  let lo = 0, hi = sorted.length;
+  while (lo < hi){ const m = (lo + hi) >> 1; if (sorted[m] < index) lo = m + 1; else hi = m; }
+  return Math.round(lo / sorted.length * 100);
+}
+export function finalExcitement(g){
+  const x = finals?.[g.id];
+  return x ? { index: x[0], flips: x[1], label: REALIZED_TIERS.find(([t]) => x[0] >= t)[1] } : null;
 }

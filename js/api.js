@@ -86,6 +86,8 @@ export const lines = () => getJSON(`data/lines.json?t=${Math.floor(Date.now() / 
 // Closing point spreads, saved by the GitHub Action before each kickoff (ESPN drops them at the final).
 export const ballots = () => getJSON(`data/ballots.json?t=${Math.floor(Date.now() / 600e3)}`, 10 * MIN);
 export const spreads = () => getJSON(`data/spreads.json?t=${Math.floor(Date.now() / 600e3)}`, 10 * MIN);
+// Each finished game's excitement index, worked out once by the GitHub Action from ESPN's per-play feed.
+export const finals = () => getJSON(`data/excitement.json?t=${Math.floor(Date.now() / 600e3)}`, 10 * MIN);
 export const news = team => getJSON(`${SITE}/news?limit=${team ? 12 : 30}${team ? `&team=${encodeURIComponent(team)}` : ''}`, 10 * MIN, { priority: 'low' });
 // Every FBS team with its colors (for the game); changes about never, so it's kept for a day.
 export const teamStats = id => getJSON(`${SITE}/teams/${id}/statistics`, 60 * MIN);

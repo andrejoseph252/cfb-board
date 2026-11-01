@@ -3,7 +3,7 @@ import { state } from '../state.js';
 import { marketsFor, sourceLabel } from '../markets.js';
 import { pins, picks } from '../picks.js';
 import { outcome } from '../bets.js';
-import { excitement, isHot, realizedExcitement } from '../excitement.js';
+import { excitement, isHot, realizedExcitement, finalExcitement, seasonRank } from '../excitement.js';
 import { lineFor } from '../lines.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
 import { ats, atsWhy, fmtLine } from '../ats.js';
@@ -218,14 +218,23 @@ const CHEV = '<svg class="xc-chev" viewBox="0 0 16 16" aria-hidden="true"><path 
    its tier and what that means in plain words. */
 const LIVE_XC = { 'Instant classic': ['hi', 'wild swings all game'], Thriller: ['hi', 'big momentum swings'],
   Competitive: ['mid', 'back and forth'], 'Mostly one-sided': ['lo', 'little drama so far'] };
+const xcTip = (x, live) => { const rank = seasonRank(x.index);
+  return `Excitement index ${x.index.toFixed(1)}: the total swing in win probability ${live ? 'so far' : 'over the game'}.${rank != null ? ` ${live ? 'So far more' : 'More'} dramatic than ${rank}% of games this season.` : ''}${x.flips ? ` The favorite ${live ? 'has flipped' : 'flipped'} ${x.flips} time${x.flips === 1 ? '' : 's'}.` : ''} 3.1 and up is a thriller (top 15%), 4.1 and up an instant classic (top 3%).`; };
 function liveExcitement(g){
   if (g.syncing) return '';
   const x = realizedExcitement((momentum(g) || []).map(([, v]) => v));
   if (!x) return '<div class="xc xlive pending"><span class="xc-sum">Excitement so far <b>…</b></span></div>';
   const [cls, what] = LIVE_XC[x.label];
-  const flips = x.flips ? `<span class="xl-flip" title="The favorite has flipped ${x.flips} time${x.flips === 1 ? '' : 's'}">⇄ ${x.flips}</span>` : '';
-  return `<div class="xc xlive" title="Excitement index: the total swing in win probability so far. Under 1 is one-sided, 2.2 and up a thriller, 3.5 and up an instant classic.">
+  const flips = x.flips ? `<span class="xl-flip">⇄ ${x.flips}</span>` : '';
+  return `<div class="xc xlive" title="${esc(xcTip(x, true))}">
     <span class="xc-sum"><span class="xc-score ${cls}">${x.index.toFixed(1)}</span><b class="xc-label">${esc(x.label)}</b><span class="xc-tags">${esc(what)}</span>${flips}</span></div>`;
+}
+/* Final cards: thrillers and instant classics (the top ~15%) by name, like the upset tag; the number stays in the
+   game drawer beside the chart that explains it. */
+function finalXc(g){
+  if (g.state !== 'post') return null;
+  const x = finalExcitement(g) || realizedExcitement((momentum(g) || []).map(([, v]) => v));
+  return x && LIVE_XC[x.label][0] === 'hi' ? { label: x.label, tip: xcTip(x, false) } : null;
 }
 
 export function excitementBadge(g, { open = false } = {}){
@@ -242,16 +251,17 @@ export function excitementBadge(g, { open = false } = {}){
 }
 
 /* Final cards: a quiet tag when the winner had a low chance at kickoff, e.g. "Upset 22%". */
-/* The underdog lost but beat the number: "closer than expected", the cover's answer to the upset bolt. */
-function coverTag(g, a){
-  if (!a?.dogCover) return '';
-  return `<span class="cover" title="${esc(atsWhy(g, a))}">${esc(g[a.dog].abbr)} covers +${String(a.line).replace(/\.0$/, '')}</span>`;
-}
 /* "TROY −9.5 · covered" on a final, so you can see at a glance how the favorite did against the spread. */
 const atsInfo = (g, a) => a ? `${g[a.fav].abbr} ${fmtLine(a.line)} · ${a.result === 'covered' ? 'covered' : a.result === 'push' ? 'push' : 'didn\'t cover'}` : null;
-function upsetTag(g, u){
-  if (!u) return '';
-  return `<span class="upset${u.big ? ' big' : ''}" title="${esc(upsetWhy(g, u))}">${BOLT}${u.big ? 'Big upset' : 'Upset'}${u.p != null ? ` ${pct(u.p)}%` : ''}</span>`;
+/* A final's tags as [class, label, why, icon]. Upsets and thrillers/instant classics are pills (two at most); a cover
+   is colored words in the info line, which shortens with an ellipsis, so the footer never outgrows the card. */
+function finalTags(g, u, a){
+  const xf = finalXc(g), pills = [], words = [];
+  if (u) pills.push([`upset${u.big ? ' big' : ''}`, `${u.big ? 'Big upset' : 'Upset'}${u.p != null ? ` ${pct(u.p)}%` : ''}`, upsetWhy(g, u), BOLT]);
+  // An instant classic beside an upset pill on a narrow card reads "Classic" (see .foot's container query).
+  if (xf) pills.push([`xfin${xf.label === 'Instant classic' ? ' top' : ''}`, xf.label, xf.tip, '']);
+  if (a?.dogCover) words.push(['cover', `${g[a.dog].abbr} covers +${String(a.line).replace(/\.0$/, '')}`, atsWhy(g, a)]);
+  return { pills, words };
 }
 
 const SYNC_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 14h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.8 5.4v3.7L9.9 7.25z" fill="currentColor"/></svg>';
@@ -260,10 +270,13 @@ export const fmtDelay = s => { const t = Math.round(s); return t >= 60 ? `${Math
 /* The whole card opens the game (see main.js); close, late live games get an orange outline. */
 export function card(g){
   const live = g.state === 'in', hot = live && isHot(g), pinned = pins.has(g.id), up = upset(g), mine = mySide(g), a = ats(g), fx = live ? scored(g) : null;
-  const info = [live && !g.syncing ? g.sit : null, g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, atsInfo(g, a), g.neutral ? 'Neutral site' : null].filter(Boolean);
+  const { pills, words } = finalTags(g, up, a);
+  // The spread line repeats what an upset or cover tag already says.
+  const info = [live && !g.syncing ? g.sit : null, g.state === 'post' ? null : g.tv, g.book?.details && g.state === 'pre' ? g.book.details : null, up || a?.dogCover ? null : atsInfo(g, a), g.neutral ? 'Neutral site' : null].filter(Boolean);
+  const infoHTML = [...words.map(([c, l, w]) => `<b class="ftag f-${c.split(' ')[0]}" title="${esc(w)}">${esc(l)}</b>`), ...info.map(esc)].join(' · ');
   return `<article class="game${live ? ' is-live' : ''}${hot ? ' is-hot' : ''}${pinned ? ' is-pinned' : ''}${up ? ` is-upset${up.big ? ' is-big-upset' : ''}` : ''}${a?.dogCover ? ' is-cover' : ''}${mine ? ' is-mine' : ''}" data-id="${esc(g.id)}"${mine ? ` style="--mine:${esc(myColor())}"` : ''}>
     ${teamRow(g, 'away', fx)}${teamRow(g, 'home', fx)}${oddsBlock(g)}${excitementBadge(g)}${scoreFx(g, fx)}
-    <div class="foot">${statusHTML(g, true)}${g.syncDelay != null && (live || g.state === 'post') ? `<span class="synctag" title="Shown as on your stream, ${fmtDelay(g.syncDelay)} behind live">${SYNC_ICON}Synced</span>` : ''}${upsetTag(g, up)}${coverTag(g, a)}<span class="finfo">${esc(info.join(' · '))}</span>
+    <div class="foot">${statusHTML(g, true)}${g.syncDelay != null && (live || g.state === 'post') ? `<span class="synctag" title="Shown as on your stream, ${fmtDelay(g.syncDelay)} behind live">${SYNC_ICON}Synced</span>` : ''}${pills.map(([c, l, w, i]) => `<span class="${c}" title="${esc(w)}">${i}${l === 'Instant classic' ? '<span class="xl">Instant classic</span><span class="xs">Classic</span>' : esc(l)}</span>`).join('')}<span class="finfo">${infoHTML}</span>
       <button class="pinbtn" data-pin aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} ${esc(g.away.name)} at ${esc(g.home.name)}" title="${pinned ? 'Unpin' : 'Pin'}">${PIN}</button></div>
   </article>`;
 }

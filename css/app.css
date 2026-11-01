@@ -701,7 +701,16 @@ img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
 /* Card footer: one line; status, info that truncates, pin on the right */
 .foot{flex-wrap:nowrap;min-width:0}
 .foot .status{flex:none}
+.xfin{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font:800 10.5px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;cursor:help;
+  color:var(--x-hi);border-radius:999px;padding:3px 8px 2px;box-shadow:inset 0 0 0 1.5px var(--x-hi)}
+.xfin.top{color:#fff;background:var(--x-hi);box-shadow:none}
+.xfin .xs{display:none}
+.game .foot{container:foot/inline-size}
+@container foot (max-width:330px){.upset+.xfin .xl{display:none} .upset+.xfin .xs{display:inline}}
+:root[data-theme="dark"] .xfin.top{color:#14110c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .xfin.top{color:#14110c}}
 .foot .finfo{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftag{font-weight:700;cursor:help} .f-upset{color:var(--upset)} .f-xfin{color:var(--x-hi)} .f-cover{color:var(--cover)}
 .foot .pinbtn{flex:none;margin-left:auto}
 
 /* Odds row: before kickoff the percentages are pick buttons (outlined pill + radio circle) */

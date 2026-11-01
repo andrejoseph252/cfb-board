@@ -33,6 +33,9 @@ jobs:
       # Closing point spreads (ESPN drops them at the final), so the board can say who covered.
       - run: python scripts/spreads.py
         if: ${{ !cancelled() }}
+      # Each finished game's excitement index (one per-play feed per game, fetched once), for the final cards.
+      - run: python scripts/excitement.py
+        if: ${{ !cancelled() }}
       # Every AP voter's ballot (Sunday to Tuesday, once a week's are out).
       - run: python scripts/ballots.py
         if: ${{ !cancelled() }}
@@ -47,7 +50,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add data/markets.json data/threads.json data/lines.json data/spreads.json data/ballots.json data/teams.json data/slate.json
+          git add data/markets.json data/threads.json data/lines.json data/spreads.json data/ballots.json data/teams.json data/slate.json data/excitement.json
           git diff --cached --quiet && exit 0
           git commit -m "Update market odds and game threads"
           # Someone may have pushed while this ran; replay the data commit on top and try again.

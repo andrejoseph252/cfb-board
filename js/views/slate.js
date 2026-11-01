@@ -1,7 +1,7 @@
 import { esc, norm, etDay, etMinutes, inET } from '../util.js';
 import { state } from '../state.js';
 import { pins } from '../picks.js';
-import { excitement, isHot } from '../excitement.js';
+import { excitement, isHot, finalExcitement } from '../excitement.js';
 import { lineFor } from '../lines.js';
 import { recapBanner } from './recap.js';
 import { mySide } from '../myteam.js';
@@ -54,7 +54,8 @@ export function weekList(){
   const gs = state.games.filter(g => q ? [g.home.full, g.away.full, g.home.abbr, g.away.abbr].some(s => norm(s).includes(q)) : tier(g));
   if (!gs.length) return empty(q ? 'No games match that team name.' : 'No games in this group this week.');
   if (state.sort === 'xc'){
-    const score = g => g.state === 'post' ? -1 : excitement(g).score;
+    // Upcoming and live games by pregame score (0-100), then finals by how exciting they turned out (below zero).
+    const score = g => g.state === 'post' ? (finalExcitement(g)?.index ?? 0) - 100 : excitement(g).score;
     return grid([...gs].sort((a, b) => score(b) - score(a)));
   }
   if (state.sort === 'moves'){
