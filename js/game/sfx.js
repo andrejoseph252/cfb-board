@@ -1,10 +1,12 @@
 /* Sound for Coach Andre's Bowl: real recordings (audio/, made by scripts/sounds.py and picked in the sound lab),
    played with Web Audio. The context starts on the first tap, which browsers require.
 
-   Signal flow: effects, music and the crowd each have a bus -> master -> a limiter -> speakers. Every clip in a slot
-   is already normalized to that slot's loudness, so the levels here are the whole mix. Only one music cue (the War
+   Signal flow: effects, music and the crowd each have a bus -> master -> a limiter -> speakers. Music, the crowd beds
+   and the crowd's reactions all pass through the atmosphere bus first, which the player's "Crowd & music" slider
+   sets; the play's own sounds (whistle, snap, throw, catch, hits, kicks, beeps) skip it and stay at full level. Every
+   clip in a slot is already normalized to that slot's loudness, so the levels here are the whole mix. Only one music cue (the War
    Chant, a fight song, "Charge!", a chant, the drumline) plays at a time, and the crowd ducks under it. */
-let ac = null, master = null, fxBus = null, musicBus = null, crowdBus = null, on = true;
+let ac = null, master = null, fxBus = null, atmosBus = null, atmosSend = null, musicBus = null, crowdBus = null, on = true, atmos = 1;
 const clips = {};           // slot -> [AudioBuffer], filled as files arrive
 const last = {};            // slot -> index played last, so a slot never repeats the same clip twice in a row
 const DIR = new URL('../../audio/', import.meta.url);
@@ -19,9 +21,12 @@ export function initAudio(enabled){
     lim.connect(ac.destination);
     master = ac.createGain(); master.gain.value = .9; master.connect(lim);
     fxBus = ac.createGain(); fxBus.connect(master);
-    musicBus = ac.createGain(); musicBus.connect(fxBus);
-    crowdBus = ac.createGain(); crowdBus.connect(fxBus);
+    atmosBus = ac.createGain(); atmosBus.gain.value = atmosGain(atmos); atmosBus.connect(fxBus);
+    musicBus = ac.createGain(); musicBus.connect(atmosBus);
+    crowdBus = ac.createGain(); crowdBus.connect(atmosBus);
     buildVerb();
+    // The crowd's and music's share of the reverb follows the slider too, so turned all the way down nothing echoes.
+    atmosSend = ac.createGain(); atmosSend.gain.value = atmosGain(atmos); atmosSend.connect(verbIn);
     load();
   }catch{ ac = null; }
 }
@@ -31,6 +36,13 @@ export function setSound(enabled){
   if (ac && fxBus) ramp(fxBus.gain, enabled ? 1 : 0, .05);
 }
 export const soundOn = () => on;
+/* The "Crowd & music" level, 0-1. Squared, so the slider feels even to the ear (half way is clearly quieter, not
+   barely). */
+const atmosGain = v => v * v;
+export function setAtmosphere(v){
+  atmos = Math.max(0, Math.min(1, v));
+  if (ac && atmosBus){ ramp(atmosBus.gain, atmosGain(atmos), .08); ramp(atmosSend.gain, atmosGain(atmos), .08); }
+}
 export function resume(){ if (ac?.state === 'suspended') ac.resume().catch(() => {}); }
 
 /* Loading, in the order the game needs them. First the sounds of a play (whistle, snap, throw, catch, hit, kick:
@@ -129,7 +141,7 @@ function playBuf(b, { vol = 1, at = 0, vary = .04, pan = 0, dest = fxBus, fadeIn
   let n = s; s.connect(g); n = g;
   if (pan && ac.createStereoPanner){ const p = ac.createStereoPanner(); p.pan.value = pan; g.connect(p); n = p; }
   n.connect(dest);
-  if (verb && verbIn){ const v = ac.createGain(); v.gain.value = verb; n.connect(v); v.connect(verbIn); }
+  if (verb && verbIn){ const v = ac.createGain(); v.gain.value = verb; n.connect(v); v.connect(dest === fxBus ? verbIn : atmosSend); }
   s.start(t);
   const c = { s, g, end: t + b.duration / s.playbackRate.value };
   playing.add(c); s.onended = () => playing.delete(c);
@@ -143,7 +155,7 @@ function release(c, sec, t = now()){ if (c && c.end > t){ ramp(c.g.gain, 0, sec,
 let react = null;
 function reaction(slot, o = {}){
   release(react, .9, now() + (o.at || 0));
-  const c = play(slot, { vary: .02, verb: .3, ...o });
+  const c = play(slot, { vary: .02, verb: .3, dest: atmosBus, ...o });
   if (c) react = c;
 }
 
@@ -202,7 +214,7 @@ const FX = {
   band: () => { if (!fsuHome()) music('band', { at: 1.6 }); },
   drums: () => music('drumline', { vol: .9 }),
   drumsLate: () => music('warchant', { at: 1.4 }),
-  kickoff: () => { if (fsuHome()) music('warchant', { at: .2 }); else play('cheer', { vol: .7 }); },
+  kickoff: () => { if (fsuHome()) music('warchant', { at: .2 }); else play('cheer', { vol: .7, dest: atmosBus }); },
   defense: () => music(fsuHome() ? 'warchant' : 'defense'),
   win: () => { music(fsuHome() ? 'fsufight' : 'band', { at: .4 }); reaction('cheer', { vol: .9 }); }
 };

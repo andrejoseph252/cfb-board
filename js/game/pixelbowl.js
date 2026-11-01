@@ -15,14 +15,14 @@ import { attachNames } from './names.js';
 import { weekChallenges, challengeById } from '../challenges.js';
 import { createRenderer } from './drawhd.js';
 import * as hdUI from './hdui.js';
-import { initAudio, setSound, soundOn, sfx, resume, crowd, bindTeams, silence } from './sfx.js';
+import { initAudio, setSound, soundOn, sfx, resume, crowd, bindTeams, silence, setAtmosphere } from './sfx.js';
 import * as SV from './seasonview.js';
 import * as SC from './scout.js';
 import * as W from './weather.js';
 
 const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
-const saved = { diff: 'pro', len: 'standard', sound: true, routes: true, time: 'random', sky: 'random', ...store.get('pixelbowl', {}) };
+const saved = { diff: 'pro', len: 'standard', sound: true, atmos: 1, routes: true, time: 'random', sky: 'random', ...store.get('pixelbowl', {}) };
 delete saved.record; delete saved.hd; saved.results ||= {};   // (hd: the old HD switch; HD is the only look now)
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
@@ -38,6 +38,7 @@ const findPlay = id => saved.plays.find(p => p.id === id);
 const freshSettings = () => { if (!S.DIFFS[saved.diff]) saved.diff = 'rookie'; saved.len = 'quick'; saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; };
 freshSettings();
 const save = () => store.set('pixelbowl', saved);
+setAtmosphere(saved.atmos ?? 1);   // the saved Crowd & music level, ready before the audio starts
 /* The next game's conditions (weather.js), from the setup screen's Kickoff and Weather choices: rolled once and kept
    while you change other options (so the picture behind the menu doesn't flicker), a part rolled again only when its
    choice changes. Each game uses them up, so the next one gets a new roll. */
@@ -339,6 +340,7 @@ function setup(){
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label>
 </div>
+    ${atmosHTML()}
     ${SV.menuCard()}
     <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
     <button class="pb-go pb-take" type="button" data-pb="challenges"><span>TAKE OVER</span><small>Replay this week's real late-game moments</small></button>
@@ -1533,7 +1535,7 @@ function pause(){
     ? [btn('resume', 'RESUME', false), btn('endsess', G.seasonDrill ? 'BACK TO GAME WEEK' : 'END SESSION'), btn('menu', 'MAIN MENU'), btn('exit', 'EXIT TO BOARD')]
     : [btn('resume', 'RESUME', false), done ? '' : btn('restart', 'RESTART GAME'),
       main.season ? btn('s-hub', done ? 'SEASON HUB' : "SEASON HUB (GAME WON'T COUNT)") : btn('menu', 'MAIN MENU'), btn('exit', 'EXIT TO BOARD')];
-  modal(`<div class="pb-card"><h2>PAUSED</h2>${drill || keyCtx ? '' : scoreLine()}<div class="pb-btns col">${items.join('')}</div></div>`, false, 'pause');
+  modal(`<div class="pb-card"><h2>PAUSED</h2>${drill || keyCtx ? '' : scoreLine()}${atmosHTML()}<div class="pb-btns col">${items.join('')}</div></div>`, false, 'pause');
 }
 let behind = null;
 function unpause(){ paused = false; closeModal('pause'); }
@@ -1747,7 +1749,14 @@ function onClick(e){
     case 'kneel': { const o = S.kneel(G); return o === 'downs' ? endMyPossession(G.los) : presnap(); }
   }
 }
+/* "Crowd & music": the crowd, its reactions and the band, quieter or off; the whistle, snap and hits stay as they are. */
+const atmosHTML = () => `<label class="pb-vol"><span>CROWD &amp; MUSIC <b>${Math.round(saved.atmos * 100)}%</b></span>
+  <input type="range" min="0" max="100" step="5" value="${Math.round(saved.atmos * 100)}" data-pb-vol aria-label="Crowd and music volume"></label>`;
 function onInput(e){
+  if (e.target.matches('[data-pb-vol]')){
+    saved.atmos = Number(e.target.value) / 100; save(); setAtmosphere(saved.atmos);
+    const b = e.target.closest('.pb-vol')?.querySelector('b'); if (b) b.textContent = `${e.target.value}%`;
+  }
   if (e.target.matches('[data-pb-opt]')){
     const k = e.target.dataset.pbOpt; saved[k] = e.target.checked; save();
     if (k === 'sound') setSound(saved.sound);
@@ -2068,6 +2077,10 @@ body.pb-open{overflow:hidden}
 .pb-checks{display:grid;gap:8px;font-size:8px;color:#c9d1d9}
 .pb-checks label{display:flex;align-items:center;gap:8px;cursor:pointer}
 .pb-checks input{width:16px;height:16px;accent-color:#ffd84a}
+.pb-vol{display:grid;gap:8px;font-size:8px;color:#c9d1d9;margin:4px 0}
+.pb-vol span{display:flex;justify-content:space-between}.pb-vol b{color:#ffd84a;font-weight:400}
+.pb-vol input{width:100%;accent-color:#ffd84a;touch-action:manipulation}
+.pb-card .pb-vol{margin:12px 0}
 .pb-setup .pb-go{justify-self:stretch;font-size:14px;padding:14px}
 .pb-rec{text-align:center;font-size:8px;color:#9aa4ae;margin:0}
 .pb-how{font-size:8px;color:#c9d1d9;line-height:1.9}

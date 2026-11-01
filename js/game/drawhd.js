@@ -478,9 +478,14 @@ export function createRenderer(canvas){
       }
       const sp = pts.map(([x, y]) => toBuf(x, y));
       // In a target drill the target's route is bright gold and the decoys' fade back.
-      const T = G.play.target, col = !T ? 'rgba(255,240,170,.85)' : r === T ? 'rgba(255,216,74,1)' : 'rgba(255,255,255,.22)';
-      dotted(bx, sp, col, r === T ? 4 : 6, 2);
-      const [ex, ey] = sp[sp.length - 1]; bx.fillStyle = col; bx.fillRect(ex - 2, ey - 2, 5, 5);
+      // On a snowy field pale gold vanishes into the white: each dot gets a dark edge and a richer gold, so the
+      // routes read under the falling snow (still a touch harder to see than on grass).
+      const snowy = G.cond?.sky === 'snow', T = G.play.target;
+      const col = !T ? (snowy ? 'rgba(255,196,40,.95)' : 'rgba(255,240,170,.85)') : r === T ? 'rgba(255,216,74,1)' : snowy ? 'rgba(40,50,72,.4)' : 'rgba(255,255,255,.22)';
+      const gap = r === T ? 4 : 6, [ex, ey] = sp[sp.length - 1];
+      if (snowy && (!T || r === T)){ dotted(bx, sp, 'rgba(18,24,40,.75)', gap, 4); bx.fillRect(ex - 3, ey - 3, 7, 7); }
+      dotted(bx, sp, col, gap, 2);
+      bx.fillStyle = col; bx.fillRect(ex - 2, ey - 2, 5, 5);
     }
   }
   /* A pulsing ring at a player's feet: the back to hand off to, the drill's target, the read key, you on defense. */
@@ -1424,13 +1429,14 @@ export function createRenderer(canvas){
     if (G.kick) kickPlayers(G);
     else if (P){
       lines(G);
-      if (!P.live && !P.result && view.routes) routes(G);
       if (view.handoff && !P.carrier) ring(P.rb, '111,227,255');
       if (P.target && !P.thrown && !P.carrier) ring(P.target, '255,210,63');   // the target drill's man to hit
       if (view.readKey) ring(view.readKey, '255,210,63');   // the read option's key: the end left unblocked
       if (mine && !P.result) ring(mine, '255,210,63');   // you, on defense
       if (view.landing && P.ball.state === 'air') landing(G, view.landing);
       drawPlayers(G, P.all);
+      // The route preview goes over the players: a corner lined up over a receiver would hide a short route.
+      if (!P.live && !P.result && view.routes) routes(G);
       drawImpacts();
       ball(G);
     }
