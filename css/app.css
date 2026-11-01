@@ -1669,6 +1669,55 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .tbl tr.bx-row:hover td{background:color-mix(in srgb,var(--ink) 4%,transparent)}
 .tbl tr.bx-row:active td{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 
+/* ---------- Rankings: AP movement (js/views/movement.js) ----------
+   A bump chart: rank gutter | plot | this week's labels. Lines and the column/out rules are an SVG stretched to the
+   plot (non-scaling strokes); dots and labels are HTML placed by percent so text never stretches. */
+.mv-chart{display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 10px 12px 4px;margin-bottom:10px}
+.mv-chart{container:mvc/inline-size}
+.mv-cols{position:relative;height:14px;margin:0 52px 0 30px;font-size:10.5px;font-weight:700;color:var(--muted)}
+.mv-cols span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+@container mvc (max-width:560px){.mv-cols .alt{display:none}}
+.mv-body{display:grid;grid-template-columns:30px minmax(0,1fr) 52px;box-sizing:content-box;padding:10px 0}
+.mv-body>*{position:relative}
+.mv-rk{position:absolute;right:8px;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.mv-rk.out{font-size:9px;text-transform:uppercase;letter-spacing:.04em}
+.mv-plot{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mv-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.mv-plot :is(line,polyline){vector-effect:non-scaling-stroke;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.mv-col{stroke:var(--line);stroke-width:1}
+.mv-out{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4}
+.mv-faint polyline{stroke:var(--muted);stroke-opacity:.3;stroke-width:1.5;transition:stroke-opacity .2s}
+.mv-plot.sel .mv-faint polyline{stroke-opacity:.14;stroke-width:1.25}
+.mv-band polygon{fill:var(--c);fill-opacity:.22}
+.mv-plot .mv-band polyline{stroke:var(--c);stroke-opacity:.55;stroke-width:1}
+.mv-plot polyline.on{stroke-width:3}
+.mv-dot{position:absolute;z-index:1;transform:translate(-50%,-50%);box-sizing:border-box;min-width:19px;height:19px;padding:0 3px;border-radius:10px;
+  background:var(--surface);border:2px solid var(--c);font:800 10px/15px var(--body);text-align:center;color:var(--ink);font-variant-numeric:tabular-nums;pointer-events:none}
+.mv-lab{position:absolute;left:11px;transform:translateY(-50%);border:0;background:none;padding:2px 4px;border-radius:4px;font:700 10px/1 var(--body);color:var(--muted);cursor:pointer;white-space:nowrap}
+.mv-lab:hover{color:var(--ink);background:var(--soft)}
+.mv-lab.on{color:var(--surface);background:var(--c)}
+.mv-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-left:8px}
+.mv-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px 5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:600 12.5px/1 var(--body);cursor:pointer}
+.mv-chip i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.mv-chip span{color:var(--muted);font-size:14px;line-height:1}
+.mv-hint{font-size:12px;color:var(--muted)}
+.mv-note{margin:0 0 0 8px;font-size:11.5px;line-height:1.45;color:var(--muted)}
+.mv-story{margin-left:8px;border:1px solid var(--line);border-radius:10px;box-shadow:inset 3px 0 0 var(--c);overflow:clip}
+.mv-story>summary{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;list-style:none;font-size:13px}
+.mv-story>summary::-webkit-details-marker{display:none}
+.mv-story>summary .logo.sm{width:20px;height:20px}
+.mv-story>summary .muted{font-size:12px}
+.mv-story>summary::after{content:'';margin-left:auto;width:6px;height:6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);transition:transform .2s}
+.mv-story[open]>summary::after{transform:rotate(225deg)}
+.mv-sw{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.mv-story ol{list-style:none;margin:0;padding:0 12px 6px}
+.mv-story li{display:grid;grid-template-columns:52px 34px 40px minmax(0,1fr);align-items:center;min-height:30px;border-top:1px solid var(--soft);font-size:12.5px;font-variant-numeric:tabular-nums}
+.mv-wk{color:var(--muted);font-size:11.5px}
+.mv-r{font-weight:800}
+.mv-d{font-size:11.5px;font-weight:700;color:var(--muted)} .mv-d.up{color:var(--good)} .mv-d.dn{color:var(--bad)}
+.mv-gs{display:flex;flex-wrap:wrap;gap:2px 10px}
+.mv-g b{font-weight:800} .mv-g b.w{color:var(--good)} .mv-g b.l{color:var(--bad)}
+
 /* ---------- Rankings: tables that fit a phone (js/views/stattable.js) ----------
    Rank and team pinned; one column group at a time, picked by a segmented control. A wide table (its own width, a
    container query) shows every group at once under spanning group headers. */

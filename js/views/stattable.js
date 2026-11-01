@@ -8,7 +8,7 @@ import { realMarket } from '../markets.js';
 import { teamLink, logo, gameHref } from './components.js';
 
 export const GROUPS = {
-  ap: [['poll', 'Poll'], ['week', 'This week']],
+  ap: [['poll', 'Poll']],   // the AP view's other tab, Movement, is a chart (js/views/movement.js)
   fpi: [['power', 'Power'], ['outlook', 'Outlook'], ['week', 'This week']]
 };
 const viewOf = kind => { const v = store.get('sv.' + kind, null), i = GROUPS[kind].findIndex(([k]) => k === v); return i < 0 ? 0 : i; };
@@ -20,7 +20,7 @@ export function statTable(kind, cols, rows, emptyMsg){
   const gi = c => groups.findIndex(([k]) => k === c.g);
   const pinned = cols.filter(c => !c.g).length;
   const cellCls = (c, k) => [c.cls, c.g ? `g${gi(c)}` : 'pin', c.g && cols.findIndex(x => x.g === c.g) === k ? 'gs' : ''].filter(Boolean).join(' ');
-  const seg = `<div class="sv-seg" role="tablist" aria-label="Columns">${groups.map(([, l], n) =>
+  const seg = groups.length < 2 ? '' : `<div class="sv-seg" role="tablist" aria-label="Columns">${groups.map(([, l], n) =>
     `<button type="button" role="tab" data-sv="${kind}" data-svi="${n}" aria-selected="${n === i}">${esc(l)}</button>`).join('')}<span class="sv-thumb" aria-hidden="true"></span></div>`;
   const span = groups.map(([k, l], n) => { const c = cols.filter(x => x.g === k).length; return c ? `<th class="g${n} gs sv-gh" colspan="${c}">${esc(l)}</th>` : ''; }).join('');
   const head = cols.map((c, k) => `<th class="${cellCls(c, k)}"${c.title ? ` title="${esc(c.title)}"` : ''}>${c.h}</th>`).join('');

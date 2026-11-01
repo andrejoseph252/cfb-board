@@ -87,6 +87,14 @@ function lift(c){
   }
   return null;
 }
+/* A team's color for a chart that already uses `taken`: primary, else alternate, else a neutral (gray, or the page's
+   ink), the first that shows on the theme and looks clearly different from all of them; failing that, the most
+   different one. */
+export function distinctColor(t, taken){
+  const opts = [lift(t.color), lift(t.alt), '#9aa39d', darkUI() ? '#e8eee9' : '#16201a'].filter(Boolean);
+  const gap = c => Math.min(Infinity, ...taken.filter(o => o.startsWith('#')).map(o => deltaE(o, c)));
+  return opts.find(c => gap(c) >= 50) || opts.reduce((a, b) => gap(b) > gap(a) ? b : a);
+}
 /* [away, home] colors that both show up on the current theme and look clearly different, so one chart can use them for
    every mark. Each team keeps its primary hue when it can; home falls back to its alternate when that one is clearly
    apart, then to whichever of the two is farther, and only to gray when both clash (crimson vs maroon, say). */

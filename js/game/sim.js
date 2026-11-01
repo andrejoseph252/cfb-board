@@ -9,10 +9,10 @@ import { effects as weatherFx, gust } from './weather.js';
 export const FW = 53.33, MID = FW / 2, HASH = [20, 33.33], GOAL_HALF = 3.08, BAR = 3.33;
 
 export const DIFFS = {
-  rookie: { name: 'Rookie', catchR: 2.1, lag: .42, defSpd: .93, rush: 4.6, tackle: .75, fool: .92, keyErr: .5, opp: .27, intMul: .5, react: .5, sweep: 2.0, blitz: .1, preview: true },
-  pro:    { name: 'Pro', catchR: 1.85, lag: .32, defSpd: .955, rush: 3.7, tackle: .79, fool: .8, keyErr: .8, opp: .35, intMul: .75, react: .36, sweep: 1.55, blitz: .18, preview: true },
-  allpro: { name: 'All-Pro', catchR: 1.6, lag: .26, defSpd: .97, rush: 3.3, tackle: .82, fool: .68, keyErr: 1.1, opp: .43, intMul: .72, react: .26, sweep: 1.2, blitz: .25, preview: false },
-  legend: { name: 'Legend', catchR: 1.5, lag: .2, defSpd: .985, rush: 3.05, tackle: .85, fool: .55, keyErr: 1.4, opp: .51, intMul: .85, react: .18, sweep: 1.0, blitz: .32, preview: false }
+  rookie: { name: 'Rookie', catchR: 2.1, lag: .42, defSpd: .93, rush: 4.6, tackle: .75, fool: .92, keyErr: .5, opp: .27, intMul: .5, react: .5, sweep: 2.0, blitz: .1, lane: -1.3, cushion: [2.4, 1.1], read: -.42, press: 6, preview: true },
+  pro:    { name: 'Pro', catchR: 1.85, lag: .32, defSpd: .955, rush: 3.7, tackle: .79, fool: .8, keyErr: .8, opp: .35, intMul: .75, react: .36, sweep: 1.55, blitz: .18, lane: -.5, cushion: [2.0, 1.0], read: -.2, press: 5.4, preview: true },
+  allpro: { name: 'All-Pro', catchR: 1.6, lag: .26, defSpd: .97, rush: 3.3, tackle: .82, fool: .68, keyErr: 1.1, opp: .43, intMul: .72, react: .26, sweep: 1.2, blitz: .25, lane: .4, cushion: [1.6, .9], read: .1, press: 4.6, preview: false },
+  legend: { name: 'Legend', catchR: 1.5, lag: .2, defSpd: .985, rush: 3.05, tackle: .85, fool: .55, keyErr: 1.4, opp: .51, intMul: .85, react: .18, sweep: 1.0, blitz: .32, lane: 1.1, cushion: [1.2, .8], read: .3, press: 3.6, preview: false }
 };
 export const LENGTHS = { quick: { name: 'Quick', q: 180 }, standard: { name: 'Standard', q: 300 }, long: { name: 'Long', q: 450 } };
 
@@ -219,7 +219,8 @@ export function setupPlay(G){
   }
 
   // Defense: four down linemen, three backers, two corners, two safeties.
-  const deep = L > 88 ? Math.min(L + 9, 108) : L + 13, press = L > 88 ? L + 3 : L + 6;
+  // Corners line up D.press yards off (6 on Rookie, tighter on harder levels); closer in near the goal line.
+  const deep = L > 88 ? Math.min(L + 9, 108) : L + 13, press = L > 88 ? L + Math.min(3, D.press) : L + D.press;
   [-4.3, -1.3, 1.3, 4.3].forEach(dy => def.push(mk('DL', 'def', L + .9, b + dy, SPEED.DL * dMul)));
   const lb = [-4.5, 0, 4.5].map(dy => mk('LB', 'def', Math.min(L + 4.5, 109), b + dy, SPEED.LB * dMul));
   const cb1 = mk('CB', 'def', Math.min(press, 109), x.y + 1, SPEED.CB * dMul), cb2 = mk('CB', 'def', Math.min(press, 109), z.y - 1, SPEED.CB * dMul);
@@ -412,22 +413,30 @@ export function step(G, dt, inp){
     } else if (d.blitz){
       tx = qb.x; ty = qb.y; spd = P.t < .35 ? 0 : d.spd * (P.t < 1.4 ? .55 : .9);
     } else if (d.man){
-      const r = histAt(d.man, D.lag), cushion = P.t < .9 ? 2.4 : 1.1;
+      // Off coverage early (more cushion on easier levels, tighter at Legend), then he closes.
+      const r = histAt(d.man, D.lag), cushion = P.t < .9 ? D.cushion[0] : D.cushion[1];
       tx = Math.min(r.x + cushion, 109.5); ty = r.y;
     } else if (d.zone){
       // Zone: drop to the landmark, then play whoever comes into it. Deep zones stay over the top of the deepest
       // man in the area ("keep everything in front"); underneath zones sit at their depth and mirror the nearest
       // threat, passing him on when he leaves the area.
+      // What he sees: where a receiver was a beat ago on easier levels; at Legend, where he's heading (D.read seconds).
+      const seen = r => D.read < 0 ? histAt(r, -D.read) : { x: r.x + r.vx * D.read, y: r.y + r.vy * D.read, routeName: r.routeName, down: r.down };
       const z = d.zone, near = r => Math.abs(r.y - z.cy) <= z.hw + 1.5 && r.routeName !== 'block' && !r.down;
-      const mine = P.rec.filter(near).map(r => histAt(r, D.lag));
+      const mine = P.rec.map(seen).filter(near);
       if (z.deep){
         const deepest = mine.sort((a, c) => c.x - a.x)[0];
         tx = Math.min(Math.max(P.los + z.depth, deepest ? deepest.x + 5 : 0), 109.5);
         ty = deepest ? z.cy + (deepest.y - z.cy) * .55 : z.cy;
       } else {
+        // Better defenders sit in the throwing lane, between the quarterback and the man (D.lane yards toward the
+        // quarterback; negative is over the top of him, the way easier levels play it).
         const lm = P.los + z.depth, threat = mine.filter(r => r.x > P.los - 1).sort((a, c) => Math.hypot(a.x - lm, a.y - z.cy) - Math.hypot(c.x - lm, c.y - z.cy))[0];
-        tx = threat ? clamp(threat.x + 1.3, P.los + 3, lm + 4) : lm;
-        ty = threat ? z.cy + (threat.y - z.cy) * .92 : z.cy;
+        if (threat){
+          const lx = qb.x - threat.x, ly = qb.y - threat.y, n = Math.hypot(lx, ly) || 1, k = D.lane ?? -1.3;
+          tx = clamp(threat.x + (k >= 0 ? lx / n * k : -k), P.los + 3, lm + 4);
+          ty = clamp(threat.y + (k >= 0 ? ly / n * k : 0), z.cy - z.hw - 1.5, z.cy + z.hw + 1.5);
+        } else { tx = lm; ty = z.cy; }
       }
     } else if (d.spy){ tx = P.los + 5.5; ty = qb.y; }
     else { tx = d.x; ty = d.y; }
@@ -783,7 +792,9 @@ export function throwTo(G, tx, ty){
   P.rec.sort((a, b) => a.num - b.num);
   if (r && dist(at(r), land) < 7 && dist(r, land) < r.spd * T + 1.5) r.mode = 'ball';
   P.reactAt = P.t + D.react;
-  for (const df of P.def) if (df.role !== 'DL' && dist(df, land) < 22) df.pendingBall = true;
+  // Zone defenders read the quarterback and break on anything near them; a man defender has his eyes on his man and
+  // only breaks when the ball is going to him (a corner running with a go route doesn't peel off for an out underneath).
+  for (const df of P.def) if (df.role !== 'DL' && dist(df, land) < 22 && (!df.man || dist(df.man, land) < 4)) df.pendingBall = true;
   if (G.practice) P.grade = gradeThrow(P, land, T, P.target || P.aimedAt, !!P.target);
   P.aimedAt = null;
 }
@@ -889,15 +900,19 @@ function resolvePass(G){
   // Deep balls are harder: a defender can contest from further away, and the catch itself is tougher.
   const air = Math.max(0, land.x - P.los), CR = 1.7 + Math.min(1.2, air / 25);
   if (rd <= (D.catchR || 1.6) + mods(G).catchR + wx(G).catchR){
-    let contest = dd < CR ? (CR - dd) / CR : 0;
-    // Leverage, judged along the receiver's run: a defender trailing behind him is shielded out of the play; one on
-    // top of him (over a go route, in front of a crosser) is in position to make it.
-    if (contest && d && r){
-      const v = Math.hypot(r.vx, r.vy) || 1, along = ((d.x - r.x) * r.vx + (d.y - r.y) * r.vy) / v;
-      contest *= along < -.5 ? .65 : along > .4 ? 1.25 : 1;
-    }
+    // Leverage, judged along the ball's flight: a defender between the quarterback and the receiver (undercutting a
+    // slant, sitting in front of a crosser) is in position to make a play; one behind him is boxed out. A second man
+    // nearby adds traffic.
+    const fl = Math.hypot(land.x - b.fx, land.y - b.fy) || 1, ux = (land.x - b.fx) / fl, uy = (land.y - b.fy) / fl;
+    const front = df => r ? (r.x - df.x) * ux + (r.y - df.y) * uy : 0;
+    // A man defender whose man isn't the target has his back to the ball: at most an accidental hand on it.
+    const eyes = df => !df.man || dist(df.man, land) < 4;
+    const one = df => { const dd2 = dist(df, land); if (dd2 >= CR) return 0; const f = front(df); return (CR - dd2) / CR * (f > .4 ? 1.3 : f < -.4 ? .5 : 1) * (eyes(df) ? 1 : .3); };
+    const c1 = d ? one(d) : 0, c2 = defs[1] ? one(defs[1]) : 0;
+    const contest = Math.min(1, 1 - (1 - c1) * (1 - c2 * .5));
     const pCatch = clamp(.96 - rd * .07 - air * .004 - contest * .6 * (.6 + .4 * D.intMul) + rate(G.me.off) / 400, .1, .98);
-    const pInt = contest && dd < rd ? .3 * D.intMul * contest : 0;
+    // Even a blanketed throw is mostly broken up, not picked (about 1 in 7 at most, at Legend).
+    const pInt = contest && dd < rd && front(d) > -.3 && eyes(d) ? .17 * D.intMul * contest : 0;
     if (u < pCatch){
       G.stats.comp++;
       r.x = land.x; r.y = land.y; r.mode = null;

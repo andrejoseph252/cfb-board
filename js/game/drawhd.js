@@ -550,8 +550,11 @@ export function createRenderer(canvas){
       }
       let ph = phase.get(p); if (ph == null){ ph = Math.random() * 6; phase.set(p, ph); }
       const still = f.run == null && !f.down, b = still && Math.sin(t * 2.1 + ph) > .35 ? 1 : 0;
+      // The ball, part of the sprite: both hands on it in the pocket, else tucked in his right arm.
+      const B = G.play?.ball, has = !G.kick && G.play?.live && B?.state === 'held' && B.holder === p && !f.down && f.arms !== 'throw' && !rushSnap(G);
+      const ballIn = !has ? 0 : p === P.qb && !P.carrier ? 2 : 1;
       const spr = A.getSprite({ uni: off ? uniOff : uniDef, view, pose: f.pose || 'set', c: f.c || 0, arms: f.arms || 'hang', b, run: f.run ?? null,
-        num: jersey(team, p.role, idx), skin: p.skin || '#c68642', flip, lit: !A.inShadow(p.x, p.y), down: !!f.down });
+        num: jersey(team, p.role, idx), skin: p.skin || '#c68642', flip, lit: !A.inShadow(p.x, p.y), down: !!f.down, ball: ballIn });
       // From the side, the two lines' stances would overlap: set them a touch apart.
       const nz = pre && !portrait && f.pose === 'line' ? (off ? -.45 : .35) : 0;
       const [gx, gy] = toBuf(p.x + nz, p.y);
@@ -578,9 +581,7 @@ export function createRenderer(canvas){
         if (k < 1){ rot = (flip ? -1 : 1) * Math.PI / 2 * Math.min(1, k * k * 1.2 + .15); fall = A.getSprite({ uni: off ? uniOff : uniDef, view: 'side', pose: 'set', c: 0, arms: 'hang', b: 0, run: null,
           num: jersey(team, p.role, idx), skin: p.skin || '#c68642', flip, lit: !A.inShadow(p.x, p.y), down: false }); }
       } else downAt.delete(p);
-      // The ball, tucked in the carrier's arm (or in the quarterback's hands on a dropback).
-      const B = G.play?.ball, ball = !G.kick && G.play?.live && B?.state === 'held' && B.holder === p && !p.down ? (view === 'side' ? (flip ? -4 : 4) : view === 'back' ? 5 : -6) : null;
-      drawn.push({ spr, gx: gx + dx, gy, hop, down: f.down, lean, rot, fall, ball });
+      drawn.push({ spr, gx: gx + dx, gy, hop, down: f.down, lean, rot, fall });
       // Pressure: a red ring pulses under the quarterback as an unblocked rusher closes in.
       if (p === P?.qb && P.live && canThrow(G) && !G.youDefend){
         const near = Math.min(99, ...P.def.filter(d => (d.free || d.blitz) && !d.eng && !d.down).map(d => Math.hypot(d.x - p.x, d.y - p.y)));
@@ -617,7 +618,6 @@ export function createRenderer(canvas){
       if (rim && !d.lean){ const r = rimOf(s, rim[0]); for (const [ox, oy] of rim[1]) bx.drawImage(r, d.gx - s.ax + ox, y - s.ay + oy); }
       if (d.lean){ bx.setTransform(1, 0, d.lean, 1, d.gx - s.ax - d.lean * s.ay, y - s.ay); bx.drawImage(s.cv, 0, 0); bx.setTransform(1, 0, 0, 1, 0, 0); }
       else bx.drawImage(s.cv, d.gx - s.ax, y - s.ay);
-      if (d.ball != null){ const b = A.ballSprite(false, false, 0); bx.drawImage(b, d.gx + d.ball - (b.width >> 1), y - 16); }
     }
   }
   const downAt = new WeakMap();
@@ -660,8 +660,15 @@ export function createRenderer(canvas){
     for (const c of clods){ const [x, y] = toBuf(c.x, c.y, c.z); bx.globalAlpha = Math.min(1, (c.life - c.t) * 4); bx.fillStyle = c.c; bx.fillRect(x, y, c.s, c.s); }
     bx.globalAlpha = 1;
   }
+  /* The pass rush drill's snap, the ball being the cue: on the line under the center before it, a pulsing ring around
+     it, then a quick low flip back to the quarterback (SNAP_T seconds) with a flash where it left. */
+  const SNAP_T = .16, rushSnap = G => G.defDrill?.kind === 'rush' && G.play.ball.holder === G.play.qb && (!G.play.live || G.play.t < SNAP_T);
   function ball(G){
-    const b = G.play.ball;
+    const P = G.play, b = P.ball;
+    if (rushSnap(G)){
+      const lx = P.los + .15, k = P.live ? P.t / SNAP_T : 0;
+      return drawBall(lx + (P.qb.x - lx) * k, P.b + (P.qb.y - P.b) * k, .3 + Math.sin(k * Math.PI) * .7);
+    }
     if (b.state === 'held' && b.holder && !b.holder.down) return;
     drawBall(b.x, b.y, b.z || 0);
   }
@@ -813,6 +820,23 @@ export function createRenderer(canvas){
     ctx.beginPath(); ctx.roundRect(x0 + m.lo * w, y0, Math.max(2, (m.hi - m.lo) * w), 4, 1.5); ctx.fillStyle = m.flash ? BAD : GO; ctx.fill();
     const nx = x0 + m.pos * w;
     ctx.beginPath(); ctx.roundRect(nx - 1.3, y0 - 2.6, 2.6, 9.2, 1.3); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = .8; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.restore();
+  }
+  /* Around the ball on the line before the snap: a soft ring breathing in and out, so your eye has one place to rest.
+     At the snap it bursts outward and fades. */
+  function snapCue(P){
+    const [x, y] = toScreen(P.los + .15, P.b);
+    ctx.save();
+    if (!P.live){   // a dark edge under the gold, so it reads over any jersey
+      const k = (Math.sin(t * 5) + 1) / 2, rx = 8.5 + k * 1.5, ry = 4.2 + k * .7;
+      ctx.beginPath(); ctx.ellipse(x, y - 1, rx, ry, 0, 0, Math.PI * 2);
+      ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+      ctx.lineWidth = 1.6; ctx.strokeStyle = `rgba(255,216,74,${.7 + k * .3})`; ctx.stroke();
+    } else {
+      const k = Math.min(1, P.t / .45);
+      ctx.beginPath(); ctx.ellipse(x, y - 1, 7 + k * 16, 3.4 + k * 7, 0, 0, Math.PI * 2);
+      ctx.lineWidth = 2 * (1 - k) + .4; ctx.strokeStyle = `rgba(255,255,255,${(1 - k) * .95})`; ctx.stroke();
+    }
     ctx.restore();
   }
   function stunned(G){
@@ -1434,6 +1458,7 @@ export function createRenderer(canvas){
       if (P.target && !P.thrown && !P.carrier) mark(P.target, YEL);
       if (mine && !P.result) mark(mine, YEL);
       if (view.rush && mine) rushMeter(mine, view.rush);
+      if (G.defDrill?.kind === 'rush' && !P.result && (!P.live || P.t < .45)) snapCue(P);
       if (view.aim){ labels(G); aimArc(G, view.aim); }
       if (!G.youDefend && !P.carrier && !P.result) edgeArrows(G);
       effects(P, dt);

@@ -111,7 +111,7 @@ export function parseRankings(j){
     record: x.recordSummary, name: x.team?.location || x.team?.nickname, abbr: x.team?.abbreviation,
     logo: x.team?.logo || x.team?.logos?.[0]?.href, conf: x.team?.groups?.isConference ? Number(x.team.groups.id) : null
   });
-  return { title: ap.headline, ranks: (ap.ranks || []).map(row), others: (ap.others || []).map(row) };
+  return { title: ap.headline, date: ap.date, ranks: (ap.ranks || []).map(row), others: (ap.others || []).map(row) };
 }
 
 export function parsePredictor(j){

@@ -1,6 +1,7 @@
-import { esc } from '../util.js';
-import { state, CONF, CONF_ORDER, apRank, teamConf } from '../state.js';
+import { esc, store } from '../util.js';
+import { state, invalidate, CONF, CONF_ORDER, apRank, teamConf } from '../state.js';
 import { teamLink, sec, chips } from './components.js';
+import { movementChart } from './movement.js';
 import { statTable, recCell, teamCell, rating, weekCols, dash } from './stattable.js';
 import { mineRow } from '../myteam.js';
 import { ballots, weeksOf, teamWeek, matchesPoll, rankText, rankSet, tiers } from '../ballots.js';
@@ -38,11 +39,19 @@ function apTable(){
     { h: 'Team', cls: 'team', td: t => teamCell(t, name(t)) },
     { g: 'poll', h: '+/−', cls: 'num sv-mv', title: 'Movement from last week', td: trend },
     { g: 'poll', h: 'Record', cls: 'num strong', td: recd },
-    { g: 'poll', h: 'Ballots', cls: 'sv-bx', title: 'Where the voters have them: best to worst, the box the middle half', td: spread },
-    ...weekCols('week')
+    { g: 'poll', h: 'Ballots', cls: 'sv-bx', title: 'Where the voters have them: best to worst, the box the middle half', td: spread }
   ], rows, 'No ranked teams in this conference.') +
     (others.length ? `<p class="note sub"><b>Also receiving votes:</b> ${others.map(t => `${teamLink({ id: t.id, name: t.name })} ${live ? `<a class="bxpts" href="#ballots/${esc(t.id)}" title="See the ballots">${t.points}</a>` : t.points}`).join(', ')}</p>` : '');
 }
+
+/* The AP view's two tabs: this week's poll as a table, or how every ranked team has moved all season. */
+function apView(){
+  const mv = store.get('rk.ap', 'poll') === 'move';
+  const seg = `<div class="sv-seg" role="tablist" aria-label="AP view" style="--n:2;--i:${mv ? 1 : 0}">${[['poll', 'Poll'], ['move', 'Movement']].map(([k, l]) =>
+    `<button type="button" role="tab" data-rkap="${k}" aria-selected="${(k === 'move') === mv}">${l}</button>`).join('')}<span class="sv-thumb" aria-hidden="true"></span></div>`;
+  return seg + (mv ? movementChart(inConf) : apTable());
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-rkap]'); if (b){ store.set('rk.ap', b.dataset.rkap); invalidate('main'); } });
 
 /* A team's piece of its tier's bracket. The last tier usually runs on past #25, so it's left open there. */
 function bracket(t, x, last, cs){
@@ -79,5 +88,5 @@ export function viewRankings(){
     : `ESPN's Football Power Index: how many points better than an average FBS team on a neutral field.${state.fpi?.updated ? ` Updated ${new Date(state.fpi.updated).toLocaleDateString(undefined, {month:'short', day:'numeric'})}.` : ''}`;
   return `<div class="rk-switch">${chips([['ap', 'AP Top 25'], ['fpi', 'FPI']], ap ? 'ap' : 'fpi', 'rk')}</div>` +
     chips([['all', 'All conferences'], ...confs.map(id => [String(id), CONF[id]])], state.rkConf, 'rkconf') +
-    sec(ap ? 'AP Top 25' : 'FPI power rankings') + `<p class="note">${note}</p>` + (ap ? apTable() : fpiTable());
+    sec(ap ? 'AP Top 25' : 'FPI power rankings') + `<p class="note">${note}</p>` + (ap ? apView() : fpiTable());
 }

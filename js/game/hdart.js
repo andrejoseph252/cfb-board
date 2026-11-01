@@ -144,6 +144,18 @@ function arm(g, sh, el, hd){
   g.ell(p, 'G', hd[0], hd[1] + .2, 1.55, 1.45);
   return p;
 }
+/* The ball in a player's hands: leather ('F') with the helmet's gloss, laces ('L') across the top when they show, and
+   a dark rim of its own, so it reads against any jersey it's held over (the sprite's outline only runs around the
+   whole figure). */
+function football(g, cx, cy, rx, ry, laces){
+  const rim = g.newPart();
+  g.ell(rim, 'F', cx, cy, rx + .8, ry + .8);
+  for (let k = 0; k < g.part.length; k++) if (g.part[k] === rim) g.force[k] = 4;
+  const p = g.newPart({ gloss: true, hcx: cx, hcy: cy, hrx: rx, hry: ry });
+  g.ell(p, 'F', cx, cy, rx, ry);
+  if (laces){ const y = Math.round(cy - ry * .35); for (let x = Math.round(cx - rx * .45); x <= Math.round(cx + rx * .35); x++) g.decal(x, y, 'L'); }
+  return p;
+}
 function numberDecal(g, num, font, x0, y0, gap = 1){
   const ds = String(num).split(''), fw = font[0][0].length, fh = font[0].length;
   let x = Math.round(x0 - (ds.length * fw + (ds.length - 1) * gap) / 2);
@@ -193,6 +205,10 @@ function figFB(o){
       const sa = Math.sin((run / 8 + (s > 0 ? .5 : 0)) * Math.PI * 2);
       el = [cx + s * (8.3 + sa * .2), 17.6 + c - sa * 1.1]; hd = [cx + s * (7.2 - Math.max(0, sa) * 1.6), (back ? 19.4 - sa * 3 : 18.6 - sa * 4) + c];
     }
+    // Carrying (o.ball === s): high and tight, the elbow at his side and the forearm across the ball. Both hands on
+    // it in the pocket (o.ball === 2).
+    if (o.ball === s){ el = back ? [cx + s * 8.3, 16.6 + c] : [cx + s * 8.4, 18.8 + c]; hd = back ? [cx + s * 6, 18.6 + c] : [cx + s * 1.8, 19 + c]; }
+    if (o.ball === 2 && !back){ el = [cx + s * 8.2, 18.6 + c]; hd = [cx + s * 2.6, 19 + c]; }
     if (o.arms === 'throw' && s === 1){ el = [cx + 9, 9.5 + c]; hd = [cx + 8.6, 4.6 + c]; }
     if (o.arms === 'throw' && s === -1){ el = [cx - 8.2, 17.5 + c]; hd = [cx - 5, 19.5 + c]; }
     return [sh, el, hd];
@@ -206,7 +222,19 @@ function figFB(o){
   g.rect(pB, 'P', 5, 19 + c, 16, yHip + 1);
   g.rect(pB, 'J', 5, 13 + c + b, 16, 19 + c);
   g.ell(pB, 'J', cx, 13.4 + c + b, 9.3, 3.4);
-  if (!armsBehind) for (const s of [-1, 1]) arm(g, ...armPose(s));
+  // The ball, drawn over the arm. From the front the glove goes over its tip, the way a hand cups it (both hands in the
+  // pocket); from behind its back tip shows under the elbow, as big as the 22-pixel sprite allows.
+  const glove = (x, y) => { const p = g.newPart(); g.ell(p, 'G', x, y, 1.5, 1.4); };
+  const front = () => {
+    if (o.ball === 2){ football(g, cx, 16.6 + c, 3.2, 2.1, true); glove(cx - 2.8, 17.6 + c); glove(cx + 2.8, 17.6 + c); }
+    else if (o.ball){ football(g, cx + o.ball * 3.6, 16.6 + c, 3.2, 2.1, true); glove(cx + o.ball * 1.2, 17.8 + c); }
+  };
+  const tucked = () => o.ball === 2 ? football(g, cx + 7.4, 18.2 + c, 2.2, 2.7, false) : football(g, cx + o.ball * 7.9, 19.6 + c, 2.2, 2.8, false);
+  if (armsBehind && o.ball) tucked();
+  if (!armsBehind){
+    for (const s of [-1, 1]) arm(g, ...armPose(s));
+    if (o.ball) back ? tucked() : front();
+  }
   const hy = 5 + c + b;
   const pH = g.newPart({ gloss: true, hcx: cx, hcy: hy + .3, hrx: 5, hry: 4.6 });
   g.ell(pH, 'H', cx, hy + .3, 5.0, 4.6);
@@ -321,7 +349,10 @@ function figSide(o){
   for (let y = hy + 1; y <= hy + 4; y++) g.set(fx + 3, y, 'M', pM);
   for (let x = fx + 1; x <= fx + 3; x++){ g.set(x, hy + 2, 'M', pM); g.set(x, hy + 4, 'M', pM); }
   g.set(fx + 2, hy + 5, 'M', pM);
+  // Carrying: tucked under the near arm, tip forward, the hand cupping the front of it.
+  if (o.ball) aF = [[sh[0] + .3, sh[1] + .3], [sh[0] + .2, 18.8 + c], [sh[0] + 4.6, 18.6 + c]];
   arm(g, ...aF);
+  if (o.ball){ football(g, sh[0] + 4, 16.4 + c, 3.2, 2.1, true); const pg = g.newPart(); g.ell(pg, 'G', sh[0] + 6, 17.6 + c, 1.5, 1.4); }
   return { g, ax: 11, ay: 32 };
 }
 
@@ -568,7 +599,7 @@ export function uniform(t, away){
 /* Rasterise a Grid: per-part shading, creases, rim light, selective outline. lit = false: inside the stadium shadow. */
 function renderGrid(g, uni, skin, lit){
   const { w, h } = g, cv = canvas(w, h), x = cv.getContext('2d'), img = x.createImageData(w, h), d = img.data;
-  const pal = r => rampOf(r === 'K' ? skin : uni[r]);
+  const pal = r => rampOf(r === 'K' ? skin : r === 'F' ? '#a65a24' : r === 'L' ? '#f1ece0' : uni[r]);
   const L = lit ? LIT : SHD, OUT = [20, 13, 32];
   const same = (i, j, p) => g.at(i, j) === p;
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){
@@ -622,11 +653,11 @@ const silhouette = c => { const s = canvas(c.width, c.height), x = s.getContext(
    silhouette (for the cast shadow) and the feet. */
 const SPR = new Map();
 export function getSprite(o){
-  const key = `${o.uni.key}|${o.view}|${o.pose}|${o.c}|${o.arms}|${o.b}|${o.run}|${o.num}|${o.skin}|${o.flip}|${o.lit}|${o.down}${o.sit ? '|s' : ''}`;
+  const key = `${o.uni.key}|${o.view}|${o.pose}|${o.c}|${o.arms}|${o.b}|${o.run}|${o.num}|${o.skin}|${o.flip}|${o.lit}|${o.down}|${o.ball || 0}${o.sit ? '|s' : ''}`;
   let s = SPR.get(key); if (s) return s;
   if (SPR.size > 4000) SPR.clear();   // a long session's worth of jerseys and frames, then start over
   const fo = { ...o, stripe: o.uni.stripe };
-  if (o.down){ fo.view = 'side'; fo.pose = 'set'; fo.c = 0; fo.arms = 'hang'; fo.run = null; fo.b = 0; }
+  if (o.down){ fo.view = 'side'; fo.pose = 'set'; fo.c = 0; fo.arms = 'hang'; fo.run = null; fo.b = 0; fo.ball = 0; }
   const fig = fo.pose === 'line' ? (fo.view === 'side' ? figSideLine(fo) : figLine(fo)) : fo.view === 'side' ? figSide(fo) : figFB(fo);
   let cv = renderGrid(fig.g, o.uni, o.skin, o.lit), ax = fig.ax, ay = fig.ay;
   if (o.down){ cv = lieCanvas(cv); ax = cv.width >> 1; ay = cv.height - 3; }

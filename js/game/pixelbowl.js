@@ -798,11 +798,16 @@ function driveLine(gain){
 }
 
 /* ---------- you on defense: cover drill, pass rush drill, key third downs ---------- */
-/* The rush meter: its speed and green window by difficulty. The quarterback's release time too. */
+/* The rush meter: its speed and green window by difficulty. The quarterback's release time too. The needle is fastest
+   mid-bar, where the window sits, so the time it spends in the green per pass is win / (π / period): about 124ms on
+   Rookie, 84 Pro, 70 All-Pro, 57 Legend (3-4 frames; Legend was 38, two frames, which touch latency made luck). */
 const RUSH = { rookie: { period: 1.3, win: .3, release: [2.6, 3.2] }, pro: { period: 1.1, win: .24, release: [2.3, 2.9] },
-  allpro: { period: .95, win: .19, release: [2.1, 2.6] }, legend: { period: .8, win: .15, release: [1.9, 2.4] } };
+  allpro: { period: 1, win: .22, release: [2.15, 2.65] }, legend: { period: .9, win: .2, release: [2, 2.5] } };
+/* Hard counts before the snap: the quarterback barks "HUT!" just as he does on the real one, but the ball stays put. The
+   ball is the only true cue, the way a real edge rusher times his get-off. Average per snap, by difficulty. */
+const HARD_COUNTS = { rookie: .3, pro: .6, allpro: .9, legend: 1.2 };
 const DDRILLS = { cover: { name: 'Cover drill', tip: 'You are the corner, one on one with their receiver. Drag anywhere like a joystick to stay with him; when the ball goes up, get inside the yellow ring and hit JUMP.' },
-  rush: { name: 'Pass rush', tip: 'You are the edge rusher. Tap the instant the ball is snapped (too early is offside), then tap in the green to beat the tackle, and race the quarterback.' } };
+  rush: { name: 'Pass rush', tip: 'You are the edge rusher. Watch the ball and tap the instant it moves (the quarterback\'s hard count is a trap: jump on it and you\'re offside), then tap in the green to beat the tackle, and race the quarterback.' } };
 let keyCtx = null;   // a key third down inside a real game: { main, r, k, then }
 
 function defSetupHTML(){
@@ -829,15 +834,21 @@ function defRep(snapCam, at = 30, toGo = 10){
   if (kind === 'rush'){
     G.defDrill.throwAt = Rz.release[0] + Math.random() * (Rz.release[1] - Rz.release[0]);
     const c = .3 + Math.random() * .4;   // the green window moves around the bar from rep to rep
-    G.rush = { snapAt: .9 + Math.random() * 1.4, tapAt: null, contactAt: null, mt: 0, lo: c - Rz.win / 2, hi: c + Rz.win / 2, won: false, recover: 0, flash: 0, misses: 0, period: Rz.period, said: 0 };
+    // The snap, and any hard counts before it (at least half a second apart, none right on top of the snap).
+    const snapAt = 1.3 + Math.random() * 1.5, fakes = [], n = Math.floor((HARD_COUNTS[G.diffKey] ?? .6) + Math.random());
+    for (let i = 0; i < n * 4 && fakes.length < n; i++){ const f = .6 + Math.random() * (snapAt - 1.05); if (fakes.every(x => Math.abs(x - f) > .5)) fakes.push(f); }
+    G.rush = { snapAt, fakes: fakes.sort((a, b) => a - b), lastFake: null, tapAt: null, contactAt: null, mt: 0, lo: c - Rz.win / 2, hi: c + Rz.win / 2, won: false, recover: 0, flash: 0, misses: 0, period: Rz.period };
   } else G.rush = { snapAt: 1.1 };
   if (snapCam) R.snapCamera(G);
   S.setupPlay(G); phase = 'dpre'; G.dpreT = 0; aim = null; resetInput();
 }
+// The cadence happens at the line, where you're already looking: "HUT!" over the quarterback on every count, real or
+// not, and on the real one the ball snaps back (drawn by the renderer). No banners up top to glance at.
+const hut = () => { const qb = G.play.qb; G.play.pops.push({ x: qb.x, y: qb.y, text: 'HUT!', color: '#fff', t: 0 }); };
 function defPreSnap(dt){
   const Rz = G.rush; G.dpreT += dt;
-  if (G.defDrill.kind === 'rush' && !Rz.said){ Rz.said = 1; banner('SET…', '', '#fff', 700); }
-  if (G.dpreT >= Rz.snapAt){ S.snap(G); phase = 'live'; if (G.defDrill.kind === 'rush') banner('HUT!', '', '#ffd84a', 500); }
+  if (G.defDrill.kind === 'rush' && Rz.fakes.length && G.dpreT >= Rz.fakes[0]){ Rz.fakes.shift(); Rz.lastFake = G.dpreT; hut(); sfx('hike'); }
+  if (G.dpreT >= Rz.snapAt){ S.snap(G); phase = 'live'; if (G.defDrill.kind === 'rush') hut(); }
 }
 function defLive(dt){
   const Rz = G.rush, P = G.play; if (G.defDrill.kind !== 'rush') return;
@@ -895,7 +906,7 @@ function defPlayOver(r){
   if (g.out === 'sack'){ sfx('tackle'); R.shake(3); }
   else if (g.out === 'int'){ banner('INTERCEPTION!', '', '#4cff7a', 1100); sfx('good'); }
   else if (g.out === 'td'){ sfx('boo'); }
-  else if (g.out === 'offside'){ banner('OFFSIDE', 'Wait for the snap', '#ff5a4e', 1100); sfx('whistle'); }
+  else if (g.out === 'offside'){ const Rz = G.rush, fooled = Rz?.lastFake != null && G.dpreT - Rz.lastFake < 1; banner(fooled ? 'HARD COUNT!' : 'OFFSIDE', fooled ? 'He drew you offside: watch the ball' : 'Wait for the ball to move', '#ff5a4e', 1300); sfx('whistle'); }
 }
 function defAfter(){
   const g = G.play.dgrade;
