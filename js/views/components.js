@@ -56,8 +56,47 @@ function hex2rgb(h){ h = h.replace('#',''); if (h.length === 3) h = [...h].map(c
 const cdist = (a, b) => { const p = hex2rgb(a), q = hex2rgb(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
 // A team's color that shows up on the current theme: primary, else alternate (UCF's black on a dark page, say).
 const lum = c => { const n = parseInt(String(c).slice(1), 16), ch = v => (v /= 255) <= .04 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; return .2126 * ch(n >> 16 & 255) + .7152 * ch(n >> 8 & 255) + .0722 * ch(n & 255); };
-export function visibleColor(t){ const ok = c => /^#[0-9a-f]{6}$/i.test(c || '') && (darkUI() ? lum(c) > .06 : lum(c) < .6); return ok(t?.color) ? t.color : ok(t?.alt) ? t.alt : 'var(--accent)'; }
+const shows = c => /^#[0-9a-f]{6}$/i.test(c || '') && (darkUI() ? lum(c) > .06 : lum(c) < .6);
+export function visibleColor(t){ return shows(t?.color) ? t.color : shows(t?.alt) ? t.alt : 'var(--accent)'; }
 export function barColors(g){ const a = g.away.color; let h = g.home.color; if (cdist(a, h) < 90){ h = g.home.alt; if (cdist(a, h) < 90) h = '#9aa39d'; } return [a, h]; }
+/* Perceptual distance (CIE76 ΔE): plain RGB distance calls orange and red far apart. */
+function lab(h){
+  const f = v => (v /= 255) <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4, [r, g, b] = hex2rgb(h).map(f);
+  const t = v => v > .008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116;
+  const x = t((r * .4124 + g * .3576 + b * .1805) / .95047), y = t(r * .2126 + g * .7152 + b * .0722), z = t((r * .0193 + g * .1192 + b * .9505) / 1.08883);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+const deltaE = (a, b) => { const p = lab(a), q = lab(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
+/* A team color made readable on the current theme by moving its lightness (HSL) up on a dark UI or down on a light one,
+   keeping hue and saturation, so Syracuse's navy becomes a brighter blue instead of giving way to its orange.
+   Near-neutral colors (black, white, gray) have no hue to keep, so they only count as they are. */
+function lift(c){
+  if (!/^#[0-9a-f]{6}$/i.test(c || '')) return null;
+  const [r, g, b] = hex2rgb(c).map(v => v / 255), max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  if (d < .16) return shows(c) ? c : null;
+  if (shows(c)) return c;
+  let l = (max + min) / 2;
+  const sat = d / (1 - Math.abs(2 * l - 1)), h = (max === r ? (g - b) / d + 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4) % 6;
+  const hex = l => { const k = (1 - Math.abs(2 * l - 1)) * sat, x = k * (1 - Math.abs(h % 2 - 1)), m = l - k / 2;
+    const p = [[k, x, 0], [x, k, 0], [0, k, x], [0, x, k], [x, 0, k], [k, 0, x]][Math.floor(h)];
+    return '#' + p.map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join(''); };
+  for (let i = 0; i < 20; i++){
+    l += darkUI() ? .03 : -.03;
+    const m = hex(l);
+    if (darkUI() ? lum(m) > .09 : lum(m) < .5) return m;
+  }
+  return null;
+}
+/* [away, home] colors that both show up on the current theme and look clearly different, so one chart can use them for
+   every mark. Each team keeps its primary hue when it can; home falls back to its alternate when that one is clearly
+   apart, then to whichever of the two is farther, and only to gray when both clash (crimson vs maroon, say). */
+export function sideColors(g){
+  const a = lift(g.away.color) || lift(g.away.alt) || visibleColor(g.away);
+  const team = [lift(g.home.color), lift(g.home.alt)].filter(c => c && c !== a);
+  if (!a.startsWith('#')) return [a, team[0] || '#9aa39d'];
+  const d = c => deltaE(a, c), best = team.length ? team.reduce((x, y) => d(y) > d(x) ? y : x) : null;
+  return [a, team.find(c => d(c) >= 70) || (best && d(best) >= 40 ? best : '#9aa39d')];
+}
 
 const PIN = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 3l5 5-3 1-3.5 3.5L15 17l-2 2-4-4-5 5-1-1 5-5-4-4 2-2 4.5.5L13 5l3-2z"/></svg>';
 

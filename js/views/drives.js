@@ -31,7 +31,7 @@ export function quarterDrives(g, s){
       <span class="qd-drive-body"><b>${esc(r.label)}</b>${r.conceded ? `<span class="qd-conceded">${esc(opponent?.abbr || 'Opponent')} ${r.badge === 'SAFETY' ? 'scores a safety' : 'scores on the return'}</span>` : ''}<small>${esc(description).replace(/, /g, ' · ')}</small></span>
       <span class="qd-drive-status">${badge(r)}<small>${esc(d.clock || period(row.q))}</small></span><i class="qd-chevron" aria-hidden="true"></i></summary>
       <p class="qd-drive-start">Started ${esc(when)}${d.start ? ` · from ${esc(d.start)}` : ''}${Number(d.q) !== row.q && d.q ? ` · finished in ${period(row.q)}` : ''}</p>
-      <ol class="dplays">${d.plays.map(p => `<li>${playHTML(p, { clock: true, color: tc[p.side] || tc[d.side] })}</li>`).join('') || '<li class="qd-no-plays">Play-by-play is not available yet.</li>'}</ol>
+      <ol class="dplays">${d.plays.map(p => `<li${p.id ? ` data-pid="${esc(p.id)}"` : ''}>${playHTML(p, { clock: true, color: tc[p.side] || tc[d.side] })}</li>`).join('') || '<li class="qd-no-plays">Play-by-play is not available yet.</li>'}</ol>
     </details>`;
   };
   const teamScore = (side, points) => `<span class="qd-team-score">${logo(g[side].logo, 'logo sm')}<small>${esc(g[side].abbr)}</small><b>${points ?? '—'}</b></span>`;
