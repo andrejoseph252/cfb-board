@@ -26,7 +26,8 @@ export function quarterDrives(g, s){
     const { d, result: r, numbers: n } = row, team = g[d.side], opponent = d.side === 'away' ? g.home : d.side === 'home' ? g.away : null;
     const when = [period(d.q || row.q), d.clock].filter(Boolean).join(' · ');
     const description = d.desc || [n.plays == null ? '' : plural(n.plays, 'play'), n.yards == null ? '' : `${n.yards} yards`, n.elapsed || ''].filter(Boolean).join(' · ');
-    return `<details class="qd-drive qd-${tone(r)}" data-k="drive-${esc(row.key)}"><summary>
+    // One shared name makes the drives an exclusive accordion: opening one closes the one that was open.
+    return `<details class="qd-drive qd-${tone(r)}" name="drives-${esc(id)}" data-k="drive-${esc(row.key)}"${tc[d.side] ? ` style="--dc:${esc(tc[d.side])}"` : ''}><summary>
       <span class="qd-drive-team">${logo(team?.logo, 'logo sm')}<small>${esc(team?.abbr || '?')}</small></span>
       <span class="qd-drive-body"><b>${esc(r.label)}</b>${r.conceded ? `<span class="qd-conceded">${esc(opponent?.abbr || 'Opponent')} ${r.badge === 'SAFETY' ? 'scores a safety' : 'scores on the return'}</span>` : ''}<small>${esc(description).replace(/, /g, ' · ')}</small></span>
       <span class="qd-drive-status">${badge(r)}<small>${esc(d.clock || period(row.q))}</small></span><i class="qd-chevron" aria-hidden="true"></i></summary>
@@ -60,3 +61,14 @@ export function quarterDrives(g, s){
   return `<section class="panel quarter-drives" data-game="${esc(id)}" aria-label="Quarter summaries"><header class="qd-head"><div><h3>Drives</h3></div><small>${plural(s.drives.length, 'drive')}<span>Latest first</span></small></header>
     <div class="qd-quarters">${cards}</div><p class="qd-footnote">Quarter scores include all points. Drives are grouped by where they finish.</p></section>`;
 }
+
+/* Opening a drive closes the one above it, which can pull the new one up out of view: once the close has animated
+   (about 200ms), bring its header back. */
+document.addEventListener('toggle', e => {
+  const d = e.target;
+  if (!d.matches?.('.quarter-drives .qd-drive') || !d.open) return;
+  setTimeout(() => {
+    const top = d.getBoundingClientRect().top, view = d.closest('.sheet-scroll')?.getBoundingClientRect().top ?? 0;
+    if (top < view) d.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }, d.closest('.qd-instant') ? 0 : 240);
+}, true);

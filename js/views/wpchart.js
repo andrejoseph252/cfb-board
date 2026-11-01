@@ -170,6 +170,9 @@ document.addEventListener('keydown', e => {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-wpdrive]'); if (!b) return;
   const li = b.closest('#drawerBody, body').querySelector(`.quarter-drives li[data-pid="${CSS.escape(b.dataset.wpdrive)}"]`); if (!li) return;
+  // Open without the expand animation, so the play's final position is known before scrolling to it.
+  const qd = li.closest('.quarter-drives'); qd.classList.add('qd-instant');
+  setTimeout(() => qd.classList.remove('qd-instant'), 300);
   for (let d = li.closest('details'); d; d = d.parentElement.closest('details')) if (!d.open){
     if (d.matches('.qd-quarter')) rememberQuarter(d);
     d.open = true;

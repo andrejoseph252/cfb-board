@@ -428,7 +428,7 @@ img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
 .quarter-drives .qd-head>small{color:var(--ink);font-size:11px;text-align:right;white-space:nowrap}
 .quarter-drives .qd-head>small>span{display:block;font-size:9px;color:var(--muted);margin-top:3px}
 .quarter-drives .qd-quarters{display:grid;gap:8px}
-.quarter-drives .qd-quarter{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:color-mix(in srgb,var(--bg) 45%,var(--surface))}
+.quarter-drives .qd-quarter{border:1px solid var(--line);border-radius:9px;overflow:clip;background:color-mix(in srgb,var(--bg) 45%,var(--surface))}
 .quarter-drives .qd-quarter>summary{padding:12px;list-style:none;cursor:pointer}
 .quarter-drives summary::-webkit-details-marker{display:none}
 .quarter-drives summary:focus-visible{outline-offset:-3px}
@@ -482,9 +482,29 @@ img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
 .quarter-drives .qd-drive-status{display:grid;gap:4px;justify-items:end}
 .quarter-drives .qd-drive-status>small{font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
 .quarter-drives .qd-drive[open]>summary .qd-chevron{transform:rotate(225deg)}
-.quarter-drives .qd-drive[open]>summary{background:var(--bg)}
-.quarter-drives .qd-drive-start{font-size:10px;color:var(--muted);margin:8px 10px 8px 42px}
-.quarter-drives .qd-drive .dplays{padding:0 10px 10px}
+/* An open drive is its own block in the team's color: framed, its plays hanging off a rail from the team logo, and
+   its header stuck to the top while you scroll through them (overflow:clip above, not hidden, so sticky works;
+   top:-16px cancels .sheet-scroll's padding so no plays show above it). */
+.quarter-drives .qd-drive{--dc:var(--muted)}
+.quarter-drives .qd-drive[open]{margin:6px;border:1px solid color-mix(in srgb,var(--dc) 40%,var(--line));border-radius:8px;
+  background:color-mix(in srgb,var(--dc) 4%,var(--surface));box-shadow:inset 3px 0 0 var(--dc)}
+.quarter-drives .qd-drive[open]+.qd-drive{border-top:0}
+.quarter-drives .qd-drive[open]>summary{position:sticky;top:-16px;z-index:2;border-radius:8px 8px 0 0;
+  background:color-mix(in srgb,var(--dc) 10%,var(--surface));border-bottom:1px solid color-mix(in srgb,var(--dc) 30%,var(--line));box-shadow:inset 3px 0 0 var(--dc)}
+.quarter-drives .qd-drive-start{font-size:10px;color:var(--muted);margin:8px 10px 6px 42px}
+.quarter-drives .qd-drive .dplays{margin:0 10px 10px 22px;padding:0 0 0 12px;border-left:2px solid color-mix(in srgb,var(--dc) 50%,transparent)}
+/* Quarters and drives glide open and shut (~200ms) where the browser can animate <details> (::details-content plus
+   interpolate-size); elsewhere they open instantly as before. .qd-instant switches it off for "Show drive" jumps. */
+.quarter-drives{interpolate-size:allow-keywords}
+.quarter-drives details::details-content{block-size:0;overflow:clip;transition:block-size .2s cubic-bezier(.3,.7,.2,1),content-visibility .2s allow-discrete}
+.quarter-drives details[open]::details-content{block-size:auto}
+.quarter-drives .qd-chevron{transition:transform .2s cubic-bezier(.3,.7,.2,1)}
+.quarter-drives .qd-drive{transition:margin .2s cubic-bezier(.3,.7,.2,1),background-color .2s,border-color .2s,box-shadow .2s}
+.quarter-drives .qd-drive>summary{transition:background-color .2s}
+.quarter-drives .qd-drive[open] .dplays,.quarter-drives .qd-drive[open] .qd-drive-start{animation:qd-in .24s cubic-bezier(.3,.7,.2,1) both}
+@keyframes qd-in{from{opacity:0;transform:translateY(-4px)}}
+.quarter-drives.qd-instant *,.quarter-drives.qd-instant *::details-content{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce){.quarter-drives *,.quarter-drives *::details-content{transition:none!important;animation:none!important}}
 .quarter-drives .qd-no-plays{color:var(--muted);font-size:11px;padding:8px 12px}
 .quarter-drives .qd-footnote{color:var(--muted);font-size:9px;line-height:1.5;margin:12px 0 0}
 /* The restrained amber halftime divider: outlined label, long dashes fading toward the edges. */
