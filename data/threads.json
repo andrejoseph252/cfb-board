@@ -1,6 +1,17 @@
 {
- "updated": "2026-11-01T18:38:19+00:00",
+ "updated": "2026-11-01T22:29:23+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Delaware Valley Defeats KIN 61-35",
+   "url": "https://www.reddit.com/r/CFB/comments/1xledn8/postgame_thread_delaware_valley_defeats_kin_6135/",
+   "published": "2026-11-01T21:03:23+00:00",
+   "gameId": "401908187",
+   "teams": [
+    "Delaware Valley",
+    "KIN"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Delaware Valley @ King's (1:00 PM ET)",
@@ -2635,28 +2646,6 @@
    "teams": [
     "ECU",
     "Memphis"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Liberty @ Kennesaw State (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xcw5f9/game_thread_liberty_kennesaw_state_700_pm_et/",
-   "published": "2026-10-22T22:00:10+00:00",
-   "gameId": null,
-   "teams": [
-    "Liberty",
-    "Kennesaw State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] James Madison @ Appalachian State (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xcw5ei/game_thread_james_madison_appalachian_state_700/",
-   "published": "2026-10-22T22:00:09+00:00",
-   "gameId": null,
-   "teams": [
-    "James Madison",
-    "Appalachian State"
    ]
   }
  ],
