@@ -421,45 +421,95 @@ img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
 .wp{display:block;width:100%;height:120px;border-radius:6px}
 .wplab{position:absolute;left:0;font-size:11.5px;font-weight:700;color:var(--muted)}
 .wplab.top{top:4px} .wplab.bot{bottom:4px}
-.drives,.dplays{list-style:none;margin:0;padding:0}
-.drives{display:grid;gap:3px}
-.drives > li{--drive-tone:var(--muted);border:1px solid var(--line);border-radius:6px;overflow:hidden;background:color-mix(in srgb,var(--bg) 45%,var(--surface))}
-.drives > .drive-touchdown{--drive-tone:var(--good)}
-.drives > .drive-fieldgoal{--drive-tone:var(--cover)}
-.drives > .drive-interception,.drives > .drive-defense{--drive-tone:var(--bad)}
-.drives > .drive-defense{background:color-mix(in srgb,var(--bad) 5%,var(--surface))}
-.drives > .drive-live{--drive-tone:var(--live);background:color-mix(in srgb,var(--live) 3%,var(--surface))}
-.drives summary{box-sizing:border-box;display:grid;grid-template-columns:28px minmax(0,1fr) auto 8px;gap:9px;align-items:center;min-height:48px;padding:4px 9px;cursor:pointer;list-style:none}
-.drives summary::-webkit-details-marker{display:none}
-.drives summary:focus-visible{outline-offset:-3px}
-.drives summary:hover{background:color-mix(in srgb,var(--ink) 3%,transparent)}
-.drives .drive-team{display:grid;justify-items:center;gap:2px}
-.drives .drive-team .logo{width:22px;height:22px}
-.drives .drive-team>span{font-size:8px;font-weight:700;letter-spacing:.03em;color:var(--muted)}
-.drives .drive-body{display:grid;gap:2px;min-width:0}
-.drives .drive-result{font:800 20px/1.05 var(--display)}
-.drives :is(.drive-touchdown,.drive-fieldgoal,.drive-defense,.drive-interception) .drive-result{color:var(--drive-tone)}
-.drives .drive-conceded{color:var(--bad);font-size:11px;font-weight:600;line-height:1.4}
-.drives .drive-desc{font-size:11px;line-height:1.5;color:var(--ink);font-variant-numeric:tabular-nums}
-.drives .drive-status{display:grid;justify-items:end;gap:4px}
-.drives .drive-meta{font-size:9px;line-height:1;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.drives .drive-start{margin:7px 10px 6px 37px;color:var(--muted);font-size:10px}
-.drives .drive-badge{display:inline-flex;gap:6px;align-items:center;justify-content:center;min-width:44px;padding:5px 7px;border:1px solid color-mix(in srgb,var(--drive-tone) 35%,var(--line));border-radius:5px;background:color-mix(in srgb,var(--drive-tone) 8%,var(--surface));color:var(--drive-tone);font:800 10px/1 var(--body);letter-spacing:.04em;white-space:nowrap}
-.drives .drive-touchdown .drive-badge{background:var(--good);border-color:var(--good);color:var(--bg)}
-.drives .drive-defense .drive-badge{background:var(--bad);border-color:var(--bad);color:var(--bg)}
-.drives .drive-end .drive-badge{border-color:var(--line);background:none;font-size:9px}
-.drives .drive-live .drive-badge i{height:5px;width:5px;background:currentColor;border-radius:50%;box-shadow:0 0 0 3px color-mix(in srgb,var(--live) 12%,transparent)}
-.drives .drive-chevron{width:6px;height:6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
-.drives details[open]>summary .drive-chevron{transform:rotate(225deg)}
-.drives details[open]>summary{border-bottom:1px solid var(--line);margin-bottom:7px}
+/* Quarter summaries. Scores and moments stay visible; quarter and drive details expand independently. */
+.quarter-drives{--drive-tone:var(--muted);padding:17px 14px 12px}
+.quarter-drives .qd-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.quarter-drives .qd-head h3{margin:0;font:800 29px/1 var(--display)}
+.quarter-drives .qd-head>small{color:var(--ink);font-size:11px;text-align:right;white-space:nowrap}
+.quarter-drives .qd-head>small>span{display:block;font-size:9px;color:var(--muted);margin-top:3px}
+.quarter-drives .qd-quarters{display:grid;gap:8px}
+.quarter-drives .qd-quarter{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:color-mix(in srgb,var(--bg) 45%,var(--surface))}
+.quarter-drives .qd-quarter>summary{padding:12px;list-style:none;cursor:pointer}
+.quarter-drives summary::-webkit-details-marker{display:none}
+.quarter-drives summary:focus-visible{outline-offset:-3px}
+.quarter-drives .qd-quarter>summary:hover{background:color-mix(in srgb,var(--ink) 2%,transparent)}
+.quarter-drives .qd-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.quarter-drives .qd-period{display:flex;align-items:baseline;gap:7px}
+.quarter-drives .qd-period>b{font:800 25px/1 var(--display);white-space:nowrap}
+.quarter-drives .qd-period>span{font-size:9px;color:var(--muted)}
+.quarter-drives .qd-period .qd-live{display:inline-flex;align-items:center;gap:4px;color:var(--live);font-weight:600;white-space:nowrap}
+.quarter-drives .qd-live i{width:4px;height:4px;border-radius:50%;background:currentColor}
+.quarter-drives .qd-score{display:flex;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
+.quarter-drives .qd-score>i{font-style:normal;color:var(--muted);font-size:12px}
+.quarter-drives .qd-team-score{display:flex;gap:5px;align-items:center}
+.quarter-drives .qd-team-score .logo{width:19px;height:19px}
+.quarter-drives .qd-team-score small{font-size:10px;font-weight:600;color:var(--muted)}
+.quarter-drives .qd-team-score>b{font:800 27px/1 var(--display);min-width:.5em;text-align:right}
+.quarter-drives .qd-moments{display:grid;gap:7px;margin:9px 0 10px}
+.quarter-drives .qd-moment{display:flex;align-items:baseline;gap:7px;font-size:11px;line-height:1.5}
+.quarter-drives .qd-moment>span:not(.qd-badge){flex:1;min-width:0;color:var(--muted)}
+.quarter-drives .qd-moment b{font-weight:600;color:var(--ink);margin-right:3px}
+.quarter-drives .qd-moment time{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.quarter-drives .qd-quiet{font-size:11px;color:var(--muted);margin:9px 0 10px}
+.quarter-drives .qd-explore{display:flex;align-items:center;gap:8px;padding-top:9px;border-top:1px solid var(--line);font-size:10px}
+.quarter-drives .qd-explore>span{font-weight:600;margin-right:auto}
+.quarter-drives .qd-explore>small{font-size:9px;color:var(--muted)}
+.quarter-drives .qd-hide{display:none}
+.quarter-drives .qd-quarter[open]{border-color:color-mix(in srgb,var(--muted) 60%,var(--line))}
+.quarter-drives .qd-quarter[open]>summary .qd-moments,.quarter-drives .qd-quarter[open]>summary .qd-quiet,.quarter-drives .qd-quarter[open]>summary .qd-show{display:none}
+.quarter-drives .qd-quarter[open]>summary .qd-hide{display:inline}
+.quarter-drives .qd-quarter[open]>summary .qd-chevron{transform:rotate(225deg)}
+.quarter-drives .qd-chevron{width:6px;height:6px;flex:none;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg)}
+.quarter-drives .qd-touchdown{--drive-tone:var(--good)}
+.quarter-drives .qd-fieldgoal{--drive-tone:var(--cover)}
+.quarter-drives .qd-interception,.quarter-drives .qd-defense{--drive-tone:var(--bad)}
+.quarter-drives .qd-live{--drive-tone:var(--live)}
+.quarter-drives .qd-badge{display:inline-flex;align-items:center;gap:4px;justify-content:center;padding:3px 5px;border:1px solid color-mix(in srgb,var(--drive-tone) 30%,var(--line));border-radius:4px;background:color-mix(in srgb,var(--drive-tone) 6%,var(--surface));color:var(--drive-tone);font:800 8px/1 var(--body);letter-spacing:.03em;white-space:nowrap}
+.quarter-drives :is(.qd-touchdown,.qd-defense) .qd-badge{background:var(--drive-tone);border-color:var(--drive-tone);color:var(--bg)}
+.quarter-drives .qd-badge>i{width:4px;height:4px;background:currentColor;border-radius:50%}
+.quarter-drives .qd-drive-list{border-top:1px solid var(--line);background:var(--surface)}
+.quarter-drives .qd-drive+.qd-drive{border-top:1px solid var(--soft)}
+.quarter-drives .qd-drive>summary{box-sizing:border-box;display:grid;grid-template-columns:25px minmax(0,1fr) auto 6px;gap:8px;align-items:center;min-height:48px;padding:6px 10px;cursor:pointer;list-style:none}
+.quarter-drives .qd-drive>summary:hover{background:var(--bg)}
+.quarter-drives .qd-drive-team{display:grid;justify-items:center;gap:2px}
+.quarter-drives .qd-drive-team .logo{height:21px;width:21px}
+.quarter-drives .qd-drive-team small{font-size:8px;color:var(--muted)}
+.quarter-drives .qd-drive-body{display:grid;gap:2px;min-width:0}
+.quarter-drives .qd-drive-body>b{font:800 20px/1 var(--display)}
+.quarter-drives :is(.qd-touchdown,.qd-fieldgoal,.qd-interception,.qd-defense) .qd-drive-body>b{color:var(--drive-tone)}
+.quarter-drives .qd-conceded{font-size:10px;color:var(--bad);font-weight:600}
+.quarter-drives .qd-drive-body>small{font-size:10px;color:var(--muted);line-height:1.4}
+.quarter-drives .qd-drive-status{display:grid;gap:4px;justify-items:end}
+.quarter-drives .qd-drive-status>small{font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
+.quarter-drives .qd-drive[open]>summary .qd-chevron{transform:rotate(225deg)}
+.quarter-drives .qd-drive[open]>summary{background:var(--bg)}
+.quarter-drives .qd-drive-start{font-size:10px;color:var(--muted);margin:8px 10px 8px 42px}
+.quarter-drives .qd-drive .dplays{padding:0 10px 10px}
+.quarter-drives .qd-no-plays{color:var(--muted);font-size:11px;padding:8px 12px}
+.quarter-drives .qd-footnote{color:var(--muted);font-size:9px;line-height:1.5;margin:12px 0 0}
+/* The restrained amber halftime divider: outlined label, long dashes fading toward the edges. */
+.quarter-drives .qd-half{--period-accent:color-mix(in srgb,var(--x-mid) 70%,var(--ink));display:flex;align-items:center;gap:10px;margin:2px 0;color:var(--period-accent);font:700 10px/1.2 var(--body);letter-spacing:.12em;text-transform:uppercase}
+.quarter-drives .qd-half>span{padding:3px 8px;border:1px solid color-mix(in srgb,var(--period-accent) 40%,var(--line));border-radius:4px;background:color-mix(in srgb,var(--period-accent) 6%,var(--surface))}
+.quarter-drives .qd-half::before,.quarter-drives .qd-half::after{content:'';flex:1;height:2px;background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--period-accent) 65%,var(--line)) 0 9px,transparent 9px 14px)}
+.quarter-drives .qd-half::before{mask-image:linear-gradient(90deg,transparent,#000 55%)}
+.quarter-drives .qd-half::after{mask-image:linear-gradient(270deg,transparent,#000 55%)}
 @media (max-width:480px){
-  .drives summary{grid-template-columns:24px minmax(0,1fr) auto 6px;gap:7px;padding:4px 7px}
-  .drives .drive-result{font-size:20px}
-  .drives .drive-desc{font-size:10.5px}
-  .drives .drive-conceded{font-size:10px}
-  .drives .drive-badge{font-size:9px;min-width:38px;padding:5px 6px}
+  .quarter-drives{padding:16px 12px 10px}
+  .quarter-drives .qd-head h3{font-size:27px}
+  .quarter-drives .qd-quarter>summary{padding:11px}
+  .quarter-drives .qd-period{display:grid;gap:3px}
+  .quarter-drives .qd-period>b{font-size:24px}
+  .quarter-drives .qd-period>span{font-size:8px}
+  .quarter-drives .qd-score{gap:7px}
+  .quarter-drives .qd-team-score{gap:4px}
+  .quarter-drives .qd-team-score .logo{width:17px;height:17px}
+  .quarter-drives .qd-team-score small{font-size:9px}
+  .quarter-drives .qd-team-score>b{font-size:26px}
+  .quarter-drives .qd-moment{font-size:10px;gap:6px}
+  .quarter-drives .qd-moment time{font-size:9px}
+  .quarter-drives .qd-drive>summary{gap:6px;padding-inline:8px}
 }
-@media (prefers-reduced-motion:reduce){.drives .drive-chevron{transition:none}}
+.dplays{list-style:none;margin:0}
 .dplays{padding:0 0 10px 28px;display:grid;font-size:13px}
 .dplays > li + li > .pl:not(.pl-td,.pl-big,.pl-lost){border-top:1px solid var(--soft);border-radius:0}
 /* play-by-play ticker (js/plays.js) */

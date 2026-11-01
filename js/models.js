@@ -162,6 +162,8 @@ export function parseSummary(j){
     rows: (c.athletes || []).map(a => ({ who: a.athlete?.shortName || a.athlete?.displayName, stats: a.stats || [] }))
   }));
   const drive = d => ({
+    id: d.id, yards: Number.isFinite(d.yards) ? d.yards : null,
+    playCount: Number.isFinite(d.offensivePlays) ? d.offensivePlays : null, elapsed: d.timeElapsed?.displayValue || null,
     side: teamSide(d.team?.id), desc: d.description, result: d.displayResult || d.result, isScore: !!d.isScore,
     active: g.state === 'in' && d.id != null && String(d.id) === String(j.drives?.current?.id) && !(d.displayResult || d.result),
     q: d.start?.period?.number, start: d.start?.text, clock: d.start?.clock?.displayValue,

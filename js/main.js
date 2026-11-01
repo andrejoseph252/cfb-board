@@ -15,6 +15,7 @@ import { viewConferences } from './views/conferences.js';
 import { viewRankings } from './views/rankings.js';
 import { viewPicks } from './views/picks.js';
 import { syncAction, syncInput, syncPress } from './views/game.js';
+import { rememberQuarter } from './views/drives.js';
 import { viewMyTeam, picking, pickList } from './views/teamtab.js';
 import { news, hasUnseen, setNewsFilter, markRead, toggleStory } from './news.js';
 
@@ -124,6 +125,8 @@ function setTab(k){
   invalidate('main'); window.scrollTo({ top: 0 });
 }
 document.addEventListener('click', e => {
+  const quarter = e.target.closest('.qd-quarter > summary');
+  if (quarter){ rememberQuarter(quarter.parentElement); return; }
   // Tapping a card anywhere except its links, buttons or the excitement dropdown opens the game.
   const c = e.target.closest('.game[data-id]');
   if (c && !e.target.closest('a, button, details')){ location.hash = '#game/' + c.dataset.id; return; }
