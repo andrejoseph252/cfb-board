@@ -493,7 +493,7 @@ function filmTell(){
 }
 function presnap(){
   if (!G.ot && G.clock <= 0) return clockOut();
-  G.call = null; G.callRoutes = null; G.pa = false;   // a called play is for one snap; every play starts back on Random (the formation stays)
+  G.call = null; G.callRoutes = null; G.pa = false; sheetFam = null;   // a called play is for one snap; every play starts back on Random (the formation stays)
   S.setupPlay(G); phase = 'presnap'; aim = null; resetInput();
   G.tellOn = !!G.mods?.tells && !G.twoPt && Math.random() < G.mods.tells;
   if (G.down === 4 && !G.twoPt) fourthDown();
@@ -1150,29 +1150,35 @@ function otCheck(){
 
 /* ---------- play calling (in a game) ---------- */
 /* A compact sheet of play cards before the snap. A call lasts one play; Random is the default. */
-let sheetTab = 'std', hotOpen = false;
+let sheetTab = 'std', sheetFam = null, hotOpen = false;
 function playSheet(){
   const m = $('.pb-modal');
   if (phase !== 'presnap' || G.practice || m.classList.contains('on') && m.dataset.kind !== 'call') return;   // (open already: redrawn in place)
   const all = S.PRACTICE_ROLES, current = G.call === 'custom' ? 'u:' + G.callId : G.call || '';
-  const card = (v, name, tip, routes) => `<button type="button" data-pb="callpick" data-v="${esc(v)}" aria-pressed="${current === v}"${G.recommended?.has(v) ? ' class="pb-starred"' : ''}>
-      ${formationSVG(all, routes, true)}<b>${esc(name)}</b><small>${esc(tip)}</small></button>`;
+  const card = (v, name, tip, routes, form, reads) => `<button type="button" data-pb="callpick" data-v="${esc(v)}" aria-pressed="${current === v}"${G.recommended?.has(v) ? ' class="pb-starred"' : ''}>
+      ${formationSVG(all, routes, true, form, reads)}<b>${esc(name)}</b><small>${esc(tip)}</small></button>`;
   const custom = sheetTab === 'custom', runs = sheetTab === 'runs';
+  // Pass plays come in families; the sheet opens on the family of the current call (or the coach's pick).
+  const fam = sheetFam || S.CONCEPTS[G.call]?.fam || S.CONCEPTS[G.autoCall]?.fam || 'quick', auto = S.CONCEPTS[G.autoCall];
+  const famTab = (v, l) => `<button type="button" data-pb="callfam" data-v="${v}" aria-pressed="${fam === v}">${l.toUpperCase()}</button>`;
   const cards = custom
     ? (saved.plays.length ? saved.plays.map(p => card('u:' + p.id, p.name, 'Your play', p.routes)).join('')
       : '<p class="pb-sub pb-empty">No plays yet. Make some in My Playbook on the main menu (or save routes from practice).</p>')
     : runs ? Object.entries(S.RUN_CALLS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('')
-    : card('', 'Random', 'Mix it up, like always', {}) + Object.entries(S.CONCEPTS).map(([k, c]) => card(k, c.name, c.tip, c.routes)).join('');
+    : card('', "Coach's call", auto ? `He likes ${auto.name} here` : 'A play fit to the down and distance', auto?.routes || {}, G.formation, auto?.reads) +
+      Object.entries(S.CONCEPTS).filter(([, c]) => c.fam === fam).map(([k, c]) => card(k, c.name, c.tip, c.routes, c.form, c.reads)).join('');
   const form = G.formation || 'gun', tab = (v, l) => `<button type="button" data-pb="calltab" data-v="${v}" aria-pressed="${sheetTab === v}">${l}</button>`;
   // Hot routes: change any receiver's route on this play (it becomes a one-off custom call).
   const rec = G.play?.rec.filter(r => r.routeName !== 'block' || r.role === 'RB') || [], cur = Object.fromEntries(rec.map(r => [r.role, r.routeName]));
   modal(`<div class="pb-card pb-calls"><div class="pb-ph"><b>CALL A PLAY</b><button class="pb-x" type="button" data-pb="callclose" aria-label="Close">${ICON.x}</button></div>
     <div class="pb-forms" role="group" aria-label="Formation">${Object.entries(S.FORMATIONS).map(([k, l]) => `<button type="button" data-pb="formpick" data-v="${k}" aria-pressed="${form === k}">${l.toUpperCase()}</button>`).join('')}</div>
     <div class="pb-seg pb-tabs">${tab('std', 'PASS')}${tab('runs', 'RUN')}${tab('custom', `CUSTOM (${saved.plays.length})`)}</div>
+    ${custom || runs ? '' : `<div class="pb-forms pb-fams" role="group" aria-label="Pass family">${Object.entries(S.FAMILIES).map(([k, l]) => famTab(k, l)).join('')}</div>`}
     <div class="pb-callrow">${cards}</div>
     ${runs ? '' : `<div class="pb-callopts"><button type="button" class="pb-pa" data-pb="patoggle" aria-pressed="${!!G.pa}">PLAY ACTION${G.pa ? ' ON' : ''}</button><span>Fake the handoff first: backers bite (more if you've run well)</span></div>
     <details class="pb-hot"${hotOpen ? ' open' : ''}><summary>HOT ROUTES</summary>${routeRows(rec.map(r => r.role), cur, 'hot')}</details>`}
-    <p class="pb-sub">Your call is for this play only; the formation stays until you change it.</p></div>`, true, 'call');
+    ${runs || custom ? '' : '<p class="pb-sub">Numbers are the reads: gold 1 is who the play is for. After the snap the gold ring moves through them; hit the ringed man on time for a tighter ball.</p>'}
+    <p class="pb-sub">Your call is for this play only. The formation stays until you change it (trips plays line you up in trips).</p></div>`, true, 'call');
   $('.pb-hot')?.addEventListener('toggle', e => { hotOpen = e.target.open; });
   const row = $('.pb-callrow'), on = row.querySelector('[aria-pressed="true"]');
   if (on) row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
@@ -1246,6 +1252,11 @@ function practiceRoutes(){
 /* Play diagrams. Field yards: lateral (y, + is to the right) and depth (x, + is downfield). Receivers on the left
    break inside to the right, as in the game. */
 const FORM = { X: [-19, -.9, 1], TE: [-5, -.9, 1], SL: [10.5, -1.2, -1], Z: [19, -.9, -1], RB: [-2.6, -5, 1] };
+/* The same, per formation (as the game lines them up): trips puts the tight end and slot to the right, empty splits
+   the back out wide, pistol and under center put him straight behind. */
+const FORMS = { gun: FORM, trips: { ...FORM, TE: [6.5, -1.2, -1], SL: [13.5, -1.2, -1] }, empty: { ...FORM, RB: [-12, -1.1, 1] },
+  pistol: { ...FORM, RB: [0, -6.2, 1] }, under: { ...FORM, RB: [0, -5.5, 1] } };
+const QB_AT = { pistol: -3.6, under: -1.2 };
 /* Cuts a route where it leaves the diagram (long routes keep going downfield). */
 function clipPath(pts, box){
   const [x0, y0, x1, y1] = box, inBox = ([x, y]) => x >= x0 - 1e-6 && x <= x1 + 1e-6 && y >= y0 - 1e-6 && y <= y1 + 1e-6;
@@ -1269,11 +1280,13 @@ function routePath(name, sx, sy, inside, toPx, box){
     const [x, y] = toPx(sx, sy), perYd = Math.abs(toPx(sx, sy + 1)[1] - y), [, y2] = toPx(sx, sy + Math.max(1.6, 9 / perYd));
     return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y2.toFixed(1)}" stroke="currentColor" stroke-width="1.6"/><line x1="${x - 3.5}" y1="${y2.toFixed(1)}" x2="${x + 3.5}" y2="${y2.toFixed(1)}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`;
   }
+  // An option route: the man-coverage break drawn faint and dashed under the sit-down.
+  const alt = S.OPTION[name] ? routePath(S.OPTION[name], sx, sy, inside, toPx, box).replace('<polyline', '<polyline stroke-dasharray="2 2" opacity=".55"').replace('<path', '<path opacity=".55"') : '';
   const wps = Array.isArray(name) ? name : S.ROUTES[name] || [], last = wps[wps.length - 1];
   const field = [[sx, sy], ...wps.map(([dx, dy]) => [sx + dy * inside, sy + dx])];
   const { pts, cut } = clipPath(field, box);
   const px = pts.map(([x, y]) => toPx(x, y));
-  let h = `<polyline points="${px.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+  let h = alt + `<polyline points="${px.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`;
   if (px.length > 1){
     const [x1, y1] = px[px.length - 2], [x2, y2] = px[px.length - 1], a = Math.atan2(y2 - y1, x2 - x1), L = 4;
     if (last?.[2] && !cut){   // a route that sits down: a bar, playbook style
@@ -1289,17 +1302,20 @@ function routeSVG(name){
   return `<svg viewBox="0 0 44 46" aria-hidden="true"><line x1="2" y1="41" x2="42" y2="41" class="los"/><circle cx="9" cy="40" r="2.4" class="dot"/>${routePath(name, 0, 0, 1, toPx, [-7, -3, 30, 29])}</svg>`;
 }
 /* The whole formation, with routes for the receivers who are out (or "?" for random). */
-function formationSVG(roles, routes, small){
+function formationSVG(roles, routes, small, form = 'gun', reads = null){
   const toPx = (x, y) => [100 + x * 3.9, 90 - y * 3.3];
   let h = `<svg viewBox="0 0 200 ${small ? 112 : 116}" aria-hidden="true"><line x1="4" y1="${toPx(0, 0)[1]}" x2="196" y2="${toPx(0, 0)[1]}" class="los"/>`;
   for (const dy of [-3.2, -1.6, 0, 1.6, 3.2]){ const [x, y] = toPx(dy, -.7); h += `<rect x="${x - 2.4}" y="${y - 2.4}" width="4.8" height="4.8" class="ol"/>`; }
-  const [qx, qy] = toPx(0, -4.5); h += `<circle cx="${qx}" cy="${qy}" r="2.6" class="qb"/>`;
+  const [qx, qy] = toPx(0, QB_AT[form] ?? -4.5); h += `<circle cx="${qx}" cy="${qy}" r="2.6" class="qb"/>`;
   for (const role of ['X', 'TE', 'RB', 'SL', 'Z']){
-    const [lx, ly, inside] = FORM[role], [x, y] = toPx(lx, ly), on = roles.includes(role);
+    const [lx, ly, inside] = (FORMS[form] || FORM)[role], [x, y] = toPx(lx, ly), on = roles.includes(role);
     if (!on && role !== 'RB') continue;
     if (on && routes[role]) h += `<g class="rt">${routePath(routes[role], lx, ly, inside, toPx, [-26, -8, 26, 25])}</g>`;
     h += `<circle cx="${x}" cy="${y}" r="3.2" class="${on ? 'dot' : 'qb'}"/>`;
     if (on && !routes[role]) h += `<text x="${x}" y="${y - 6}" class="q">?</text>`;
+    // The read order: gold 1 is who the play is designed for.
+    const ri = reads ? reads.indexOf(role) : -1;
+    if (on && ri >= 0 && ri < 3) h += `<circle cx="${x}" cy="${y + 10}" r="6.6" fill="${ri ? '#fff' : '#ffd84a'}" stroke="#000" stroke-width="1.2"/><text x="${x}" y="${y + 13.4}" text-anchor="middle" font-size="9.5" font-weight="800" fill="#000" font-family="system-ui,sans-serif">${ri + 1}</text>`;
   }
   return h + '</svg>';
 }
@@ -1550,7 +1566,7 @@ function hud(){
   const q = G.ot ? (G.ot === 1 ? 'OT' : `${G.ot}OT`) : `Q${G.quarter}`;
   const dd = G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
   const late = S.lateInHalf(G), live = phase === 'presnap';
-  const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || 'Random')) + (G.pa ? ' · PA' : '') + (G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation]}` : '');
+  const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || (S.CONCEPTS[G.autoCall] ? 'Coach: ' + S.CONCEPTS[G.autoCall].name : 'Random'))) + (G.pa ? ' · PA' : '') + (G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation]}` : '');
   const sheetUp = $('.pb-modal').classList.contains('on');
   const H = hdUI.hud;   // the broadcast bug and glass buttons (hdui-hud.js)
   const btns = !live || paused ? '' : [
@@ -1666,9 +1682,11 @@ function onClick(e){
       const v = b.dataset.v || null, mine = v?.startsWith('u:') && findPlay(v.slice(2));
       if (mine) Object.assign(G, { call: 'custom', callId: mine.id, callName: mine.name, callRoutes: { ...mine.routes } });
       else G.call = v;
-      closeModal(); if (phase === 'presnap') S.setupPlay(G); return;
+      if (S.CONCEPTS[v]?.form) G.formation = S.CONCEPTS[v].form;   // a play drawn up from its own formation lines you up in it
+      sheetFam = null; closeModal(); if (phase === 'presnap') S.setupPlay(G); return;
     }
     case 'calltab': sheetTab = b.dataset.v; return playSheet();   // redrawn in place (modal() keeps it still)
+    case 'callfam': sheetFam = b.dataset.v; return playSheet();   // redrawn in place (modal() keeps it still)
     case 'formpick': G.formation = b.dataset.v; if (phase === 'presnap') S.setupPlay(G); return playSheet();   // redrawn in place (modal() keeps it still)
     case 'patoggle': G.pa = !G.pa; if (S.RUN_CALLS[G.call]) G.call = null; if (phase === 'presnap') S.setupPlay(G); return playSheet();   // redrawn in place (modal() keeps it still)
     case 'hot': {
@@ -1688,7 +1706,7 @@ function onClick(e){
       if (b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = 'DELETE?'; return; }
       saved.plays = saved.plays.filter(p => p.id !== b.dataset.id); save(); return playbookScreen();
     }
-    case 'callclose': return closeModal();
+    case 'callclose': sheetFam = null; return closeModal();
     case 'pset': { const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save(); return practiceSetup(true); }
     case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return pickInPlace(b, practiceRoles(), practiceRoutes()); }
     case 'pstart': return saved.practice.side === 'defense' ? startDefDrill() : startPractice();

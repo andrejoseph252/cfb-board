@@ -69,24 +69,98 @@ export const ROUTES = {
   curl: [[11, 0], [9, 1.5, 1]], comeback: [[15, 0], [12, -3, 1]], hitch: [[6, 0], [5, .5, 1]],
   seam: [[28, 0], [65, 3]], flat: [[2, -5], [4, -18]], drag: [[2, 1], [4, 30]], swing: [[-1, -5], [3, -18]],
   wheel: [[0, -6], [5, -11], [30, -12], [60, -12]], stick: [[6, 0], [6, .5, 1]], in: [[6, 0], [6, 20]],
-  fade: [[20, -3], [55, -5]], block: []
+  fade: [[20, -3], [55, -5]],
+  // The deeper tree: crossers at three depths, a sail (deep out), double moves, quick-game and screen routes.
+  shallow: [[2, 1.5], [5, 8], [6, 32]], cross: [[4, 2], [13, 12], [16, 36]], sail: [[10, 0], [15, -10], [18, -22]],
+  sluggo: [[2, 0], [5, 3], [7, 3.4], [45, 1]], outnup: [[6, 0], [6.5, -3], [9, -4.5], [45, -6]], stopgo: [[6, 0], [5.4, .2], [6.5, 0], [45, 0]],
+  postcorner: [[11, 0], [16, 4], [19, 4.5], [40, -14]], whip: [[4, 0], [5, 3], [5.5, -16]], arrow: [[1, 1], [5, -10], [6, -20]],
+  angle: [[0, -3], [3, -4.5], [6, 6], [8, 18]], bubble: [[-1.5, -3], [-1, -8], [2, -14]], spot: [[4, 0], [6, 3.5, 1]],
+  // Option: settles in the hole against zone; against man he breaks to the sideline (see OPTION).
+  option: [[7, 0], [7, .3, 1]],
+  block: []
 };
 export const ROUTE_NAMES = { go: 'Go', slant: 'Slant', post: 'Post', corner: 'Corner', out: 'Out', dig: 'Dig', curl: 'Curl', comeback: 'Comeback',
-  hitch: 'Hitch', seam: 'Seam', flat: 'Flat', drag: 'Drag', swing: 'Swing', wheel: 'Wheel', stick: 'Stick', in: 'In', fade: 'Fade' };
+  hitch: 'Hitch', seam: 'Seam', flat: 'Flat', drag: 'Drag', swing: 'Swing', wheel: 'Wheel', stick: 'Stick', in: 'In', fade: 'Fade',
+  shallow: 'Shallow', cross: 'Deep cross', sail: 'Sail', sluggo: 'Sluggo', outnup: 'Out & up', stopgo: 'Hitch & go', postcorner: 'Post-corner',
+  whip: 'Whip', arrow: 'Arrow', angle: 'Angle', bubble: 'Bubble', spot: 'Spot', option: 'Option' };
+/* Option routes: what he runs instead when a man defender is on him (read at the snap). */
+export const OPTION = { option: 'out' };
 
 /* Practice mode. Receivers come out in this order as you add them; concepts are classic pass patterns. */
 export const PRACTICE_ROLES = ['X', 'Z', 'SL', 'TE', 'RB'];
 export const ROLE_NAMES = { X: 'Left wideout', Z: 'Right wideout', SL: 'Slot', TE: 'Tight end', RB: 'Running back' };
+/* The playbook. Each play is a whole design: the routes, the formation it's drawn up from (form; calling it lines you
+   up in it), the order the quarterback reads it (reads), and its family (fam: quick, mid, deep, rz) and tags, which the
+   coach's call uses to fit plays to the down, distance and field. */
 export const CONCEPTS = {
-  verts:   { name: 'Four Verts', tip: 'Stretch the safeties deep', routes: { X: 'go', Z: 'go', SL: 'seam', TE: 'seam', RB: 'flat' } },
-  slants:  { name: 'Slants', tip: 'Quick and inside; beats the blitz', routes: { X: 'slant', Z: 'slant', SL: 'slant', TE: 'stick', RB: 'flat' } },
-  smash:   { name: 'Smash', tip: 'Hitch under, corner over', routes: { X: 'hitch', Z: 'hitch', SL: 'corner', TE: 'corner', RB: 'swing' } },
-  mesh:    { name: 'Mesh', tip: 'Crossers underneath', routes: { X: 'dig', Z: 'corner', SL: 'drag', TE: 'drag', RB: 'wheel' } },
-  flood:   { name: 'Flood', tip: 'Three levels to one side', routes: { X: 'post', Z: 'fade', SL: 'out', TE: 'stick', RB: 'flat' } },
-  curlflat:{ name: 'Curl-Flat', tip: 'Short and safe', routes: { X: 'curl', Z: 'curl', SL: 'flat', TE: 'flat', RB: 'swing' } },
-  dagger:  { name: 'Dagger', tip: 'Seam clears out the dig', routes: { X: 'dig', Z: 'post', SL: 'seam', TE: 'stick', RB: 'flat' } },
-  outs:    { name: 'Outs', tip: 'Timing throws to the sideline', routes: { X: 'out', Z: 'out', SL: 'out', TE: 'out', RB: 'flat' } }
+  // Quick game: the ball's out in a blink.
+  slants:  { name: 'Slants', tip: 'Quick and inside; beats the blitz', fam: 'quick', tags: ['blitz'], reads: ['Z', 'SL', 'X', 'RB'], routes: { X: 'slant', Z: 'slant', SL: 'slant', TE: 'stick', RB: 'flat' } },
+  stick:   { name: 'Stick', tip: 'Trips: stick, flat and a fade over it', fam: 'quick', form: 'trips', tags: ['short'], reads: ['SL', 'TE', 'Z', 'X'], routes: { X: 'slant', Z: 'fade', SL: 'stick', TE: 'arrow', RB: 'block' } },
+  snag:    { name: 'Snag', tip: 'Trips triangle: spot, corner, flat', fam: 'quick', form: 'trips', tags: ['short', 'rz'], reads: ['SL', 'Z', 'TE', 'X'], routes: { X: 'slant', Z: 'corner', SL: 'spot', TE: 'arrow', RB: 'swing' } },
+  bubble:  { name: 'Bubble-Go', tip: 'Bubble to the slot, or the go over the top', fam: 'quick', form: 'trips', tags: ['short'], reads: ['SL', 'Z', 'TE'], routes: { X: 'hitch', Z: 'go', SL: 'bubble', TE: 'seam', RB: 'block' } },
+  whip:    { name: 'Whips', tip: 'Fake inside, whip out; beats man', fam: 'quick', tags: ['man', 'short'], reads: ['SL', 'TE', 'X'], routes: { X: 'go', Z: 'go', SL: 'whip', TE: 'whip', RB: 'angle' } },
+  choice:  { name: 'Option', tip: 'Sit down vs zone, break out vs man', fam: 'quick', tags: ['short'], reads: ['SL', 'TE', 'RB', 'X'], routes: { X: 'go', Z: 'go', SL: 'option', TE: 'option', RB: 'flat' } },
+  curlflat:{ name: 'Curl-Flat', tip: 'Short and safe', fam: 'quick', tags: ['short'], reads: ['X', 'Z', 'SL', 'RB'], routes: { X: 'curl', Z: 'curl', SL: 'flat', TE: 'flat', RB: 'swing' } },
+  // The intermediate game: crossers, levels and high-lows.
+  mesh:    { name: 'Mesh', tip: 'Crossers rub underneath; murders man', fam: 'mid', tags: ['man'], reads: ['SL', 'TE', 'Z', 'RB'], routes: { X: 'dig', Z: 'corner', SL: 'drag', TE: 'drag', RB: 'wheel' } },
+  drive:   { name: 'Drive', tip: 'Shallow under a dig: high-low the backer', fam: 'mid', reads: ['SL', 'TE', 'X'], routes: { X: 'post', Z: 'go', SL: 'shallow', TE: 'dig', RB: 'angle' } },
+  levels:  { name: 'Levels', tip: 'In at 6, dig at 12, same side', fam: 'mid', tags: ['zone'], reads: ['X', 'TE', 'SL'], routes: { X: 'dig', Z: 'go', SL: 'seam', TE: 'in', RB: 'flat' } },
+  ycross:  { name: 'Y-Cross', tip: 'Tight end crosses deep behind the backers', fam: 'mid', tags: ['zone', 'long'], reads: ['TE', 'X', 'RB'], routes: { X: 'post', Z: 'go', SL: 'curl', TE: 'cross', RB: 'swing' } },
+  flood:   { name: 'Flood', tip: 'Three levels to one side: fade, sail, flat', fam: 'mid', form: 'trips', tags: ['zone', 'long', 'sideline'], reads: ['SL', 'TE', 'Z'], routes: { X: 'dig', Z: 'fade', SL: 'sail', TE: 'arrow', RB: 'block' } },
+  smash:   { name: 'Smash', tip: 'Hitch under, corner over', fam: 'mid', tags: ['zone', 'rz'], reads: ['SL', 'X', 'TE'], routes: { X: 'hitch', Z: 'hitch', SL: 'corner', TE: 'corner', RB: 'swing' } },
+  dagger:  { name: 'Dagger', tip: 'Seam clears out the dig', fam: 'mid', tags: ['zone', 'long'], reads: ['SL', 'X', 'TE'], routes: { X: 'dig', Z: 'post', SL: 'seam', TE: 'stick', RB: 'flat' } },
+  mills:   { name: 'Mills', tip: 'Post over a dig: the safety can\'t take both', fam: 'mid', tags: ['long'], reads: ['Z', 'SL', 'TE'], routes: { X: 'go', Z: 'post', SL: 'dig', TE: 'stick', RB: 'flat' } },
+  texas:   { name: 'Texas', tip: 'The back\'s angle route beats a linebacker', fam: 'mid', tags: ['man'], reads: ['RB', 'SL', 'X'], routes: { X: 'curl', Z: 'curl', SL: 'out', TE: 'seam', RB: 'angle' } },
+  outs:    { name: 'Outs', tip: 'Timing throws to the sideline', fam: 'mid', tags: ['sideline'], reads: ['Z', 'X', 'SL'], routes: { X: 'out', Z: 'out', SL: 'out', TE: 'out', RB: 'flat' } },
+  sail:    { name: 'Sail', tip: 'Deep out off a clear-out: move the chains', fam: 'mid', tags: ['sideline', 'long'], reads: ['SL', 'Z', 'RB'], routes: { X: 'dig', Z: 'go', SL: 'sail', TE: 'drag', RB: 'flat' } },
+  // Shots: deep balls and double moves, with extra protection on the big ones.
+  verts:   { name: 'Four Verts', tip: 'Stretch the safeties deep', fam: 'deep', tags: ['long'], reads: ['SL', 'TE', 'Z', 'RB'], routes: { X: 'go', Z: 'go', SL: 'seam', TE: 'seam', RB: 'flat' } },
+  postwheel:{ name: 'Post-Wheel', tip: 'Slot post pulls the safety; back wheels up the sideline', fam: 'deep', reads: ['SL', 'RB', 'Z'], routes: { X: 'curl', Z: 'go', SL: 'post', TE: 'drag', RB: 'wheel' } },
+  yankee:  { name: 'Yankee', tip: 'Max protect: post over a deep crosser', fam: 'deep', tags: ['shot'], reads: ['X', 'Z', 'TE'], routes: { X: 'post', Z: 'cross', SL: 'drag', TE: 'stick', RB: 'block' } },
+  sluggo:  { name: 'Sluggo', tip: 'Sell the slant, then go; beats jumpy corners', fam: 'deep', tags: ['shot', 'man'], reads: ['X', 'Z', 'SL'], routes: { X: 'sluggo', Z: 'sluggo', SL: 'slant', TE: 'stick', RB: 'block' } },
+  outnup:  { name: 'Out & Up', tip: 'Show the out, turn it up the sideline', fam: 'deep', tags: ['shot', 'sideline'], reads: ['X', 'Z', 'TE'], routes: { X: 'outnup', Z: 'outnup', SL: 'hitch', TE: 'flat', RB: 'block' } },
+  scissors:{ name: 'Scissors', tip: 'Post outside, corner inside: they cross', fam: 'deep', tags: ['zone'], reads: ['SL', 'Z', 'TE'], routes: { X: 'dig', Z: 'post', SL: 'corner', TE: 'stick', RB: 'block' } },
+  hitchgo: { name: 'Hitch & Go', tip: 'Sit on the hitch... then don\'t', fam: 'deep', tags: ['shot'], reads: ['Z', 'X', 'TE'], routes: { X: 'stopgo', Z: 'stopgo', SL: 'curl', TE: 'flat', RB: 'block' } },
+  // The red zone: the field is short, so are the routes.
+  fades:   { name: 'Double Fade', tip: 'Back-shoulder fades, spot inside', fam: 'rz', tags: ['rz'], reads: ['X', 'Z', 'SL'], routes: { X: 'fade', Z: 'fade', SL: 'spot', TE: 'stick', RB: 'flat' } },
+  rzcross: { name: 'Goal-Line Rub', tip: 'Crossers pick their men at the goal line', fam: 'rz', tags: ['rz', 'man'], reads: ['SL', 'TE', 'RB'], routes: { X: 'corner', Z: 'slant', SL: 'shallow', TE: 'drag', RB: 'arrow' } },
+  cornerflat:{ name: 'Corner-Flat', tip: 'Trips: corner over the flat, in the end zone', fam: 'rz', form: 'trips', tags: ['rz'], reads: ['SL', 'TE', 'Z'], routes: { X: 'slant', Z: 'in', SL: 'corner', TE: 'flat', RB: 'block' } }
 };
+/* When the quarterback's eyes move to each read (seconds after the snap): the quick game is a rhythm throw, the
+   shots take a deeper drop. */
+export const READ_T = { quick: [0, .85, 1.4, 1.95], mid: [0, 1.25, 1.85, 2.4], deep: [0, 1.65, 2.3, 2.9], rz: [0, 1, 1.55, 2.1] };
+/* The read he's on right now, or null (no designed play, or he's through his progression). */
+export function currentRead(P){
+  const R = P?.readers; if (!R?.length || !P.live || P.thrown) return null;
+  const T = READ_T[P.readFam] || READ_T.mid;
+  if (P.t > T[R.length - 1] + 1) return null;
+  let i = 0; while (i + 1 < R.length && P.t >= T[i + 1]) i++;
+  return R[i];
+}
+export const FAMILIES = { quick: 'Quick', mid: 'Intermediate', deep: 'Shots', rz: 'Red zone' };
+/* The coach's call (Random): a real play from the book, fit to the situation. Short yardage gets the quick game,
+   long yardage the dropbacks and shots, the red zone its own plays, a late deficit the sideline. He doesn't call
+   the same play twice in a row. */
+export function coachCall(G){
+  const togo = G.toGo, L = G.los, late = (G.quarter >= 4 || G.quarter === 2) && G.clock < 120, behind = G.score[0] < G.score[1];
+  const fam = togo <= 3 ? { quick: 3, mid: 1.4, deep: G.down < 3 ? 1 : .3, rz: 0 } : togo <= 7 ? { quick: 1.6, mid: 2.6, deep: .9, rz: 0 } : { quick: .5, mid: 2.4, deep: G.down >= 3 ? 1.4 : 2, rz: 0 };
+  if (L >= 80){ fam.deep *= L >= 90 ? 0 : .3; fam.rz = L >= 90 ? 4 : 2; }
+  const recent = G.recentCalls || [], w = {};
+  for (const [k, c] of Object.entries(CONCEPTS)){
+    const t = c.tags || [];
+    let v = fam[c.fam] ?? 1;
+    if (L >= 80 && t.includes('rz')) v += 1.5;
+    if (togo >= 8 && t.includes('long')) v *= 1.5;
+    if (togo <= 3 && t.includes('short')) v *= 1.4;
+    if (late && behind && t.includes('sideline')) v *= 2.2;
+    if (L < 10 && t.includes('shot')) v *= .3;   // backed up: no seven-step drops in his own end zone
+    if (recent.includes(k)) v *= recent[0] === k ? 0 : .35;
+    w[k] = v;
+  }
+  let u = Math.random() * Object.values(w).reduce((a, x) => a + x, 0);
+  for (const [k, v] of Object.entries(w)){ if ((u -= v) <= 0) return k; }
+  return 'curlflat';
+}
 /* In a game, the play called for this snap: null (random routes, the default), a concept above, 'custom' (one of
    your own plays, its routes in G.callRoutes), or 'run' (snap goes straight to
    the back; the receivers run short routes and turn into blockers). */
@@ -158,6 +232,7 @@ function assignCoverage(cov, { lb, cb1, cb2, fs, ss }, o, L){
   return cov;
 }
 
+const runRoute = (p, r, inside) => ROUTES[r].map(([dx, dy, stop]) => ({ x: Math.min(109, p.x + dx), y: clamp(p.y + dy * inside, 1.2, FW - 1.2), stop: !!stop }));
 /* Lines everyone up for the next snap and picks this play's routes and coverage (so they can be previewed). */
 export function setupPlay(G){
   const L = G.los, b = clamp(G.y, HASH[0], HASH[1]), D = G.diff;
@@ -187,8 +262,11 @@ export function setupPlay(G){
   if (PR && !PR.roles.includes('RB')){ rb.routeName = 'block'; rb.route = []; rb.wp = 0; }
   const used = new Set();
   // Called plays (in a game) and picked routes (in practice) set the routes; anything unset is random.
+  // Random in a game is the coach's call: a play from the book, kept through re-setups until the snap's over.
+  if (!PR && !G.call && !G.autoCall){ G.autoCall = coachCall(G); G.recentCalls = [G.autoCall, ...(G.recentCalls || [])].slice(0, 2); }
+  const book = !PR && (CONCEPTS[G.call] || (!G.call ? CONCEPTS[G.autoCall] : null));
   const plan = PR ? (PR.mode !== 'random' ? PR.routes : null)
-    : RUN_CALLS[G.call] ? RUN_CALLS[G.call].routes : G.call === 'custom' ? G.callRoutes || null : CONCEPTS[G.call]?.routes || null;
+    : RUN_CALLS[G.call] ? RUN_CALLS[G.call].routes : G.call === 'custom' ? G.callRoutes || null : book?.routes || null;
   for (const p of rec){
     let r = plan?.[p.role];
     if (Array.isArray(r)) r = 'block';   // the back on a called run: he gets the ball at the snap
@@ -199,8 +277,8 @@ export function setupPlay(G){
     // With a called play (or in practice) the back releases to his own side, matching the diagrams.
     const inside = p.role === 'RB' ? (plan ? (rb.y < b ? 1 : -1) : Math.random() < .5 ? 1 : -1) : p.y < b ? 1 : -1;
     p.routeName = r;
-    p.route = ROUTES[r].map(([dx, dy, stop]) => ({ x: Math.min(109, p.x + dx), y: clamp(p.y + dy * inside, 1.2, FW - 1.2), stop: !!stop }));
-    p.wp = 0;
+    p.route = runRoute(p, r, inside);
+    p.inside = inside; p.wp = 0;
   }
   rec.forEach((p, i) => { p.num = i + 1; });
 
@@ -259,6 +337,7 @@ export function setupPlay(G){
   G.play = { off, def, qb, rb, rec, all: [...off, ...def], t: 0, live: false, ball: { state: 'held', holder: qb, x: qb.x, y: qb.y, z: 1.6 },
     carrier: null, result: null, blitz, los: L, b, aim: null, thrown: false, handed: false, pops: [], fx: [],
     forceTarget: G.defDrill?.full ? x : null, coverage: COVERAGES[cov], formation: F, noHandoff: F === 'empty',
+    readers: (book?.reads || []).map(k => rec.find(r => r.role === k && r.routeName !== 'block')).filter(Boolean), readFam: book?.fam, callKey: G.call || G.autoCall || null,
     pa: !!G.pa && !RUN_CALLS[G.call], paBite: .25 + M.paBite + .25 * Math.min(1, (G.stats.rush ? G.stats.rushYds / G.stats.rush : 3) / 5) };
   for (const p of G.play.all) p.face = p.team === 'off' ? 1 : -1;
 }
@@ -266,6 +345,8 @@ export function setupPlay(G){
 /* ---------- the snap and the play ---------- */
 export function snap(G){
   const P = G.play; P.live = true; P.t = 0;
+  // Option routes read the coverage: a man defender on him and he breaks away instead of sitting down.
+  for (const r of P.rec) if (OPTION[r.routeName] && P.def.some(d => d.man === r && !d.blitz)){ r.route = runRoute(r, OPTION[r.routeName], r.inside); r.wp = 0; }
   emit(G, 'sfx', { name: 'hike' });
 }
 
@@ -598,6 +679,8 @@ function checkBounds(G, c){
 }
 
 /* ---------- you on defense ---------- */
+/* A designed play's progression: the first read gets the longest look, then the second, then the third. */
+const readBonus = (P, r) => [1.4, .8, .4][P.reads ? P.reads.indexOf(r.role) : -1] || 0;
 /* The opposing quarterback: drops back, reads who's open (by separation, a little extra for depth), and throws to
    where that receiver will be when the ball arrives. Quicker and more accurate on harder levels; under pressure
    he gets rid of it early and wild. Drills can fix his release time (the pass rush). */
@@ -614,7 +697,7 @@ function cpuQB(G){
   let best = P.forceTarget && !P.forceTarget.down ? P.forceTarget : null, bs = best ? Infinity : -Infinity;
   for (const r of best ? [] : P.rec){
     if (r.routeName === 'block') continue;
-    const sep = Math.min(12, ...P.def.map(d => dist(d, r))), s = sep + (r.x - P.los) * .03;
+    const sep = Math.min(12, ...P.def.map(d => dist(d, r))), s = sep + (r.x - P.los) * .03 + readBonus(P, r) * .6;
     if (s > bs){ bs = s; best = r; }
   }
   if (!best) return;
@@ -657,13 +740,15 @@ function autoQB(G){
   if (P.t < .8 || P.t < P.qbAt && !bail && !danger) return;
   // His read: usually the most open man, sometimes his second look (he's good, not perfect).
   const reads = P.rec.filter(r => r.routeName !== 'block' && !r.down).map(r => {
-    const g = ghostAt(r, .5); return { r, sc: Math.min(12, ...P.def.filter(d => d.role !== 'DL').map(d => dist(d, g))) + (r.x - P.los) * .04 };
+    const g = ghostAt(r, .5), sep = Math.min(12, ...P.def.filter(d => d.role !== 'DL').map(d => dist(d, g)));
+    const base = sep + (r.x - P.los) * .04;
+    return { r, base, sc: base + (sep > 2 ? readBonus(P, r) : 0) };   // an open man in the progression beats a slightly more open one off it
   }).sort((a, b) => b.sc - a.sc);
   if (!reads.length) return;
-  const pickd = reads[1] && Math.random() < .3 ? reads[1] : reads[0], best = pickd.r, bs = pickd.sc;
+  const pickd = reads[1] && Math.random() < .3 ? reads[1] : reads[0], best = pickd.r, bs = pickd.base;
   // Nobody open: hang in a beat longer, then throw it away rather than force it into coverage.
   if (bs < 1.7 && P.t < P.qbAt + .9 && !bail && !danger) return;
-  if (bs < 1.1 || danger && reads[0].sc < 2.4 && Math.random() < .7){ P.throwAway = true; P.aimedAt = null; return throwTo(G, P.los + 3, qb.y < MID ? -3 : FW + 3); }
+  if (bs < 1.1 || danger && reads[0].base < 2.4 && Math.random() < .7){ P.throwAway = true; P.aimedAt = null; return throwTo(G, P.los + 3, qb.y < MID ? -3 : FW + 3); }
   let T = .6, g;
   for (let i = 0; i < 5; i++){ g = ghostAt(best, T); T = trajectory(G, g.x, g.y).T; }
   const e = Q.err * (P.pressured ? 1.9 : 1) * mods(G).acc * (1 - rate(G.me.off) / 200), wob = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15 * e;
@@ -776,7 +861,13 @@ export function throwSpread(G, tx, ty){
 const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
 /* Your slingshot throw: lands near where you aimed, by the spread above. */
 export function userThrow(G, tx, ty){
-  const s = throwSpread(G, tx, ty);
+  let s = throwSpread(G, tx, ty);
+  // On time: the ball out to the read he's on, where that receiver is going, is a rhythm throw (tighter).
+  const P = G.play, cur = currentRead(P);
+  if (cur){
+    const T = trajectory(G, tx, ty).T;
+    if (Math.hypot(cur.x + cur.vx * T - tx, cur.y + cur.vy * T - ty) < 3.5){ s *= .7; P.onTime = true; pop(P, cur.x, cur.y, 'ON TIME', '#ffd84a'); }
+  }
   return throwTo(G, tx + gauss() * s, ty + gauss() * s);
 }
 export function throwTo(G, tx, ty){
@@ -942,7 +1033,7 @@ export function reactToBall(G){
 /* ---------- ending a play ---------- */
 function end(G, r){
   const P = G.play; if (P.result) return;
-  P.result = r; P.live = false; P.endT = 0;
+  P.result = r; P.live = false; P.endT = 0; G.autoCall = null;
   if (r.by){ r.by.vx = r.by.vy = 0; }
   const c = P.carrier;
   if (['tackle', 'sack', 'dive', 'fumble'].includes(r.type)){

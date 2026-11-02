@@ -6,7 +6,7 @@
    is the zoom. Markers, labels, meters and text go on top in "UI pixels" (about 290 on the screen's short side, the
    game's original resolution), so everything the page measures feels the same at any zoom: R.W / R.H, toScreen, toWorld and dragToWorld all work in
    UI pixels, and a drag is worth as many yards as it always was. */
-import { FW, MID, GOAL_HALF, BAR, NET_X, NET_HALF, canThrow, clamp, trajectory, throwSpread, kickPreview } from './sim.js';
+import { FW, MID, GOAL_HALF, BAR, NET_X, NET_HALF, canThrow, clamp, trajectory, throwSpread, kickPreview, currentRead } from './sim.js';
 import * as A from './hdart.js';
 import * as FO from './flyover.js';
 import { sfx } from './sfx.js';
@@ -766,7 +766,7 @@ export function createRenderer(canvas){
      and breathes a soft halo, covered is smaller and dimmer, so it reads without color too. With a keyboard (a fine
      pointer) a tiny number beside it names the key that throws to him. */
   function labels(G){
-    const P = G.play, L = lift(), keys = FINE?.matches;
+    const P = G.play, L = lift(), keys = FINE?.matches, cur = currentRead(P);
     for (const r of P.rec){
       if (r.routeName === 'block' && P.t < 1) continue;
       const st = openness(P, r), [x, y0] = toScreen(r.x, r.y), y = y0 - 18 - L;
@@ -781,7 +781,19 @@ export function createRenderer(canvas){
       ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fill();
       ctx.restore();
       if (keys) say(String(r.num), x + rad + 2.2, y + .3, 7.5, '#fff', { align: 'left', rim: 2, alpha: st === 'covered' ? .74 : 1 });
+      // The progression: a gold ring on the read the quarterback's eyes are on (it moves down the reads on the play's clock).
+      if (r === cur){ const p = (Math.sin(t * 9) + 1) / 2; ctx.save(); ctx.beginPath(); ctx.arc(x, y, rad + 3.4 + p * 1.2, 0, Math.PI * 2); ctx.lineWidth = 1.8; ctx.strokeStyle = YEL; ctx.globalAlpha = .7 + p * .3; ctx.stroke(); ctx.restore(); }
     }
+  }
+  /* Before the snap: the play's reads in order over the receivers (gold 1 is who it's designed for). */
+  function readBadges(G){
+    const P = G.play, L = lift();
+    P.readers.forEach((r, i) => {
+      const [x, y0] = toScreen(r.x, r.y), y = y0 - 19 - L - (i ? 0 : (Math.sin(t * 4) + 1) * .8), rad = i ? 4.4 : 5.4;
+      ctx.save(); ctx.beginPath(); ctx.arc(x, y, rad + 1, 0, Math.PI * 2); ctx.fillStyle = INK; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fillStyle = i ? 'rgba(255,255,255,.9)' : YEL; ctx.fill(); ctx.restore();
+      say(String(i + 1), x, y + .4, i ? 6.5 : 7.5, INK, { rim: .01 });
+    });
   }
   function aimArc(G, aim){
     // The real flight (white: a bullet; blue: a touch throw over the linebackers; gold: a deep ball) as a fine dotted
@@ -1458,6 +1470,7 @@ export function createRenderer(canvas){
     if (G.kick) kickOverlay(G);
     else if (P){
       if (P.live && canThrow(G) && !view.aim && !G.youDefend) labels(G);
+      if (!P.live && !P.result && P.readers?.length && !G.youDefend && !G.practice) readBadges(G);
       stunned(G);
       if (P.carrier && !P.carrier.down) mark(P.carrier, YEL);
       if (view.handoff && !P.carrier) mark(P.rb, '#6fe3ff');

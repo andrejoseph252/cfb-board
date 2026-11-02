@@ -207,11 +207,11 @@ export function driveRead(opp, G){
 /* The concepts that beat their scheme (starred on the play sheet). */
 export function recommended(opp){
   const s = opp?.def?.scheme || '', out = new Set();
-  if (/PRESSURE|COVER 1/.test(s)) ['slants', 'mesh', 'verts'].forEach(k => out.add(k));
-  if (/COVER 3/.test(s)) ['flood', 'smash', 'curlflat'].forEach(k => out.add(k));
-  if (/QUARTERS/.test(s)) ['smash', 'mesh', 'outs'].forEach(k => out.add(k));
-  if (/SOFT/.test(s)) ['dagger', 'curlflat', 'verts'].forEach(k => out.add(k));
-  if (/MULTIPLE/.test(s)) ['mesh', 'flood'].forEach(k => out.add(k));
+  if (/PRESSURE|COVER 1/.test(s)) ['slants', 'mesh', 'whip', 'sluggo', 'rzcross'].forEach(k => out.add(k));
+  if (/COVER 3/.test(s)) ['flood', 'smash', 'curlflat', 'levels', 'sail'].forEach(k => out.add(k));
+  if (/QUARTERS/.test(s)) ['smash', 'mesh', 'outs', 'drive', 'snag'].forEach(k => out.add(k));
+  if (/SOFT/.test(s)) ['dagger', 'curlflat', 'verts', 'stick', 'choice'].forEach(k => out.add(k));
+  if (/MULTIPLE/.test(s)) ['mesh', 'flood', 'choice', 'ycross'].forEach(k => out.add(k));
   if ((opp?.def?.runD ?? .5) <= .45) ['run', 'power', 'outside'].forEach(k => out.add(k));
   else if ((opp?.def?.pressure ?? .5) >= .6) ['qbdraw'].forEach(k => out.add(k));
   return out;
