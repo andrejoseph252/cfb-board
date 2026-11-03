@@ -288,7 +288,7 @@ export function card(g){
       <button class="pinbtn" data-pin aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} ${esc(g.away.name)} at ${esc(g.home.name)}" title="${pinned ? 'Unpin' : 'Pin'}">${PIN}</button></div>
   </article>`;
 }
-export const grid = gs => `<div class="grid">${gs.map(g => card(g)).join('')}</div>`;
+export const grid = (gs, cls = '') => `<div class="grid${cls ? ' ' + cls : ''}">${gs.map(g => card(g)).join('')}</div>`;
 
 /* Shared header for detail drawers (team schedule + game). */
 export function detailHead({ title, label, sub, logoSrc, color, right = '' }){

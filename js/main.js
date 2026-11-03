@@ -17,6 +17,7 @@ import { viewPicks } from './views/picks.js';
 import { syncAction, syncInput, syncPress } from './views/game.js';
 import { rememberQuarter } from './views/drives.js';
 import { viewMyTeam, picking, pickList } from './views/teamtab.js';
+import { faceoff } from './views/faceoff.js';
 import { news, hasUnseen, setNewsFilter, markRead, toggleStory } from './news.js';
 
 const TABS = [
@@ -41,7 +42,7 @@ const BT_ICON = {
 };
 
 /* ---------- rendering ---------- */
-let lastTabs = '', lastMain = '', firstPaint = false, entering = false;
+let lastTabs = '', lastMain = '', firstPaint = false, entering = false, enterOff = 0;
 function renderHeader(){
   $('#wkTitle').textContent = state.week ? weekLabel(state.st, state.week) : 'This week';
   const gs = state.games, live = gs.filter(g => g.state === 'in').length, rr = gs.filter(g => g.home.rank && g.away.rank).length;
@@ -108,11 +109,13 @@ function renderMain(){
   if (html === lastMain) return;
   const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq', y = window.scrollY;
   v.innerHTML = html; lastMain = html;
+  faceoff(v);   // Best games: face-off cards, before the browser paints
   // A refresh never moves the page (phones can lose the spot when the tapped element is replaced); a new tab
   // scrolls to the top in setTab, before this runs.
   if (window.scrollY !== y) window.scrollTo(0, y);
   // A new tab eases in (a refresh of the same tab never does).
-  if (entering){ entering = false; v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); }
+  // The class comes off once the cards are in: left on, every later refresh (a pick, a live update) would replay it.
+  if (entering){ entering = false; v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); clearTimeout(enterOff); enterOff = setTimeout(() => v.classList.remove('enter'), 600); }
   if (!firstPaint && state.games.length){ firstPaint = true; settle(); }
   const box = keep ? $('#' + fid) : null;
   if (box){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }

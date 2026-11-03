@@ -1915,3 +1915,114 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 
 /* A wide screen gives the standings room for their columns next to the games. */
 @media (min-width:1100px){ .split{grid-template-columns:minmax(500px,560px) minmax(0,1fr)} }
+
+/* ---------- Best games and Pinned: face-off cards for games not yet started (js/views/faceoff.js). Live and finished
+   games, and every other section, keep the board's own card. ----------
+   The two teams face each other across the kickoff, team color as a soft light behind each side, system type, one
+   hairline. The first card is the top game, a size up. */
+.grid.fo{--sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,sans-serif;
+  --hair:color-mix(in srgb,var(--ink) 9%,transparent);--fill:color-mix(in srgb,var(--ink) 6%,transparent);--fill2:color-mix(in srgb,var(--ink) 10%,transparent)}
+.grid.fo.best{gap:10px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));align-items:start}
+.grid.fo > .game[data-fo]{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  grid-template-areas:"eb eb eb" "a m h" "odds odds odds" "foot foot foot";
+  gap:0 8px;padding:11px 12px 7px;border-radius:18px;border:1px solid var(--hair);font:14px/1.3 var(--sys);overflow:hidden;
+  background:
+    radial-gradient(60% 120% at 0% 0%,color-mix(in srgb,var(--la,transparent) 15%,transparent),transparent 70%),
+    radial-gradient(60% 120% at 100% 0%,color-mix(in srgb,var(--lh,transparent) 15%,transparent),transparent 70%),
+    var(--surface)}
+.grid.fo > .game[data-fo]:hover{border-color:color-mix(in srgb,var(--ink) 22%,transparent)}
+.grid.fo .fo-eyebrow{grid-area:eb;display:flex;justify-content:center;margin:-2px 0 8px}
+.grid.fo .fo-eyebrow span{font:700 9.5px/1 var(--sys);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+/* teams: logo beside a name block, mirrored */
+.grid.fo .game[data-fo] > .row{display:grid;gap:0 8px;align-items:center;min-width:0;padding:0}
+.grid.fo .game[data-fo] > .r-away{grid-area:a;grid-template-columns:30px minmax(0,1fr);grid-template-areas:"logo name" "logo pick"}
+.grid.fo .game[data-fo] > .r-home{grid-area:h;grid-template-columns:minmax(0,1fr) 30px;grid-template-areas:"name logo" "pick logo";text-align:right}
+.grid.fo .game[data-fo] > .row > .stripe,.grid.fo .game[data-fo] > .row > .score{display:none}
+.grid.fo .game[data-fo] > .row > a,.grid.fo .game[data-fo] > .row > .logo{grid-area:logo}
+.grid.fo .game[data-fo] .logo{width:30px;height:30px}
+.grid.fo .game[data-fo] > .row > .tname{grid-area:name;display:flex;flex-wrap:wrap;gap:0 6px;white-space:normal;overflow:visible;min-width:0;line-height:1.15}
+.grid.fo .game[data-fo] > .r-home > .tname{justify-content:flex-end}
+.grid.fo .game[data-fo] .tn{flex-basis:100%;font:650 14.5px/1.15 var(--sys);letter-spacing:-.015em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.grid.fo .game[data-fo] .rank{font:600 11.5px/1 var(--sys);color:var(--muted);margin-right:3px;vertical-align:1px;font-variant-numeric:tabular-nums}
+.grid.fo .game[data-fo] .rec{margin:2px 0 0;font-size:11.5px;font-variant-numeric:tabular-nums}
+.grid.fo .game[data-fo] .fpi{margin:2px 0 0;font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.grid.fo .game[data-fo] > .r-home .rec{order:2} .grid.fo .game[data-fo] > .r-home .fpi{order:1}
+.grid.fo .game[data-fo] > .row > span:nth-child(4){grid-area:pick;justify-self:start}
+.grid.fo .game[data-fo] > .r-home > span:nth-child(4){justify-self:end}
+.grid.fo .game[data-fo] > .row > .mypick{margin-top:4px;font:700 9.5px/1 var(--sys);padding:3px 7px;letter-spacing:.03em}
+/* the middle: day over kickoff */
+.grid.fo .fo-mid{grid-area:m;display:flex;align-items:center;justify-content:center;min-width:58px;text-align:center}
+.grid.fo .fo-mid .status{display:grid;justify-items:center;gap:2px;font:600 14px/1.05 var(--sys);color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.grid.fo .fo-day{font:700 9.5px/1 var(--sys);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.grid.fo .fo-time{font:600 14.5px/1 var(--sys);letter-spacing:-.02em}
+/* each side's win % is its pick button; the market line between them, its source or line move under it */
+.grid.fo .game[data-fo] > .odds{grid-area:odds;margin-top:9px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;font-size:12px}
+.grid.fo .fo-line{display:grid;gap:3px;min-width:0}
+.grid.fo .fo-line .src{display:block;text-align:center;font:500 10px/1.1 var(--sys);letter-spacing:.02em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid.fo .fo-line .src a{color:inherit;text-decoration:none}
+.grid.fo .fo-line .lm{font:600 10px/1 var(--sys);gap:4px;color:var(--ink)}
+.grid.fo .fo-line .lm svg{width:26px;height:9px}
+.grid.fo .fo-line .lm path{stroke:var(--ink);stroke-width:1.4}
+.grid.fo .game[data-fo] .opick,.grid.fo .game[data-fo] .odds > b{display:inline-flex;align-items:center;gap:4px;border:0;border-radius:999px;padding:4px 9px;background:var(--fill);
+  font:650 12px/1 var(--sys);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.grid.fo .game[data-fo] .odds > b{background:none;padding-inline:0}
+.grid.fo .game[data-fo] .opick::before{display:none}
+.grid.fo .game[data-fo] .opick:hover{background:var(--fill2)}
+.grid.fo .game[data-fo] .opick.fav,.grid.fo .game[data-fo] .odds > b.fav{color:var(--ink)}
+.grid.fo .game[data-fo] .opick.mine{color:var(--ink);background:color-mix(in srgb,var(--pc) 30%,transparent);box-shadow:inset 0 0 0 1px var(--pc)}
+.grid.fo .game[data-fo] .opick[data-pick="away"]{--pc:var(--la,var(--ink))} .grid.fo .game[data-fo] .opick[data-pick="home"]{--pc:var(--lh,var(--ink))}
+/* the line: each side's color builds toward the split, a small ink tick marks it */
+.grid.fo .game[data-fo] .meter{position:relative;height:4px;margin:0;gap:0;display:flex;overflow:visible;background:var(--fill);border-radius:999px;box-shadow:none}
+.grid.fo .game[data-fo] .meter span{position:relative;border-radius:0}
+.grid.fo .game[data-fo] .meter span:first-child{border-radius:999px 0 0 999px;background:linear-gradient(90deg,color-mix(in srgb,var(--la) 35%,transparent),var(--la))!important;
+  box-shadow:0 0 8px color-mix(in srgb,var(--la) 35%,transparent)}
+.grid.fo .game[data-fo] .meter span+span{border-left:0;border-radius:0 999px 999px 0;background:linear-gradient(90deg,var(--lh),color-mix(in srgb,var(--lh) 35%,transparent))!important;
+  box-shadow:0 0 8px color-mix(in srgb,var(--lh) 35%,transparent)}
+.grid.fo .game[data-fo] .meter span+span::before{content:"";position:absolute;left:-1.5px;top:-3px;bottom:-3px;width:3px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 1.5px var(--surface)}
+/* footer: the rating (a ring with the score, then the tier; tap opens the breakdown), network · spread, the pin */
+.grid.fo .game[data-fo] > .foot{grid-area:foot;display:flex;align-items:center;flex-wrap:nowrap;margin-top:8px;border-top:1px solid var(--hair);padding-top:6px;font-size:11.5px;gap:4px 10px;min-height:30px}
+.grid.fo .game[data-fo] > .foot:has(.xc[open]){flex-wrap:wrap}
+.grid.fo .game[data-fo] .foot .finfo{flex:1 1 auto;min-width:3em;margin-left:0;color:var(--muted);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grid.fo .game[data-fo] .foot .pinbtn{flex:none;margin-left:0;border:0;background:none;width:26px;height:24px;border-radius:8px;color:var(--muted)}
+.grid.fo .game[data-fo] .foot .pinbtn:hover{background:var(--fill)}
+.grid.fo .game[data-fo] .foot .pinbtn[aria-pressed="true"]{background:var(--fill2);color:var(--ink)}
+.grid.fo .game[data-fo] .foot .pinbtn svg{width:12px;height:12px}
+.grid.fo .game[data-fo] .foot .xc{flex:0 1 auto;min-width:0;margin:0;background:none;border-radius:0;font-size:12px}
+.grid.fo .game[data-fo] .foot .xc[open]{flex-basis:100%;order:9}
+.grid.fo .game[data-fo] .xc-sum{padding:0;gap:7px;min-width:0}
+.grid.fo .game[data-fo] .xc-score{width:22px;min-width:22px;height:22px;padding:0;display:grid;place-items:center;border-radius:50%;flex:none;
+  font:700 10px/1 var(--sys);letter-spacing:-.02em;color:var(--ink)!important;box-shadow:none;
+  background:radial-gradient(closest-side,var(--surface) 76%,transparent 79% 100%),conic-gradient(var(--xt,var(--x-lo)) calc(var(--xs,0) * 1%),var(--fill2) 0)!important}
+.grid.fo .game[data-fo] .xc-label{flex:none;font:650 12px/1 var(--sys);color:var(--ink)}
+.grid.fo .game[data-fo] .foot .xc:not([open]) .xc-tags{display:none}
+.grid.fo .game[data-fo] .foot .xc[open] .xc-tags{display:block;white-space:normal;font:400 11.5px/1.2 var(--sys);color:var(--muted)}
+.grid.fo .game[data-fo] .xc-chev{width:12px;height:12px}
+.grid.fo .game[data-fo] .xc-parts{padding:8px 2px 4px;gap:7px}
+.grid.fo .game[data-fo] .xc-parts li{grid-template-columns:minmax(0,1fr) 56px 3.4em}
+.grid.fo .game[data-fo] .xc-k{font-size:12px} .grid.fo .game[data-fo] .xc-why{font-size:11.5px}
+.grid.fo .game[data-fo] .xc-bar{background:var(--fill2);height:4px}
+.grid.fo .game[data-fo] .xc-bar i{background:var(--xt,var(--ink));border-radius:3px}
+.grid.fo .game[data-fo] .foot .xc.pending .xc-sum{font-size:10.5px;gap:4px}
+/* states the board marks on a card */
+.grid.fo > .game[data-fo].is-hot{border-color:var(--x-hi);box-shadow:0 0 0 1px var(--x-hi),0 8px 24px color-mix(in srgb,var(--x-hi) 16%,transparent)}
+.grid.fo > .game[data-fo].is-pinned{border-color:color-mix(in srgb,var(--ink) 30%,transparent)}
+/* the top game: a size up, stronger color, names under the logos so long names keep one line */
+.grid.fo.best > .game.fo-hero{padding:12px 14px 8px;
+  background:
+    radial-gradient(70% 130% at 0% 0%,color-mix(in srgb,var(--la) 30%,transparent),transparent 70%),
+    radial-gradient(70% 130% at 100% 0%,color-mix(in srgb,var(--lh) 30%,transparent),transparent 70%),
+    var(--surface)}
+.grid.fo.best .fo-hero > .r-away,.grid.fo.best .fo-hero > .r-home{grid-template-columns:minmax(0,1fr);gap:6px 0}
+.grid.fo.best .fo-hero > .r-away{grid-template-areas:"logo" "name" "pick";justify-items:start}
+.grid.fo.best .fo-hero > .r-home{grid-template-areas:"logo" "name" "pick";justify-items:end}
+.grid.fo.best .fo-hero .logo{width:42px;height:42px}
+.grid.fo.best .fo-hero .tn{font-size:16.5px;font-weight:700}
+.grid.fo.best .fo-hero .rec{font-size:12px}
+.grid.fo.best .fo-hero .fo-mid{align-self:start;padding-top:8px}
+.grid.fo.best .fo-hero .fo-time{font-size:17px}
+.grid.fo.best .fo-hero > .odds{margin-top:12px}
+.grid.fo.best .fo-hero .opick,.grid.fo.best .fo-hero .odds > b{font-size:13px;padding:5px 11px}
+.grid.fo.best .fo-hero .meter{height:5px}
+:root[data-theme="light"] .grid.fo > .game[data-fo]{border-color:transparent;box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.06)}
+@media (prefers-color-scheme:light){:root:not([data-theme]) .grid.fo > .game[data-fo]{border-color:transparent;box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.06)}}
+@media (min-width:900px){.grid.fo.best > .game.fo-hero{grid-column:span 2}}

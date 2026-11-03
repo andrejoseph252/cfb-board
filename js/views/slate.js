@@ -25,9 +25,9 @@ export function viewWeek(){
   if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. An orange outline marks the tightest games late.</p>' + grid(live);
   // The one-line recap bar opens on tap; it sits under live games and above Best games.
   h += recapBanner() + myTeamBar();
-  if (must.length) h += sec('Best games to watch', must.length) + grid(must);
+  if (must.length) h += sec('Best games to watch', must.length) + grid(must, 'fo best');   // face-off cards (faceoff.js)
   h += sec('Pinned', pinned.length);
-  h += pinned.length ? grid(pinned) : empty('Tap the pin on any game to keep it here and in the live strip.');
+  h += pinned.length ? grid(pinned, 'fo') : empty('Tap the pin on any game to keep it here and in the live strip.');
   h += sec('Games', null) + `<div class="filters"><input class="search" id="q" type="search" placeholder="Search all teams" value="${esc(state.q)}" aria-label="Search games by team">
     ${chips(TIERS.map(([k, l, f]) => [k, `${l} ${gs.filter(f).length}`]), state.tier, 'tier')}
     ${chips([['time', 'By time'], ['xc', 'Most exciting'], ['moves', 'Line moves']], state.sort || 'time', 'sort')}</div><div id="list">${weekList()}</div>`;
