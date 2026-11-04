@@ -1,6 +1,36 @@
 {
- "updated": "2026-11-03T22:05:42+00:00",
+ "updated": "2026-11-04T02:46:37+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Buffalo @ Miami (OH) (8:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xn9dw3/game_thread_buffalo_miami_oh_800_pm_et/",
+   "published": "2026-11-04T00:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Buffalo",
+    "Miami (OH)"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] CFP Rankings, 2026-11-03",
+   "url": "https://www.reddit.com/r/CFB/comments/1xn80sc/game_thread_cfp_rankings_20261103/",
+   "published": "2026-11-03T23:00:11+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Ohio @ Akron (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xn80s7/game_thread_ohio_akron_700_pm_et/",
+   "published": "2026-11-03T23:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Ohio",
+    "Akron"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Delaware Valley Defeats KIN 61-35",
@@ -1508,347 +1538,6 @@
    "teams": [
     "Oklahoma State",
     "Colorado"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Arkansas State Defeats Georgia State 38-32",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeqmwf/postgame_thread_arkansas_state_defeats_georgia/",
-   "published": "2026-10-25T02:27:57+00:00",
-   "gameId": "401869935",
-   "teams": [
-    "Arkansas State",
-    "Georgia State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Virginia Tech Defeats Clemson 20-16",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeqjo9/postgame_thread_virginia_tech_defeats_clemson_2016/",
-   "published": "2026-10-25T02:23:13+00:00",
-   "gameId": "401858276",
-   "teams": [
-    "Virginia Tech",
-    "Clemson"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Colorado State Defeats San Diego State 56-49",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeqdzb/postgame_thread_colorado_state_defeats_san_diego/",
-   "published": "2026-10-25T02:15:02+00:00",
-   "gameId": "401860905",
-   "teams": [
-    "Colorado State",
-    "San Diego State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Boise State Defeats Washington State 31-10",
-   "url": "https://www.reddit.com/r/CFB/comments/1xepkfo/postgame_thread_boise_state_defeats_washington/",
-   "published": "2026-10-25T01:32:59+00:00",
-   "gameId": "401860907",
-   "teams": [
-    "Boise State",
-    "Washington State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Houston @ Utah (10:15 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xep7js/game_thread_houston_utah_1015_pm_et/",
-   "published": "2026-10-25T01:15:06+00:00",
-   "gameId": null,
-   "teams": [
-    "Houston",
-    "Utah"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] North Dakota State @ New Mexico (10:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeowjs/game_thread_north_dakota_state_new_mexico_1000_pm/",
-   "published": "2026-10-25T01:00:09+00:00",
-   "gameId": null,
-   "teams": [
-    "North Dakota State",
-    "New Mexico"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Southern Miss Defeats Louisiana 35-31",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeod00/postgame_thread_southern_miss_defeats_louisiana/",
-   "published": "2026-10-25T00:33:07+00:00",
-   "gameId": "401869967",
-   "teams": [
-    "Southern Miss",
-    "Louisiana"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Nevada Defeats San Jos\u00e9 State 28-13",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeoadz/postgame_thread_nevada_defeats_san_jos\u00e9_state_2813/",
-   "published": "2026-10-25T00:29:39+00:00",
-   "gameId": "401864528",
-   "teams": [
-    "Nevada",
-    "San Jos\u00e9 State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Louisiana Tech Defeats Old Dominion 26-0",
-   "url": "https://www.reddit.com/r/CFB/comments/1xenywi/postgame_thread_louisiana_tech_defeats_old/",
-   "published": "2026-10-25T00:14:04+00:00",
-   "gameId": "401871093",
-   "teams": [
-    "Louisiana Tech",
-    "Old Dominion"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] UCF Defeats BYU 39-31",
-   "url": "https://www.reddit.com/r/CFB/comments/1xencdh/postgame_thread_ucf_defeats_byu_3931/",
-   "published": "2026-10-24T23:44:43+00:00",
-   "gameId": "401856835",
-   "teams": [
-    "UCF",
-    "BYU"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Arizona State Defeats Kansas State 28-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1xen2z2/postgame_thread_arizona_state_defeats_kansas/",
-   "published": "2026-10-24T23:31:55+00:00",
-   "gameId": "401856839",
-   "teams": [
-    "Arizona State",
-    "Kansas State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] ULM Defeats Troy 21-14",
-   "url": "https://www.reddit.com/r/CFB/comments/1xen0gn/postgame_thread_ulm_defeats_troy_2114/",
-   "published": "2026-10-24T23:28:40+00:00",
-   "gameId": "401871094",
-   "teams": [
-    "ULM",
-    "Troy"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Ohio Defeats Eastern Michigan 24-20",
-   "url": "https://www.reddit.com/r/CFB/comments/1xen0gj/postgame_thread_ohio_defeats_eastern_michigan_2420/",
-   "published": "2026-10-24T23:28:39+00:00",
-   "gameId": "401866449",
-   "teams": [
-    "Ohio",
-    "Eastern Michigan"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] South Carolina Defeats Tennessee 27-24",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemsci/postgame_thread_south_carolina_defeats_tennessee/",
-   "published": "2026-10-24T23:17:55+00:00",
-   "gameId": "401856731",
-   "teams": [
-    "South Carolina",
-    "Tennessee"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] UCLA Defeats Michigan State 28-10",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemla1/postgame_thread_ucla_defeats_michigan_state_2810/",
-   "published": "2026-10-24T23:08:36+00:00",
-   "gameId": "401858499",
-   "teams": [
-    "UCLA",
-    "Michigan State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Alabama Defeats Texas A&M 31-20",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeml9w/postgame_thread_alabama_defeats_texas_am_3120/",
-   "published": "2026-10-24T23:08:36+00:00",
-   "gameId": "401856727",
-   "teams": [
-    "Alabama",
-    "Texas A&M"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Minnesota Defeats Iowa 13-10",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemits/postgame_thread_minnesota_defeats_iowa_1310/",
-   "published": "2026-10-24T23:05:24+00:00",
-   "gameId": "401858497",
-   "teams": [
-    "Minnesota",
-    "Iowa"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Boston College Defeats Georgia Tech 49-27",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemg8m/postgame_thread_boston_college_defeats_georgia/",
-   "published": "2026-10-24T23:01:59+00:00",
-   "gameId": "401858273",
-   "teams": [
-    "Boston College",
-    "Georgia Tech"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] UTSA @ Tulane (8:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemema/game_thread_utsa_tulane_800_pm_et/",
-   "published": "2026-10-24T23:00:05+00:00",
-   "gameId": null,
-   "teams": [
-    "UTSA",
-    "Tulane"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Oklahoma Defeats Mississippi State 23-15",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemd3b/postgame_thread_oklahoma_defeats_mississippi/",
-   "published": "2026-10-24T22:58:03+00:00",
-   "gameId": "401856730",
-   "teams": [
-    "Oklahoma",
-    "Mississippi State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] North Texas Defeats Navy 49-39",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemd2z/postgame_thread_north_texas_defeats_navy_4939/",
-   "published": "2026-10-24T22:58:03+00:00",
-   "gameId": "401862810",
-   "teams": [
-    "North Texas",
-    "Navy"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Ball State Defeats Sacramento State 34-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1xemanr/postgame_thread_ball_state_defeats_sacramento/",
-   "published": "2026-10-24T22:54:47+00:00",
-   "gameId": "401866447",
-   "teams": [
-    "Ball State",
-    "Sacramento State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Hawai'i Defeats Northern Illinois 56-21",
-   "url": "https://www.reddit.com/r/CFB/comments/1xem0qx/postgame_thread_hawaii_defeats_northern_illinois/",
-   "published": "2026-10-24T22:41:46+00:00",
-   "gameId": "401864526",
-   "teams": [
-    "Hawai'i",
-    "Northern Illinois"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Buffalo Defeats Bowling Green 31-24",
-   "url": "https://www.reddit.com/r/CFB/comments/1xelyi5/postgame_thread_buffalo_defeats_bowling_green_3124/",
-   "published": "2026-10-24T22:38:49+00:00",
-   "gameId": "401866448",
-   "teams": [
-    "Buffalo",
-    "Bowling Green"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Syracuse @ North Carolina (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xelrwk/game_thread_syracuse_north_carolina_730_pm_et/",
-   "published": "2026-10-24T22:30:14+00:00",
-   "gameId": null,
-   "teams": [
-    "Syracuse",
-    "North Carolina"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Iowa State @ Arizona (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xelrvy/game_thread_iowa_state_arizona_730_pm_et/",
-   "published": "2026-10-24T22:30:13+00:00",
-   "gameId": null,
-   "teams": [
-    "Iowa State",
-    "Arizona"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Vanderbilt @ Kentucky (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xelrvc/game_thread_vanderbilt_kentucky_730_pm_et/",
-   "published": "2026-10-24T22:30:12+00:00",
-   "gameId": null,
-   "teams": [
-    "Vanderbilt",
-    "Kentucky"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] USC @ Wisconsin (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xelrup/game_thread_usc_wisconsin_730_pm_et/",
-   "published": "2026-10-24T22:30:10+00:00",
-   "gameId": null,
-   "teams": [
-    "USC",
-    "Wisconsin"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Ole Miss @ Texas (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xelrty/game_thread_ole_miss_texas_730_pm_et/",
-   "published": "2026-10-24T22:30:09+00:00",
-   "gameId": null,
-   "teams": [
-    "Ole Miss",
-    "Texas"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Utah State @ Texas State (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xelrtd/game_thread_utah_state_texas_state_730_pm_et/",
-   "published": "2026-10-24T22:30:08+00:00",
-   "gameId": null,
-   "teams": [
-    "Utah State",
-    "Texas State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Illinois Defeats Oregon 21-10",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeles6/postgame_thread_illinois_defeats_oregon_2110/",
-   "published": "2026-10-24T22:13:19+00:00",
-   "gameId": "401858495",
-   "teams": [
-    "Illinois",
-    "Oregon"
    ]
   }
  ],
