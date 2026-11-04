@@ -1,6 +1,28 @@
 {
- "updated": "2026-11-04T02:46:37+00:00",
+ "updated": "2026-11-04T09:59:53+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Buffalo Defeats Miami (OH) 34-31",
+   "url": "https://www.reddit.com/r/CFB/comments/1xnfdp3/postgame_thread_buffalo_defeats_miami_oh_3431/",
+   "published": "2026-11-04T04:53:17+00:00",
+   "gameId": "401866454",
+   "teams": [
+    "Buffalo",
+    "Miami (OH)"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Ohio Defeats Akron 28-20",
+   "url": "https://www.reddit.com/r/CFB/comments/1xnefqn/postgame_thread_ohio_defeats_akron_2820/",
+   "published": "2026-11-04T04:03:48+00:00",
+   "gameId": "401866453",
+   "teams": [
+    "Ohio",
+    "Akron"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Buffalo @ Miami (OH) (8:00 PM ET)",
@@ -1428,116 +1450,6 @@
    "teams": [
     "Delaware",
     "WKU"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Utah Defeats Houston 21-13",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeudl6/postgame_thread_utah_defeats_houston_2113/",
-   "published": "2026-10-25T05:53:23+00:00",
-   "gameId": "401856837",
-   "teams": [
-    "Utah",
-    "Houston"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] New Mexico Defeats North Dakota State 21-16",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeu0rl/postgame_thread_new_mexico_defeats_north_dakota/",
-   "published": "2026-10-25T05:31:47+00:00",
-   "gameId": "401864527",
-   "teams": [
-    "New Mexico",
-    "North Dakota State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] UTSA Defeats Tulane 42-19",
-   "url": "https://www.reddit.com/r/CFB/comments/1xerxg4/postgame_thread_utsa_defeats_tulane_4219/",
-   "published": "2026-10-25T03:35:38+00:00",
-   "gameId": "401862811",
-   "teams": [
-    "UTSA",
-    "Tulane"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Texas Defeats Ole Miss 34-27",
-   "url": "https://www.reddit.com/r/CFB/comments/1xerwod/postgame_thread_texas_defeats_ole_miss_3427/",
-   "published": "2026-10-25T03:34:28+00:00",
-   "gameId": "401856732",
-   "teams": [
-    "Texas",
-    "Ole Miss"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Syracuse Defeats North Carolina 31-30",
-   "url": "https://www.reddit.com/r/CFB/comments/1xeregt/postgame_thread_syracuse_defeats_north_carolina/",
-   "published": "2026-10-25T03:07:40+00:00",
-   "gameId": "401858275",
-   "teams": [
-    "Syracuse",
-    "North Carolina"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Arizona Defeats Iowa State 39-3",
-   "url": "https://www.reddit.com/r/CFB/comments/1xerdut/postgame_thread_arizona_defeats_iowa_state_393/",
-   "published": "2026-10-25T03:06:48+00:00",
-   "gameId": "401856838",
-   "teams": [
-    "Arizona",
-    "Iowa State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Wisconsin Defeats USC 24-7",
-   "url": "https://www.reddit.com/r/CFB/comments/1xerc4g/postgame_thread_wisconsin_defeats_usc_247/",
-   "published": "2026-10-25T03:04:22+00:00",
-   "gameId": "401858500",
-   "teams": [
-    "Wisconsin",
-    "USC"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Texas State Defeats Utah State 20-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1xerc48/postgame_thread_texas_state_defeats_utah_state/",
-   "published": "2026-10-25T03:04:22+00:00",
-   "gameId": "401860906",
-   "teams": [
-    "Texas State",
-    "Utah State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Kentucky Defeats Vanderbilt 34-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1xer6rt/postgame_thread_kentucky_defeats_vanderbilt_3417/",
-   "published": "2026-10-25T02:56:47+00:00",
-   "gameId": "401856729",
-   "teams": [
-    "Kentucky",
-    "Vanderbilt"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Oklahoma State Defeats Colorado 57-24",
-   "url": "https://www.reddit.com/r/CFB/comments/1xer6rj/postgame_thread_oklahoma_state_defeats_colorado/",
-   "published": "2026-10-25T02:56:47+00:00",
-   "gameId": "401856836",
-   "teams": [
-    "Oklahoma State",
-    "Colorado"
    ]
   }
  ],
