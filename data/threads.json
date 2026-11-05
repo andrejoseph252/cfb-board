@@ -1,6 +1,39 @@
 {
- "updated": "2026-11-05T02:57:41+00:00",
+ "updated": "2026-11-05T10:11:08+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Eastern Michigan Defeats Central Michigan 35-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xo8v7v/postgame_thread_eastern_michigan_defeats_central/",
+   "published": "2026-11-05T03:52:13+00:00",
+   "gameId": "401866456",
+   "teams": [
+    "Eastern Michigan",
+    "Central Michigan"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UMass Defeats Ball State 31-30",
+   "url": "https://www.reddit.com/r/CFB/comments/1xo8eu0/postgame_thread_umass_defeats_ball_state_3130/",
+   "published": "2026-11-05T03:29:11+00:00",
+   "gameId": "401866455",
+   "teams": [
+    "UMass",
+    "Ball State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Toledo Defeats Sacramento State 20-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1xo89sf/postgame_thread_toledo_defeats_sacramento_state/",
+   "published": "2026-11-05T03:22:11+00:00",
+   "gameId": "401866457",
+   "teams": [
+    "Toledo",
+    "Sacramento State"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Eastern Michigan vs. Central Michigan (7:30 PM ET)",
