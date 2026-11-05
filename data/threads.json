@@ -1,6 +1,28 @@
 {
- "updated": "2026-11-05T18:21:28+00:00",
+ "updated": "2026-11-05T23:51:56+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] South Carolina State @ Howard (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xoxp6g/game_thread_south_carolina_state_howard_730_pm_et/",
+   "published": "2026-11-05T23:30:08+00:00",
+   "gameId": null,
+   "teams": [
+    "South Carolina State",
+    "Howard"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] UTSA @ FAU (7:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xoxp5k/game_thread_utsa_fau_730_pm_et/",
+   "published": "2026-11-05T23:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "UTSA",
+    "FAU"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Eastern Michigan Defeats Central Michigan 35-7",
