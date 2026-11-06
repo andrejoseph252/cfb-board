@@ -1,6 +1,39 @@
 {
- "updated": "2026-11-06T03:49:18+00:00",
+ "updated": "2026-11-06T11:38:39+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] James Madison Defeats Southern Miss 54-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1xp44n3/postgame_thread_james_madison_defeats_southern/",
+   "published": "2026-11-06T04:48:26+00:00",
+   "gameId": "401869964",
+   "teams": [
+    "James Madison",
+    "Southern Miss"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] FAU Defeats UTSA 60-29",
+   "url": "https://www.reddit.com/r/CFB/comments/1xp3ucp/postgame_thread_fau_defeats_utsa_6029/",
+   "published": "2026-11-06T04:32:19+00:00",
+   "gameId": "401862817",
+   "teams": [
+    "FAU",
+    "UTSA"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] South Carolina State Defeats Howard 35-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1xp3pr1/postgame_thread_south_carolina_state_defeats/",
+   "published": "2026-11-06T04:25:12+00:00",
+   "gameId": "401867964",
+   "teams": [
+    "South Carolina State",
+    "Howard"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] James Madison @ Southern Miss (8:00 PM ET)",
