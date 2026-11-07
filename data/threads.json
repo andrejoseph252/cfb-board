@@ -1,6 +1,61 @@
 {
- "updated": "2026-11-07T03:22:52+00:00",
+ "updated": "2026-11-07T10:43:59+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Arizona Defeats TCU 29-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq09bl/postgame_thread_arizona_defeats_tcu_2928/",
+   "published": "2026-11-07T07:12:10+00:00",
+   "gameId": "401856855",
+   "teams": [
+    "Arizona",
+    "TCU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] New Mexico Defeats Nevada 31-3",
+   "url": "https://www.reddit.com/r/CFB/comments/1xpy7p8/postgame_thread_new_mexico_defeats_nevada_313/",
+   "published": "2026-11-07T05:11:10+00:00",
+   "gameId": "401864533",
+   "teams": [
+    "New Mexico",
+    "Nevada"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Illinois Defeats Nebraska 24-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1xpxk92/postgame_thread_illinois_defeats_nebraska_2413/",
+   "published": "2026-11-07T04:35:18+00:00",
+   "gameId": "401858510",
+   "teams": [
+    "Illinois",
+    "Nebraska"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] ECU Defeats USF 20-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1xpww85/postgame_thread_ecu_defeats_usf_2017/",
+   "published": "2026-11-07T03:59:10+00:00",
+   "gameId": "401862818",
+   "teams": [
+    "ECU",
+    "USF"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] SMU Defeats Virginia Tech 51-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1xpwd2j/postgame_thread_smu_defeats_virginia_tech_5128/",
+   "published": "2026-11-07T03:30:15+00:00",
+   "gameId": "401858288",
+   "teams": [
+    "SMU",
+    "Virginia Tech"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] TCU @ Arizona (10:15 PM ET)",
@@ -1593,28 +1648,6 @@
    "teams": [
     "Kennesaw State",
     "Middle Tennessee"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Delaware Defeats WKU 35-21",
-   "url": "https://www.reddit.com/r/CFB/comments/1xhel2g/postgame_thread_delaware_defeats_wku_3521/",
-   "published": "2026-10-28T04:28:23+00:00",
-   "gameId": "401871071",
-   "teams": [
-    "Delaware",
-    "WKU"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Missouri State Defeats Sam Houston 24-3",
-   "url": "https://www.reddit.com/r/CFB/comments/1xhel2a/postgame_thread_missouri_state_defeats_sam/",
-   "published": "2026-10-28T04:28:23+00:00",
-   "gameId": "401871072",
-   "teams": [
-    "Missouri State",
-    "Sam Houston"
    ]
   }
  ],
