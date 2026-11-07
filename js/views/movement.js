@@ -53,17 +53,21 @@ function teamData(){
   return teams;
 }
 
-const picked = () => { const p = store.get('rk.mv', null); return Array.isArray(p) ? p.map(String) : null; };
+const picked = key => { const p = store.get(key, null); return Array.isArray(p) ? p.map(String) : null; };
+export { teamData };
 
-export function movementChart(inConf){
-  const B = ballots(), T = teamData();
-  if (!B || !T) return '<div class="skeleton tall"></div>';
-  const P = polls(), n = P.length;
+/* The bump chart. With no `src` it's the AP poll's, from the saved ballots (with the voters' band). Another poll passes
+   src = { polls: [{ date, label, ranks: Map id -> rank }], key: where its followed teams are saved, what: its name
+   for screen readers, cut: a rank to shade down to (the committee's top 12) and its label }. */
+export function movementChart(inConf, src = null){
+  const B = src ? null : ballots(), T = teamData();
+  if ((!src && !B) || !T) return '<div class="skeleton tall"></div>';
+  const P = src ? src.polls : polls(), n = P.length, key = src?.key || 'rk.mv';
   if (n < 2) return '<p class="note">Movement shows once there are two polls.</p>';
   const ids = [...new Set(P.flatMap(p => [...p.ranks.keys()]))].filter(inConf);
-  const last = P.at(-1).ranks, name = id => B.teams?.[id]?.name || state.rankings?.ranks.find(t => String(t.id) === id)?.name || 'Team';
+  const last = P.at(-1).ranks, name = id => B?.teams?.[id]?.name || T[id]?.name || state.rankings?.ranks.find(t => String(t.id) === id)?.name || 'Team';
   // Followed: the saved picks, else your team if it's been ranked, else this week's #1.
-  let sel = (picked() || [myTeam?.id, ...[...last].sort((a, b) => a[1] - b[1]).map(([id]) => id)].filter(id => id && ids.includes(String(id))).slice(0, 1)).map(String).filter(id => ids.includes(id));
+  let sel = (picked(key) || [myTeam?.id, ...[...last].sort((a, b) => a[1] - b[1]).map(([id]) => id)].filter(id => id && ids.includes(String(id))).slice(0, 1)).map(String).filter(id => ids.includes(id));
   const info = Object.fromEntries(sel.map(id => [id, sched(id)]));
   // Followed teams in colors that stay apart from each other (Miami and Texas are both orange).
   const colors = {};
@@ -72,7 +76,7 @@ export function movementChart(inConf){
     colors[id] = t ? distinctColor(t, Object.values(colors)) : 'var(--muted)';
   }
   const color = id => colors[id];
-  model = { P, ids, sel };
+  model = { P, ids, sel, key };
 
   const x = i => (i / (n - 1) * 100).toFixed(3), y = r => ((r ?? OUT) - 1) / (OUT - 1 + .6) * 100;
   // A team's line, split where it's unranked for two polls running; leaving and (re)entering run to the "Out" level.
@@ -91,6 +95,7 @@ export function movementChart(inConf){
   // The band: where the middle half of the voters ranked the team each week (the Poll table's brackets carry the
   // confidence sets for the rank itself).
   const band = id => {
+    if (!B) return '';
     const pts = P.map((p, i) => p.week == null ? null : [i, teamWeek(B, p.week, id)]).filter(v => v && v[1]?.on);
     if (pts.length < 2) return '';
     const top = pts.map(([i, s]) => `${x(i)},${y(Math.min(s.q1, OUT)).toFixed(2)}`), bot = pts.reverse().map(([i, s]) => `${x(i)},${y(Math.min(s.q3, OUT)).toFixed(2)}`);
@@ -109,10 +114,11 @@ export function movementChart(inConf){
   return `<div class="mv-chart">
     <div class="mv-cols">${P.map((p, i) => `<span${(n - 1 - i) % 2 ? ' class="alt"' : ''} style="left:${x(i)}%">${esc(p.label)}</span>`).join('')}</div>
     <div class="mv-body" style="height:${Math.round((OUT + .6) * ROW)}px">
-      <div class="mv-ranks">${grid}<span class="mv-rk out" style="top:${y(null)}%">Out</span></div>
-      <div class="mv-plot${sel.length ? ' sel' : ''}" role="img" aria-label="AP rank of every team ranked this season, poll by poll">
+      <div class="mv-ranks">${grid}${src?.cut ? `<span class="mv-cutlab" style="top:${y(src.cut + .5)}%">${esc(src.cutLabel || '')}</span>` : ''}<span class="mv-rk out" style="top:${y(null)}%">Out</span></div>
+      <div class="mv-plot${sel.length ? ' sel' : ''}" role="img" aria-label="${esc(src?.what || 'AP rank')} of every team ranked this season, poll by poll">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           ${P.map((p, i) => `<line class="mv-col" x1="${x(i)}" x2="${x(i)}" y1="0" y2="100"/>`).join('')}
+          ${src?.cut ? `<rect class="mv-cut" x="0" y="0" width="100" height="${y(src.cut + .5).toFixed(2)}"/><line class="mv-cutl" x1="0" x2="100" y1="${y(src.cut + .5).toFixed(2)}" y2="${y(src.cut + .5).toFixed(2)}"/>` : ''}
           <line class="mv-out" x1="0" x2="100" y1="${y(null)}" y2="${y(null)}"/>
           <g class="mv-faint">${faint}</g>${hot}</svg>${dots}
       </div>
@@ -120,7 +126,7 @@ export function movementChart(inConf){
     </div>
     <div class="mv-chips">${sel.map(id => `<button type="button" class="mv-chip" data-mvt="${esc(id)}" style="--c:${esc(color(id))}"><i></i>${esc(name(id))}<span aria-hidden="true">×</span></button>`).join('')}
       <span class="mv-hint">${sel.length < MAX ? `Tap a line or a team to ${sel.length ? 'compare' : 'follow it'}` : 'Following three teams: tap one to drop it'}</span></div>
-    ${sel.length ? `<p class="mv-note">Shaded: where the middle half of the voters ranked each team that week. Wide means the voters were split.</p>` : ''}
+    ${sel.length && B ? `<p class="mv-note">Shaded: where the middle half of the voters ranked each team that week. Wide means the voters were split.</p>` : ''}
     ${sel.map(id => story(id, P, color(id), name(id), info[id], T[id]?.logo)).join('')}
   </div>`;
 }
@@ -148,7 +154,7 @@ document.addEventListener('toggle', e => { const d = e.target; if (d.matches?.('
 function toggle(id){
   const cur = model?.sel || [];
   const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id].slice(-MAX);
-  store.set('rk.mv', next); invalidate('main');
+  store.set(model.key, next); invalidate('main');
 }
 // A tap on the chart never focuses its buttons: they're replaced on the re-render, and a phone can scroll after them.
 document.addEventListener('pointerdown', e => { if (e.target.closest('.mv-chart [data-mvt]')) e.preventDefault(); });

@@ -2104,3 +2104,46 @@ a.po-wk:hover{text-decoration:underline;text-underline-offset:2px}
   .po-pp{grid-template-columns:auto}
   .po-ppbar{display:none}
 }
+
+/* ---------- Playoff › Movement (js/views/cfp.js): the bump chart with the top 12 shaded, then week by week ---------- */
+.po-seg{max-width:300px;margin-bottom:14px}
+.mv-cut{fill:var(--x-mid);fill-opacity:.07}
+.mv-plot .mv-cutl{stroke:var(--x-mid);stroke-opacity:.7;stroke-width:1.25;stroke-dasharray:5 4}
+.mv-cutlab{position:absolute;right:4px;transform:translateY(3px);font:800 8px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--x-mid);white-space:nowrap}
+.pm-wait{display:grid;gap:12px;justify-items:start;padding:16px;margin-bottom:10px;border:1px solid var(--line);border-radius:14px;
+  background:radial-gradient(90% 140% at 100% 0%,color-mix(in srgb,var(--x-mid) 12%,transparent),transparent 60%),var(--surface)}
+.pm-wait p{margin:0;font-size:13.5px;line-height:1.45;color:var(--muted);max-width:60ch} .pm-wait p b{color:var(--ink)}
+.pm-wait-dots{display:flex;align-items:center;gap:0}
+.pm-wait-dots i{width:12px;height:12px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.pm-wait-dots i + i{margin-left:22px;position:relative}
+.pm-wait-dots i + i::before{content:"";position:absolute;right:100%;top:50%;width:24px;border-top:2px dashed var(--line)}
+.pm-wait-dots i.on{border-color:var(--x-mid);background:var(--x-mid);box-shadow:0 0 0 4px color-mix(in srgb,var(--x-mid) 22%,transparent)}
+.pm-list{display:grid;gap:10px;max-width:860px}
+.pm-wk{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 14px}
+.pm-wk header{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.pm-wk header b{font:800 20px/1 var(--display);letter-spacing:.01em;text-transform:uppercase}
+.pm-wk header span{font-size:12px;color:var(--muted)}
+.pm-lead{margin:0 0 10px;font-size:13px;color:var(--muted)}
+.pm-field{list-style:none;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px;margin:0;padding:0;max-width:640px}
+.pm-field a{display:grid;justify-items:center;gap:3px;padding:6px 0 5px;border-radius:10px;background:color-mix(in srgb,var(--ink) 4%,var(--surface));color:var(--ink);text-decoration:none;box-shadow:inset 0 -2px 0 var(--tc)}
+.pm-field li:nth-child(-n+4) a{background:color-mix(in srgb,var(--tc) 20%,var(--surface))}
+.pm-field .po-mini{width:24px;height:24px}
+.pm-field span{font:800 12.5px/1 var(--display)}
+.pm-wk dl{margin:0;display:grid}
+.pm-row{display:grid;grid-template-columns:130px minmax(0,1fr);align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--soft)}
+.pm-row:first-child{border-top:0}
+.pm-row dt{font:700 10.5px/1.2 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pm-row.good dt{color:var(--good)} .pm-row.bad dt{color:var(--bad)}
+.pm-row dd{margin:0;display:flex;flex-wrap:wrap;gap:6px}
+.pm-t{display:inline-flex;align-items:center;gap:6px;padding:4px 9px 4px 5px;border-radius:999px;background:color-mix(in srgb,var(--ink) 4%,var(--surface));
+  box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);text-decoration:none;font-size:13px}
+.pm-t:hover b{text-decoration:underline;text-underline-offset:2px}
+.pm-t .po-mini{width:20px;height:20px}
+.pm-t b{font-weight:700}
+.pm-t em{font-style:normal;font-size:11.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.pm-t em.up{color:var(--good)} .pm-t em.dn{color:var(--bad)}
+.pm-same{font-size:13px;color:var(--muted)}
+@media (max-width:640px){
+  .pm-field{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .pm-row{grid-template-columns:1fr;gap:6px}
+}

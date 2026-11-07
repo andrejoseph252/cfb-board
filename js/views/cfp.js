@@ -9,9 +9,11 @@
    - Seeds 1-4 get byes. First round on the higher seed's campus: 5-12, 6-11, 7-10, 8-9. Quarterfinals 1 v 8/9,
      4 v 5/12, 2 v 7/10, 3 v 6/11; semifinals the 1 and 4 quarters, the 2 and 3 quarters.
    Before the title games a league's champion is its highest-ranked team, the usual "if the season ended today" read. */
-import { esc } from '../util.js';
-import { state, CONF, teamConf } from '../state.js';
+import { esc, store } from '../util.js';
+import { state, invalidate, CONF, teamConf } from '../state.js';
+import * as api from '../api.js';
 import { logo, teamHref, visibleColor, statusHTML } from './components.js';
+import { movementChart, teamData } from './movement.js';
 
 const P4 = [1, 4, 5, 8], G6 = [151, 12, 15, 17, 9, 37], ND = '87';
 const SHORT = { 151: 'American', 12: 'C-USA', 17: 'MWC', 37: 'Sun Belt' };
@@ -127,7 +129,7 @@ function bubbleRow(t, inside){
   </li>`;
 }
 
-export function viewPlayoff(){
+function bracketView(){
   const c = state.rankings?.cfp;
   if (!state.rankings) return '<div class="skeleton tall"></div>';
   if (!c) return `<div class="empty">The selection committee hasn't released its rankings yet. They start in early November and come out every Tuesday night, and the bracket fills in here.</div>`;
@@ -170,3 +172,94 @@ export function viewPlayoff(){
     <p class="note sub">Seeds follow the committee's ranking; automatic bids ranked below 12 take the last spots. A league's champion here is its highest-ranked team until the title games. Win and title chances are estimates from ESPN FPI.</p>
   </div>`;
 }
+
+/* ---------- Movement: every committee ranking this season ----------
+   data/cfp.json (scripts/cfp.py, refreshed by the GitHub Action) has each week's ranking; ESPN's live feed adds this
+   week's if the file hasn't caught up yet. The bump chart is the AP one (movement.js) with the top 12 shaded; under
+   it, week by week, how the bracket changed: who got in, who fell out, who gained or lost a bye, the biggest moves. */
+let hist = null, histAt = 0, histBusy = false;
+function history(){
+  if (!histBusy && Date.now() - histAt > 10 * 60e3){
+    histBusy = true;
+    api.cfp().then(j => { if (j !== hist){ hist = j; invalidate('main'); } }, () => { hist = hist || { weeks: {} }; invalidate('main'); })
+      .finally(() => { histBusy = false; histAt = Date.now(); });
+  }
+  return hist;
+}
+const dayOf = d => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+/* Each ranking: { date, label, ranks: Map id -> rank, rows: [{ id, rank, record, name, logo, color, alt }] }. */
+function weeks(H, T){
+  const team = (id, rank, record) => ({ id: String(id), rank, record, name: T[id]?.name || 'Team', logo: T[id]?.logo, color: T[id]?.color, alt: T[id]?.alt });
+  const out = Object.values(H?.weeks || {}).map(w => ({ date: new Date(w.date), rows: w.ranks.map(([id, r, rec]) => team(id, r, rec)) }));
+  const live = state.rankings?.cfp;
+  if (live?.date && (!out.length || new Date(live.date) - out.at(-1).date > 864e5))
+    out.push({ date: new Date(live.date), rows: live.ranks.map(t => ({ ...team(t.id, t.rank, t.record), name: t.name, logo: t.logo, color: t.color, alt: t.alt })) });
+  return out.map(w => ({ ...w, label: dayOf(w.date), ranks: new Map(w.rows.map(t => [t.id, t.rank])) }));
+}
+
+/* What changed in the bracket from one ranking to the next. */
+function changes(prev, cur){
+  const A = field({ ranks: prev.rows }), B = field({ ranks: cur.rows });
+  const ids = F => new Set(F.seeds.map(t => t.id)), byes = F => new Set(F.seeds.slice(0, 4).map(t => t.id));
+  const ia = ids(A), ib = ids(B), ba = byes(A), bb = byes(B);
+  const moves = cur.rows.map(t => ({ t, d: prev.ranks.has(t.id) ? prev.ranks.get(t.id) - t.rank : null }));
+  const up = moves.filter(m => m.d > 0).sort((a, b) => b.d - a.d)[0], down = moves.filter(m => m.d < 0).sort((a, b) => a.d - b.d)[0];
+  return {
+    F: B,
+    in: B.seeds.filter(t => !ia.has(t.id)), out: A.seeds.filter(t => !ib.has(t.id)).map(t => ({ ...t, now: cur.ranks.get(t.id) })),
+    byeIn: B.seeds.filter(t => bb.has(t.id) && !ba.has(t.id)), byeOut: A.seeds.filter(t => ba.has(t.id) && !bb.has(t.id)),
+    newcomers: cur.rows.filter(t => !prev.ranks.has(t.id)), dropped: prev.rows.filter(t => !cur.ranks.has(t.id)),
+    up, down
+  };
+}
+
+const chip = (t, extra = '') => `<a class="pm-t" href="${teamHref(t.id)}" style="--tc:${color(t)}">${logo(t.logo, 'logo po-mini')}<b>${esc(t.name)}</b>${extra}</a>`;
+function weekCard(w, prev, first){
+  if (!prev){
+    const F = field({ ranks: w.rows });
+    return `<article class="pm-wk first"><header><b>${esc(w.label)}</b><span>${first ? 'The first rankings' : 'Rankings'}</span></header>
+      <p class="pm-lead">Where the committee started: the field it would have picked that day.</p>
+      <ol class="pm-field">${F.seeds.map(t => `<li style="--tc:${color(t)}"><a href="${teamHref(t.id)}" title="${t.seed} ${esc(t.name)}">${logo(t.logo, 'logo po-mini')}<span>${t.seed}</span></a></li>`).join('')}</ol></article>`;
+  }
+  const c = changes(prev, w), rows = [];
+  if (c.in.length || c.out.length) rows.push(['In the field', c.in.map(t => chip(t, `<em class="up">${t.seed} seed</em>`)).join(''), 'good'],
+    ['Out of the field', c.out.map(t => chip(t, `<em class="dn">${t.now ? '#' + t.now : 'unranked'}</em>`)).join(''), 'bad']);
+  else rows.push(['The field', '<span class="pm-same">Same 12 teams</span>', '']);
+  if (c.byeIn.length) rows.push(['New bye', c.byeIn.map(t => chip(t, `<em class="up">${t.seed} seed</em>`)).join(''), 'good']);
+  if (c.byeOut.length) rows.push(['Lost a bye', c.byeOut.map(t => chip(t, `<em class="dn">now #${w.ranks.get(t.id) ?? '–'}</em>`)).join(''), 'bad']);
+  if (c.up) rows.push(['Biggest climb', chip(c.up.t, `<em class="up">▲${c.up.d} to #${c.up.t.rank}</em>`), '']);
+  if (c.down) rows.push(['Biggest fall', chip(c.down.t, `<em class="dn">▼${-c.down.d} to #${c.down.t.rank}</em>`), '']);
+  if (c.newcomers.length) rows.push(['New in the top 25', c.newcomers.map(t => chip(t, `<em>#${t.rank}</em>`)).join(''), '']);
+  if (c.dropped.length) rows.push(['Dropped out', c.dropped.map(t => chip(t)).join(''), '']);
+  return `<article class="pm-wk"><header><b>${esc(w.label)}</b><span>since ${esc(prev.label)}</span></header>
+    <dl>${rows.filter(r => r[1]).map(([k, v, cls]) => `<div class="pm-row ${cls}"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl></article>`;
+}
+
+/* The next Tuesday ranking after the newest one (a week on), for the waiting message. */
+const nextRelease = w => { const d = new Date(w.date.getTime() + 7 * 864e5); return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }); };
+
+function movementView(){
+  const H = history(), T = teamData();
+  if (!H || !T) return '<div class="skeleton tall"></div>';
+  const W = weeks(H, T);
+  if (!W.length) return `<div class="empty">The committee hasn't released its first rankings yet. Its first ranking in early November starts the chart, and every Tuesday's adds a week.</div>`;
+  const chart = W.length >= 2
+    ? movementChart(() => true, { polls: W, key: 'rk.cfpmv', what: 'Playoff committee rank', cut: 12, cutLabel: 'Top 12' })
+    : `<div class="pm-wait"><div class="pm-wait-dots" aria-hidden="true">${W.map(() => '<i class="on"></i>').join('')}${Array.from({ length: 5 }, () => '<i></i>').join('')}</div>
+        <p><b>One ranking so far.</b> The chart draws a line for every ranked team once the second one is out${W.length ? `, expected <b>${esc(nextRelease(W.at(-1)))}</b>` : ''}, and adds a week every Tuesday through selection day.</p></div>`;
+  const cards = W.map((w, i) => weekCard(w, W[i - 1], i === 0)).reverse().join('');
+  return `<p class="note">Every committee ranking this season${W.length >= 2 ? '; the shaded band is the top 12. Tap a line or a team to follow it' : ''}.</p>
+    ${chart}
+    <h3 class="po-sec">Week by week</h3>
+    <div class="pm-list">${cards}</div>`;
+}
+
+/* Rankings › Playoff: the bracket, or how the committee's rankings have moved. */
+export function viewPlayoff(){
+  const mv = store.get('rk.cfp', 'bracket') === 'move';
+  const seg = `<div class="sv-seg po-seg" role="tablist" aria-label="Playoff view" style="--n:2;--i:${mv ? 1 : 0}">${[['bracket', 'Bracket'], ['move', 'Movement']].map(([k, l]) =>
+    `<button type="button" role="tab" data-rkcfp="${k}" aria-selected="${(k === 'move') === mv}">${l}</button>`).join('')}<span class="sv-thumb" aria-hidden="true"></span></div>`;
+  return seg + (mv ? movementView() : bracketView());
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-rkcfp]'); if (b){ store.set('rk.cfp', b.dataset.rkcfp); invalidate('main'); } });

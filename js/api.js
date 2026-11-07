@@ -85,6 +85,8 @@ export const threads = () => getJSON(`data/threads.json?t=${Math.floor(Date.now(
 export const lines = () => getJSON(`data/lines.json?t=${Math.floor(Date.now() / 300e3)}`, 5 * MIN);
 // Closing point spreads, saved by the GitHub Action before each kickoff (ESPN drops them at the final).
 export const ballots = () => getJSON(`data/ballots.json?t=${Math.floor(Date.now() / 600e3)}`, 10 * MIN);
+// Every committee ranking this season (scripts/cfp.py).
+export const cfp = () => getJSON(`data/cfp.json?t=${Math.floor(Date.now() / 600e3)}`, 10 * MIN);
 export const spreads = () => getJSON(`data/spreads.json?t=${Math.floor(Date.now() / 600e3)}`, 10 * MIN);
 // Every team's colors, abbreviation and logo (scripts/teams.py); changes rarely.
 export const teamColors = () => getJSON(new URL('data/teams.json', location.href).href, 24 * 60 * MIN);
