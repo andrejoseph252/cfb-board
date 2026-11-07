@@ -1,6 +1,39 @@
 {
- "updated": "2026-11-06T23:33:56+00:00",
+ "updated": "2026-11-07T03:22:52+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] TCU @ Arizona (10:15 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xpuwue/game_thread_tcu_arizona_1015_pm_et/",
+   "published": "2026-11-07T02:15:04+00:00",
+   "gameId": null,
+   "teams": [
+    "TCU",
+    "Arizona"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] New Mexico @ Nevada (9:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xpte9f/game_thread_new_mexico_nevada_900_pm_et/",
+   "published": "2026-11-07T01:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "New Mexico",
+    "Nevada"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Nebraska @ Illinois (8:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xps4gk/game_thread_nebraska_illinois_800_pm_et/",
+   "published": "2026-11-07T00:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Nebraska",
+    "Illinois"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] USF @ ECU (7:30 PM ET)",
