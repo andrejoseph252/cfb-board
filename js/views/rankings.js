@@ -6,6 +6,7 @@ import { statTable, recCell, teamCell, rating, weekCols, dash } from './stattabl
 import { mineRow } from '../myteam.js';
 import { ballots, weeksOf, teamWeek, matchesPoll, rankText, rankSet, tiers } from '../ballots.js';
 import { boxPlot } from './ballots.js';
+import { viewPlayoff } from './cfp.js';
 
 function trend(t){
   if (!t.prev) return '<span class="mv new">New</span>';
@@ -81,12 +82,15 @@ function fpiTable(){
 }
 
 export function viewRankings(){
-  const ap = state.rk !== 'fpi';
+  const views = [['cfp', 'Playoff'], ['ap', 'AP Top 25'], ['fpi', 'FPI']];
+  const rk = views.some(([k]) => k === state.rk) ? state.rk : 'cfp', ap = rk === 'ap';
+  const sw = `<div class="rk-switch">${chips(views, rk, 'rk')}</div>`;
+  // The bracket is the whole country, so it skips the conference filter.
+  if (rk === 'cfp') return sw + viewPlayoff();
   const confs = CONF_ORDER.filter(id => state.standings?.confs.some(c => c.id === id));
   const note = ap
     ? `${esc(state.rankings?.title?.replace(/^\d{4} NCAA Football Rankings - /, '') || 'AP Poll')}.${ballots() ? ' Tap a team to see every voter\'s ballot.' : ''}${ballots()?.stats ? ' Brackets group teams the voters can\'t separate; a green bar means the rank is settled. <a class="dlink" href="#ballots/poll">How sure are the voters? ›</a>' : ''}`
     : `ESPN's Football Power Index: how many points better than an average FBS team on a neutral field.${state.fpi?.updated ? ` Updated ${new Date(state.fpi.updated).toLocaleDateString(undefined, {month:'short', day:'numeric'})}.` : ''}`;
-  return `<div class="rk-switch">${chips([['ap', 'AP Top 25'], ['fpi', 'FPI']], ap ? 'ap' : 'fpi', 'rk')}</div>` +
-    chips([['all', 'All conferences'], ...confs.map(id => [String(id), CONF[id]])], state.rkConf, 'rkconf') +
+  return sw + chips([['all', 'All conferences'], ...confs.map(id => [String(id), CONF[id]])], state.rkConf, 'rkconf') +
     sec(ap ? 'AP Top 25' : 'FPI power rankings') + `<p class="note">${note}</p>` + (ap ? apView() : fpiTable());
 }

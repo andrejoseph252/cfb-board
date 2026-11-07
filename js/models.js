@@ -103,15 +103,19 @@ export function parseFpi(j){
   return { byTeam, list, updated: j.lastUpdated };
 }
 
+/* The AP poll (ranks, others), plus the playoff committee's rankings as `cfp` once the committee has released them
+   (from early November; ESPN's feed carries both). */
 export function parseRankings(j){
-  const ap = (j.rankings || []).find(r => r.type === 'ap');
-  if (!ap) return null;
+  const polls = j.rankings || [], ap = polls.find(r => r.type === 'ap'), c = polls.find(r => r.type === 'cfp');
+  if (!ap && !c) return null;
   const row = x => ({
     id: x.team?.id, rank: x.current, prev: x.previous, trend: x.trend, points: x.points, fpv: x.firstPlaceVotes,
     record: x.recordSummary, name: x.team?.location || x.team?.nickname, abbr: x.team?.abbreviation,
-    logo: x.team?.logo || x.team?.logos?.[0]?.href, conf: x.team?.groups?.isConference ? Number(x.team.groups.id) : null
+    logo: x.team?.logo || x.team?.logos?.[0]?.href, conf: x.team?.groups?.isConference ? Number(x.team.groups.id) : null,
+    color: x.team?.color ? '#' + x.team.color : null, alt: x.team?.alternateColor ? '#' + x.team.alternateColor : null
   });
-  return { title: ap.headline, date: ap.date, ranks: (ap.ranks || []).map(row), others: (ap.others || []).map(row) };
+  const cfp = c?.ranks?.length ? { title: c.shortHeadline || c.headline, week: c.occurrence?.displayValue, date: c.date, ranks: c.ranks.map(row) } : null;
+  return { title: ap?.headline, date: ap?.date, ranks: (ap?.ranks || []).map(row), others: (ap?.others || []).map(row), cfp };
 }
 
 export function parsePredictor(j){

@@ -1915,3 +1915,161 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 
 /* A wide screen gives the standings room for their columns next to the games. */
 @media (min-width:1100px){ .split{grid-template-columns:minmax(500px,560px) minmax(0,1fr)} }
+
+/* ---------- Playoff bracket: Rankings › Playoff (js/views/cfp.js) ----------
+   A hero, then the 12-team bracket as four quarters (the bye team on top, the first-round game feeding it). Phones
+   stack them; tablets pair them; wide screens mirror the two halves into the title game in the middle. Then the
+   bubble: last in, the cut line, first out. Team color (--tc) runs down each team's left edge. */
+.po{--po-fill:color-mix(in srgb,var(--ink) 4%,var(--surface));--po-fill2:color-mix(in srgb,var(--ink) 8%,var(--surface));--po-gold:var(--x-mid)}
+.po-hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:20px;padding:20px 20px 16px;margin:2px 0 18px;
+  background:radial-gradient(110% 150% at 100% 0%,color-mix(in srgb,var(--po-gold) 20%,transparent),transparent 55%),
+    radial-gradient(80% 120% at 0% 100%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 60%),var(--surface)}
+.po-eyebrow{font:700 11px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--po-gold)}
+.po-title{margin:8px 0 6px;font:900 48px/.92 var(--display);letter-spacing:.01em;text-transform:uppercase}
+.po-sub{margin:0;color:var(--muted);font-size:13px}
+.po-key{list-style:none;display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0 0;padding:0;font-size:12px;color:var(--muted)}
+.po-key li{display:flex;align-items:center;gap:7px}
+.po-field{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:16px 0 0;padding:0;max-width:420px}
+.po-field li:nth-child(-n+4) a{background:color-mix(in srgb,var(--tc) 22%,var(--po-fill))}
+.po-field a{display:grid;justify-items:center;gap:4px;padding:8px 0 6px;border-radius:12px;background:var(--po-fill);color:var(--ink);text-decoration:none;
+  box-shadow:inset 0 -2px 0 var(--tc);transition:transform .15s}
+.po-field a:hover{transform:translateY(-2px)}
+.po-field .po-mini{width:28px;height:28px}
+.po-field span{font:800 14px/1 var(--display);font-variant-numeric:tabular-nums}
+@media (min-width:900px){
+  .po-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:24px}
+  .po-field{margin:0;width:400px}
+}
+.po-kb{font:700 10.5px/1 var(--body);color:var(--ink);background:var(--soft);border-radius:999px;padding:4px 8px;font-variant-numeric:tabular-nums}
+
+/* the bracket */
+.po-bracket{display:grid;gap:14px}
+.po-half{position:relative;display:grid;gap:12px}
+.po-half.r{order:2} .po-final{order:3}
+.po-join{display:none}
+.po-pod{display:grid;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:11px 11px 12px;min-width:0}
+.po-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 2px 2px;font:700 10.5px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.po-h.sub{letter-spacing:.1em;font-size:9.5px;padding:2px 2px 1px}
+.po-h.sub span:last-child{text-transform:none;letter-spacing:0;font-weight:600;font-size:11px}
+.po-bye{color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:3px 8px;letter-spacing:.1em}
+/* a team */
+.po-t{display:grid;grid-template-columns:22px 26px minmax(0,1fr) auto;align-items:center;gap:8px;padding:7px 10px 7px 9px;border-radius:11px;
+  color:var(--ink);text-decoration:none;min-width:0;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 18%,transparent),transparent 55%),var(--po-fill);box-shadow:inset 3px 0 0 var(--tc);
+  transition:background-color .15s,transform .15s}
+.po-t:hover{background-color:var(--po-fill2);transform:translateY(-1px)}
+.po-t:hover b{text-decoration:underline;text-underline-offset:2px}
+.po-seed{font:800 20px/1 var(--display);text-align:center;font-variant-numeric:tabular-nums}
+.po-t .po-logo{width:26px;height:26px}
+.po-nm{display:grid;gap:3px;min-width:0}
+.po-nm b{font:700 14px/1.1 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.po-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 7px;font-size:11.5px;line-height:1.1;color:var(--muted);font-variant-numeric:tabular-nums}
+.po-rk{font-weight:700;color:var(--ink);opacity:.75}
+.po-bid{display:inline-flex;align-items:center;gap:3px;font:800 9.5px/1 var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--po-gold);white-space:nowrap}
+.po-bid svg{width:10px;height:10px;flex:none}
+.po-r{display:grid;justify-items:end;gap:2px;min-width:2.6em}
+.po-r b{font:800 17px/1 var(--display);font-variant-numeric:tabular-nums}
+.po-r small{font:700 8.5px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.po-t.bye{grid-template-columns:28px 36px minmax(0,1fr) auto;padding:11px 12px 11px 10px;gap:10px;border-radius:13px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 26%,transparent),transparent 65%),var(--po-fill)}
+.po-t.bye .po-seed{font-size:28px}
+.po-t.bye .po-logo{width:36px;height:36px}
+.po-t.bye .po-nm b{font-size:17px}
+.po-t.bye .po-r b{font-size:20px}
+/* the spot the first-round winner takes, and the game that fills it */
+.po-tbd{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1.5px dashed var(--line);border-radius:11px;font-size:12.5px;color:var(--muted)}
+.po-tl{display:flex;gap:2px}
+.po-mini{width:20px;height:20px}
+.po-r1{position:relative;display:grid;gap:5px;margin-top:2px;padding-left:16px}
+.po-r1::before{content:"";position:absolute;left:5px;top:-8px;height:calc(50% + 8px);width:8px;border-left:2px solid var(--line);border-bottom:2px solid var(--line);border-bottom-left-radius:8px}
+.po-r1 .po-t{grid-template-columns:20px 22px minmax(0,1fr) auto;padding:6px 9px 6px 8px}
+.po-r1 .po-seed{font-size:17px}
+.po-r1 .po-logo{width:22px;height:22px}
+.po-r1 .po-nm b{font-size:13.5px}
+/* semifinals and the title game */
+.po-stage{position:relative;display:grid;justify-items:center;gap:8px;text-align:center;padding:12px 10px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.po-sn{font:700 10.5px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.po-sl{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 8px}
+.po-side{display:flex;gap:3px}
+.po-side a{display:block;border-radius:50%;transition:transform .15s}
+.po-side a:hover{transform:scale(1.12)}
+.po-side a.dim{opacity:.6}
+.po-side a.dim:hover{opacity:1}
+.po-side .po-mini{width:24px;height:24px}
+.po-vs{font:700 10px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.po-fav{font-size:11.5px;color:var(--muted)} .po-fav b{color:var(--ink);font-weight:700}
+.po-final{display:grid;justify-items:center;gap:6px;padding:4px 0}
+.po-cup{color:var(--po-gold);filter:drop-shadow(0 6px 18px color-mix(in srgb,var(--po-gold) 45%,transparent))}
+.po-cup svg{width:58px;height:58px;display:block}
+.po-stage.title{width:100%;max-width:340px;padding:14px 12px;border:1.5px solid transparent;
+  background:linear-gradient(var(--surface),var(--surface)) padding-box,
+    linear-gradient(140deg,var(--po-gold),color-mix(in srgb,var(--po-gold) 15%,var(--line)) 60%,var(--po-gold)) border-box}
+.po-stage.title .po-sn{color:var(--po-gold);font-size:11px}
+.po-stage.title .po-mini{width:30px;height:30px}
+@media (min-width:700px){
+  .po-half{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .po-half .po-stage.semi{grid-column:1/-1}
+}
+/* wide: the halves mirror into the title game */
+@media (min-width:1200px){
+  .po-bracket{grid-template-columns:minmax(0,1fr) 190px minmax(0,1fr);align-items:center;gap:22px}
+  .po-half.r,.po-final{order:0}
+  .po-half{row-gap:14px;column-gap:0}
+  .po-half.l{grid-template-columns:minmax(0,1fr) 26px 150px}
+  .po-half.r{grid-template-columns:150px 26px minmax(0,1fr)}
+  .po-half > .po-pod:nth-child(1){grid-row:1} .po-half > .po-pod:nth-child(2){grid-row:2}
+  .po-half.l > .po-pod{grid-column:1} .po-half.r > .po-pod{grid-column:3}
+  .po-half .po-join{display:block;position:relative;grid-row:1/3;grid-column:2}
+  .po-half .po-stage.semi{grid-row:1/3;grid-column:3;align-self:center}
+  .po-half.r .po-stage.semi{grid-column:1}
+  .po-join::before{content:"";position:absolute;top:25%;bottom:25%;left:0;right:50%;border:2px solid var(--line);border-left:0;border-radius:0 12px 12px 0}
+  .po-join::after{content:"";position:absolute;top:50%;left:50%;right:0;border-top:2px solid var(--line)}
+  .po-half.r .po-join::before{left:50%;right:0;border-left:2px solid var(--line);border-right:0;border-radius:12px 0 0 12px}
+  .po-half.r .po-join::after{left:0;right:50%}
+  .po-stage.semi::after{content:"";position:absolute;top:50%;width:22px;border-top:2px solid var(--line)}
+  .po-half.l .po-stage.semi::after{left:100%} .po-half.r .po-stage.semi::after{right:100%}
+  .po-final{padding:0}
+}
+
+/* the bubble */
+.po-sec{margin:30px 0 8px;font:800 26px/1 var(--display);letter-spacing:.005em}
+.po-story{margin:0 0 14px;max-width:72ch;font-size:13.5px;color:var(--muted)} .po-story b{color:var(--ink)}
+.po-bub{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-width:860px}
+.po-b{display:grid;grid-template-columns:28px 28px minmax(0,1.15fr) minmax(0,1fr) 120px;align-items:center;gap:10px;padding:9px 12px;
+  border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:inset 3px 0 0 var(--tc)}
+.po-b.in{background:linear-gradient(90deg,color-mix(in srgb,var(--good) 7%,transparent),transparent 70%),var(--surface)}
+.po-b:not(.in){opacity:.92}
+.po-brk{font:800 20px/1 var(--display);text-align:center;font-variant-numeric:tabular-nums}
+.po-b .po-logo{width:28px;height:28px}
+.po-bn{display:grid;gap:3px;min-width:0;color:var(--ink);text-decoration:none}
+.po-bn b{font:700 14.5px/1.1 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.po-bn:hover b{text-decoration:underline;text-underline-offset:2px}
+.po-bn span{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.po-bn em{font-style:normal;font-weight:700;color:var(--good)}
+.po-wk{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 6px;min-width:0;font-size:12.5px;color:var(--ink);text-decoration:none}
+a.po-wk:hover{text-decoration:underline;text-underline-offset:2px}
+.po-wk.off{color:var(--muted)}
+.po-wk b{font-weight:800;font-variant-numeric:tabular-nums}
+.po-wk.live b{color:var(--live)} .po-wk.won b{color:var(--good)} .po-wk.lost b{color:var(--bad)}
+.po-orank{font-size:10.5px;font-weight:700;color:var(--muted);margin-right:3px}
+.po-when{font-size:11.5px;color:var(--muted)}
+.po-when .status{font:inherit;color:inherit;padding:0;background:none}
+.po-when .status.live{color:var(--live);font-weight:700}
+.po-pp{display:grid;grid-template-columns:minmax(0,1fr) 3em;align-items:center;gap:8px}
+.po-ppbar{height:6px;border-radius:999px;background:var(--soft);overflow:hidden}
+.po-ppbar i{display:block;height:100%;border-radius:inherit;background:var(--tc)}
+.po-pp b{font:800 15px/1 var(--display);text-align:right;font-variant-numeric:tabular-nums}
+.po-bh{padding:8px 2px 0;font:700 10.5px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--good)}
+.po-bh:first-child{padding-top:0}
+.po-bh.out{padding-top:0;color:var(--muted)}
+.po-cut{position:relative;display:flex;justify-content:center;height:28px;align-items:center}
+.po-cut::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px dashed var(--x-hi);opacity:.85}
+.po-cut span{position:relative;padding:4px 12px;border-radius:999px;background:var(--x-hi);color:var(--bg);font:800 10.5px/1 var(--body);letter-spacing:.18em;text-transform:uppercase;
+  box-shadow:0 0 0 4px var(--bg),0 4px 14px color-mix(in srgb,var(--x-hi) 35%,transparent)}
+@media (max-width:640px){
+  .po-title{font-size:40px}
+  .po-hero{padding:16px 16px 14px}
+  .po-b{grid-template-columns:24px 26px minmax(0,1fr) 78px;row-gap:6px;padding:9px 10px}
+  .po-b .po-wk{grid-column:3/5;grid-row:2}
+  .po-pp{grid-template-columns:minmax(0,1fr) 2.6em;gap:6px}
+}
