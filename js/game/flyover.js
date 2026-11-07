@@ -619,7 +619,9 @@ export function camAt(t, cw, ch, portrait){
 export function paintFly(c, o){
   const { ov, cw, ch, portrait, k, t, alpha } = o, cam = camAt(t, cw, ch, portrait), s = cam.s;
   const bump = o.variant === 'b2' ? 0 : Math.exp(-(((t - T_OVER) / .45) ** 2)) + .6 * Math.exp(-(((t - T_BREAK - .5) / .5) ** 2)), amp = 3.2 * k * bump, sx = amp ? Math.round((Math.random() - .5) * amp * 2) : 0, sy = amp ? Math.round((Math.random() - .5) * amp * 2) : 0;
-  const M = portrait ? [0, -s, s, 0, cw / 2 - cam.cy * s + sx, ch / 2 + cam.cx * s + sy] : [s, 0, 0, s, cw / 2 - cam.cx * s + sx, ch / 2 - cam.cy * s + sy];
+  let M = portrait ? [0, -s, s, 0, cw / 2 - cam.cy * s + sx, ch / 2 + cam.cx * s + sy] : [s, 0, 0, s, cw / 2 - cam.cx * s + sx, ch / 2 - cam.cy * s + sy];
+  // Driving left in landscape: the world mirrored (its lettering was baked pre-mirrored); the titles are drawn after, as is.
+  if (o.mirror) M = [-M[0], M[1], -M[2], M[3], cw - M[4], M[5]];
   const toS = (x, y) => [M[0] * x + M[2] * y + M[4], M[1] * x + M[3] * y + M[5]];
   const fall = 1 - smooth((t - 4.2) / 1.8);   // the clouds fall away as the camera dives
   c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false; c.globalAlpha = alpha;

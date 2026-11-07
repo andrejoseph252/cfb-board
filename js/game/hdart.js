@@ -93,6 +93,11 @@ const F3 = { 0: ['111', '101', '101', '101', '111'], 1: ['010', '110', '010', '0
   3: ['111', '001', '011', '001', '111'], 4: ['101', '101', '111', '001', '001'], 5: ['111', '100', '111', '001', '111'],
   6: ['111', '100', '111', '101', '111'], 7: ['111', '001', '010', '010', '010'], 8: ['111', '101', '111', '101', '111'], 9: ['111', '101', '111', '001', '111'] };
 const glyph = ch => ROWS[ch] || ROWS['?'];
+/* Driving left in landscape (drawhd.js mirrors the finished picture): every bit of lettering baked into the art is
+   drawn mirrored first, so it reads the right way round on screen. The field and stands bakes take it as an argument;
+   the players' numbers follow this flag (it's part of their cache key). */
+let MIR = false;
+export const setMirror = m => { MIR = !!m; };
 /* Famous homes dressed as themselves when that team is at home (by ESPN team id): the end zones' wording and paint
    (letters, their edge), the far wall's lettering, the stands' wall, the ribbon boards' copy, the far rim's facade and
    the width of its board (px either side of the posts). Every other team gets its own name and colors. */
@@ -160,7 +165,9 @@ function numberDecal(g, num, font, x0, y0, gap = 1){
   const ds = String(num).split(''), fw = font[0][0].length, fh = font[0].length;
   let x = Math.round(x0 - (ds.length * fw + (ds.length - 1) * gap) / 2);
   const pts = [];
+  const left = x;
   for (const d of ds){ const gl = font[d]; for (let r = 0; r < fh; r++) for (let c = 0; c < fw; c++) if (gl[r][c] === '1') pts.push([x + c, y0 + r]); x += fw + gap; }
+  if (MIR){ const right = x - gap - 1; for (const p of pts) p[0] = left + right - p[0]; }
   for (const [px, py] of pts) g.decal(px, py, 'N');
   // A one-pixel drop shadow down and right gives the numbers a stitched-on feel.
   for (const [px, py] of pts) if (g.regAt(px + 1, py + 1) && g.regAt(px + 1, py + 1) !== 'N') g.decal(px + 1, py + 1, null, 4);
@@ -643,6 +650,7 @@ function renderGrid(g, uni, skin, lit){
   x.putImageData(img, 0, 0);
   return cv;
 }
+export const flipped = c => flipCanvas(c);
 const flipCanvas = c => { const f = canvas(c.width, c.height), x = f.getContext('2d'); x.translate(c.width, 0); x.scale(-1, 1); x.drawImage(c, 0, 0); return f; };
 /* Lying on the turf: the side view turned on its back, head toward where he was going. */
 const lieCanvas = c => { const f = canvas(c.height, c.width), x = f.getContext('2d'); x.translate(c.height, 0); x.rotate(Math.PI / 2); x.drawImage(c, 0, 0); return f; };
@@ -653,7 +661,7 @@ const silhouette = c => { const s = canvas(c.width, c.height), x = s.getContext(
    silhouette (for the cast shadow) and the feet. */
 const SPR = new Map();
 export function getSprite(o){
-  const key = `${o.uni.key}|${o.view}|${o.pose}|${o.c}|${o.arms}|${o.b}|${o.run}|${o.num}|${o.skin}|${o.flip}|${o.lit}|${o.down}|${o.ball || 0}${o.sit ? '|s' : ''}`;
+  const key = `${o.uni.key}|${o.view}|${o.pose}|${o.c}|${o.arms}|${o.b}|${o.run}|${o.num}|${o.skin}|${o.flip}|${o.lit}|${o.down}|${o.ball || 0}${o.sit ? '|s' : ''}${MIR ? '|m' : ''}`;
   let s = SPR.get(key); if (s) return s;
   if (SPR.size > 4000) SPR.clear();   // a long session's worth of jerseys and frames, then start over
   const fo = { ...o, stripe: o.uni.stripe };
@@ -842,7 +850,7 @@ export function buildField(home, away, sky = 'clear'){
 /* The same, a few rows at a time (a generator: each next() paints some more), so the game can bake a new field over
    several frames instead of freezing for the second or more a whole one takes. `shade` is fixed for the whole bake
    (the stadium shadow, or none), whatever the game does in between. */
-export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
+export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded, mir = false){
   const tex = canvas(TW, TH), tx = tex.getContext('2d'), img = tx.createImageData(TW, TH), d = img.data;
   const mask = canvas(TW, TH), mx = mask.getContext('2d'), mimg = mx.createImageData(TW, TH), md = mimg.data;
   const paint = new Uint8Array(TW * TH);
@@ -856,8 +864,11 @@ export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
     for (const far of [false, true]){
       const jTop = far ? tj(FW - 7.6) : tj(7.6);
       const map = far ? (lx, ly) => [L + 14 - lx, jTop - ly] : (lx, ly) => [L - 15 + lx, jTop + ly];
-      stamp(F9[lab[0]], 2, map, 1);
-      stamp(F9[lab[1]], 2, (a, b) => map(20 + a, b), 1);
+      // Mirrored, the two digits swap and each one flips about the pair's middle (the arrows stay put: they point at
+      // the nearer goal, which the mirror moves with them).
+      const dm = mir ? (a, b) => { const [i, j] = map(a, b); return [2 * L - 1 - i, j]; } : map;
+      stamp(F9[lab[0]], 2, dm, 1);
+      stamp(F9[lab[1]], 2, (a, b) => dm(20 + a, b), 1);
       if (yd !== 50){
         const toZero = yd < 50, localLeft = far ? !toZero : toZero;
         for (let cc = 0; cc < 5; cc++) for (let rr = 3 - cc; rr <= 3 + cc; rr++){
@@ -875,7 +886,8 @@ export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
     ezBox[code === 4 ? 0 : 1] = [3.5 * sc / S, wpx / 2 / S];
     const i0 = ti(xc) + Math.round(7 * sc / 2), j0 = tj(MID) - Math.round(wpx / 2);
     let off = 0;
-    for (const ch of s){ if (ch !== ' ') stamp(glyph(ch), sc, (lx, ly) => [i0 - ly, j0 + off + lx], code); off += (ch === ' ' ? 4 : 6) * sc; }
+    const fl = mir ? i => 2 * i0 - 7 * sc + 1 - i : i => i;
+    for (const ch of s){ if (ch !== ' ') stamp(glyph(ch), sc, (lx, ly) => [fl(i0 - ly), j0 + off + lx], code); off += (ch === ' ' ? 4 : 6) * sc; }
   };
   const V = venueOf(home);
   ezBox[0] = ezBox[1] = [0, 0]; word(V ? V.ez[0] : home.name, -5, 4); word(V ? V.ez[1] : away.name, 105, 6);
@@ -892,7 +904,7 @@ export function* buildFieldSteps(home, away, sky = 'clear', shade = shaded){
   const wallTxt = paintable(V ? V.wall : home.name) || 'HOME';
   for (let jj = 0; jj < TH; jj += (wallTxt.length + 3) * 6){
     let off = 0;
-    for (const ch of wallTxt){ if (ch !== ' ') stamp(glyph(ch), 1, (lx, ly) => [wallFar[1] - 2 - ly, jj + off + lx], 7); off += ch === ' ' ? 4 : 6; }
+    for (const ch of wallTxt){ if (ch !== ' ') stamp(glyph(ch), 1, (lx, ly) => [mir ? wallFar[1] - 8 + ly : wallFar[1] - 2 - ly, jj + off + lx], 7); off += ch === ' ' ? 4 : 6; }
   }
   const homeEZ = ezRamp(V ? V.ezc : home.color), awayEZ = ezRamp(V ? V.ezc : away.color);
   const homeL = hex(V ? V.ezl : letterColor(home)), awayL = hex(V ? V.ezl : letterColor(away)), edge = V ? hex(V.ezo) : null;
@@ -1129,7 +1141,7 @@ export function buildCrowd(portrait, home, away, sky = 'clear'){
   return r.value;
 }
 /* The same, a slice at a time (like buildFieldSteps), so a new stadium never holds up a frame. */
-export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
+export function* buildCrowdSteps(portrait, home, away, sky = 'clear', mir = false){
   const along = (FY1 - FY0) * S, depth = CDEPTH * S;
   const hc = home.color || '#777', ha = letterColor(home), ac = away.color || '#777', al = letterColor(away);
   const HC = hex(hc), HA = hex(ha), LC = hex(ha);
@@ -1139,7 +1151,7 @@ export function* buildCrowdSteps(portrait, home, away, sky = 'clear'){
   const txt = new Uint8Array(along * 7), nm0 = paintable(V ? V.stand[0] : home.name) || 'HOME', nm1 = paintable(V ? V.stand[1] : home.name) || 'HOME';
   for (const [c, nm] of [[MIDS, nm0], [MIDS - 240, nm1], [MIDS + 240, nm1]]) for (let i = 0, tw = nm.length * 6 - 1; i < nm.length; i++){
     const g = glyph(nm[i]), x0 = Math.round(c - tw / 2) + i * 6;
-    for (let r = 0; r < 7; r++) for (let q = 0; q < 5; q++) if (g[r][q] === '1' && x0 + q >= 0 && x0 + q < along) txt[r * along + x0 + q] = 1;
+    for (let r = 0; r < 7; r++) for (let q = 0; q < 5; q++) if (g[r][q] === '1' && x0 + q >= 0 && x0 + q < along) txt[(mir ? 6 - r : r) * along + x0 + q] = 1;
   }
   const PAD = mix(HC, [14, 12, 20], .45), SEAT = mix(HC, [58, 62, 80], .62), SEATT = mix(SEAT, [255, 255, 255], .22), SEATG = mix(SEAT, [0, 0, 0], .45);
   const RISER = [94, 90, 100], NOSE = [178, 174, 174], TREAD = [128, 124, 130], PAN = [46, 42, 54], RAIL = [204, 208, 216];
@@ -1697,12 +1709,13 @@ function* buildSidesSteps(portrait, home, away, sky){
 /* The chain crew's down box: an orange box with the down on it (1-4), in its light. */
 const DOWNS = new Map();
 export function downBox(n, lit){
-  const key = `${n}${lit}`; let c = DOWNS.get(key); if (c) return c;
+  const key = `${n}${lit}${MIR}`; let c = DOWNS.get(key); if (c) return c;
   c = canvas(10, 11); const x = c.getContext('2d'), T = col => css(lit ? LIT(col) : SHD(col)), g = F4[clamp(n | 0, 1, 4)];
   x.fillStyle = T([250, 112, 28]); x.fillRect(0, 0, 10, 10); x.fillStyle = T([255, 172, 92]); x.fillRect(0, 0, 10, 1); x.fillRect(0, 0, 1, 10);
   x.fillStyle = T([168, 64, 14]); x.fillRect(0, 9, 10, 1); x.fillRect(9, 1, 1, 9);
   x.fillStyle = T([24, 20, 26]); for (let r = 0; r < 6; r++) for (let q = 0; q < 4; q++) if (g[r][q] === '1') x.fillRect(3 + q, 2 + r, 1, 1);
   x.fillStyle = T([60, 60, 66]); x.fillRect(4, 10, 2, 1);
+  if (MIR) c = flipCanvas(c);
   DOWNS.set(key, c); return c;
 }
 

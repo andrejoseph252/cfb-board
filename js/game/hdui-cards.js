@@ -630,4 +630,32 @@ export const CSS = `
 .pb.hd .sz-rmove{font:700 11px var(--hd-body);letter-spacing:.08em}
 .pb.hd .sz-rmove b{font:800 26px/1 var(--hd-display)}
 .pb.hd .sz-trophy{width:64px;height:64px}
+
+/* ---------- phones on their side ----------
+   No sheet runs off the bottom: each card scrolls inside itself, and the bars along the top and bottom give the room
+   back. The play call is a panel down the right (under the right thumb, the field left in view), its plays two to a
+   row instead of a sideways scroll. */
+@media (orientation:landscape) and (max-height:520px){
+  .pb.hd.pb-tools-on .pb-modal{padding-top:calc(env(safe-area-inset-top,0px) + 8px)}
+  .pb.hd .pb-modal.on{z-index:4}   /* over the score bug (there's no room to stop short of it), under pause and sound */
+  .pb.hd .pb-modal.light{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+  .pb.hd .pb-card{max-height:calc(100dvh - 16px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding-top:20px}
+  .pb.hd .pb-modal[data-kind="call"]{padding:calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-right,0px) + 8px) calc(env(safe-area-inset-bottom,0px) + 8px) 8px;
+    background:linear-gradient(to left,rgba(0,0,0,.5),transparent 65%)}
+  .pb.hd .pb-modal[data-kind="call"] > .pb-calls{margin:0 0 0 auto;width:min(430px,54vw);max-width:none;height:100%;max-height:none;align-content:start;grid-auto-rows:max-content;
+    gap:10px;padding:14px 12px 14px;border-radius:22px;animation:hdSide .28s cubic-bezier(.2,.9,.25,1) both}
+  .pb.hd .pb-calls::before{display:none}
+  .pb.hd:has(.pb-modal.on[data-kind="call"]) .pb-tools{display:none}   /* the panel has its own close; pause and sound would sit on it */
+  .pb.hd .pb-calls .pb-ph b{font-size:22px}
+  .pb.hd .pb-calls .pb-forms{margin:0 -12px;padding:0 12px}
+  .pb.hd .pb-calls .pb-forms button{height:30px;line-height:30px;padding:0 11px;font-size:12px}
+  .pb.hd .pb-calls .pb-tabs button{height:36px}
+  .pb.hd .pb-calls .pb-callrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:visible;margin:0;padding:0}
+  .pb.hd .pb-calls .pb-callrow button{width:auto;padding:5px 5px 8px;border-radius:16px}
+  .pb.hd .pb-calls .pb-callrow button b{margin:6px 4px 2px;font-size:13.5px}
+  .pb.hd .pb-calls .pb-callrow button small{margin:0 4px;font-size:11px}
+  .pb.hd .pb-calls .pb-sub{font-size:11px}
+}
+@keyframes hdSide{from{transform:translateX(48px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.pb.hd .pb-modal[data-kind="call"] > .pb-calls{animation:none}}
 `;

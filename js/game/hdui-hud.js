@@ -272,4 +272,36 @@ export const CSS = `
 @media (max-width:360px){.pb.hd .hb-spear{width:250px;margin-left:-125px}.pb.hd .hb-spark{left:calc(50% + 125px)}}
 
 @media (prefers-reduced-motion:reduce){.pb.hd .pb-banner *,.pb.hd .hb-dd,.pb.hd .hb-wx,.pb.hd .hb-sc,.pb.hd .pb-mv,.pb.hd .pb-jump,.pb.hd .hb-tm.fsu::before{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+
+/* ---------- phones on their side: every pixel of height counts ----------
+   The score bug a size down with the down & distance beside it rather than under it; the play button in the bottom
+   right corner (under the right thumb) instead of across the whole width, the hint beside it. pixelbowl.js tells the
+   renderer what these cover, so it frames the field in the band between. */
+@media (orientation:landscape) and (max-height:520px){
+  .pb.hd .pb-hud{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 6px;width:auto;max-width:calc(100% - 70px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))}
+  .pb.hd .pb-bug{height:42px;border-radius:8px}
+  .pb.hd .hb-tm{width:clamp(86px,14vw,112px);gap:5px;padding-left:5px}
+  .pb.hd .hb-disc{width:23px;height:23px} .pb.hd .hb-disc img{width:18px;height:18px}
+  .pb.hd .hb-nm{gap:3px} .pb.hd .hb-nm b{font-size:16px}
+  .pb.hd .hb-pips i{width:8px}
+  .pb.hd .hb-sc{width:32px;font-size:25px}
+  .pb.hd .hb-clk{width:54px} .pb.hd .hb-clk span{font-size:10.5px} .pb.hd .hb-clk b{font-size:20px}
+  .pb.hd .pb-bug .pb-tm b{font-size:16px} .pb.hd .pb-bug .pb-tm img{width:26px;height:26px}
+  .pb.hd .pb-bug .pb-mid b{font-size:19px} .pb.hd .pb-bug .pb-mid span{font-size:10px}
+  .pb.hd .pb-dd{padding:0;margin:0}
+  .pb.hd .hb-dd{height:42px;border-radius:8px;transform:translateX(-10px);opacity:0;animation:hbDdSide .4s cubic-bezier(.2,.9,.25,1.1) .12s forwards}
+  .pb.hd .hb-dd>*{padding:0 9px;font-size:15px}
+  .pb.hd .hb-dd .dn{font-size:16px}
+  .pb.hd .pb-pbp{flex-basis:100%;height:24px}
+  .pb.hd .pb-tools button{width:36px;height:36px}
+  .pb.hd .pb-bar{left:auto;right:${Rt};width:min(340px,44vw);bottom:calc(${B} + 8px);gap:6px}
+  .pb.hd .pb-bar button{height:46px;border-radius:12px;font-size:16px;padding:0 11px}
+  .pb.hd .pb-bar .pb-call{padding:0 8px 0 14px}
+  .pb.hd .pb-call small{font-size:9.5px} .pb.hd .pb-call b{font-size:20px}
+  .pb.hd .pb-call .chev{width:30px;height:30px}
+  .pb.hd .hb-chip b{font-size:16px} .pb.hd .hb-chip small{font-size:9.5px}
+  .pb.hd .pb-hint,.pb.hd .pb-bar:not(:empty)+.pb-hint{left:${L};right:calc(min(340px,44vw) + 26px + env(safe-area-inset-right,0px));bottom:calc(${B} + 12px);text-align:left;font-size:11.5px;line-height:1.3}
+  .pb.hd .pb-bar:empty+.pb-hint{right:${Rt}}
+}
+@keyframes hbDdSide{to{transform:none;opacity:1}}
 `;

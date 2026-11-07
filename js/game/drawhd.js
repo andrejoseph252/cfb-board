@@ -58,7 +58,17 @@ export function createRenderer(canvas){
   const buf = A.canvas(8, 8), bx = buf.getContext('2d');   // the pixel-art layer
   const sl = A.canvas(8, 8), sx = sl.getContext('2d');      // cast shadows, composited onto it
   let cw = 0, ch = 0, short = 1, k = 1, Wu = UI, Hu = UI * 2, portrait = false;
-  let Wb = 8, Hb = 8, bs = 1;   // the part of the buffer in use, and its scale onto the screen (device px per buffer px)
+  let Wb = 8, Hb = 8, bs = 1;
+  /* Landscape driving left: the world is drawn as always and the finished picture mirrored onto the screen (the art
+     bakes its lettering pre-mirrored, hdart.js setMirror). `mir` is the player's choice, M whether it applies now. */
+  let mir = false, M = false, logoM = null;
+  const mirrorNow = () => { M = mir && !portrait; A.setMirror(M); };
+  /* Landscape: how much of the screen's top and bottom the score bug and the play bar cover (device px). The view is
+     framed in the band between, and sized to it: it zooms out to fit, rather than putting the play under the bar. */
+  let insT = 0, insB = 0, offB = 0;
+  // The framing leaves a few yards of margin at each edge (fit() pads the routes by 3.5 a side), and the bars may sit
+  // over that margin: so the view counts a little over half of what they cover toward the zoom.
+  const eff = () => portrait ? short : clamp(ch - (insT + insB) * .55, short * .7, short);   // the part of the buffer in use, and its scale onto the screen (device px per buffer px)
   const cam = { x: 30, y: MID, shake: 0 }, zoom = { span: CLOSE };
   let t = 0, vig = null, motes = [], drops = [], flash = 0, nextBolt = 12;
 
@@ -72,13 +82,13 @@ export function createRenderer(canvas){
     const key = `${Math.round(r.width)}x${Math.round(r.height)}@${dpr}`;
     if (key === sized) return false;
     sized = key;
-    portrait = r.height > r.width;
+    portrait = r.height > r.width; mirrorNow();
     cw = Math.round(r.width * dpr); ch = Math.round(r.height * dpr);
     canvas.width = cw; canvas.height = ch;
     short = Math.min(cw, ch); k = Math.max(1, Math.round(short / UI));
     Wu = Math.ceil(cw / k); Hu = Math.ceil(ch / k);
     // Room for the widest view (a snapped one can run a little past WIDE).
-    const least = short / (WIDE * 1.15 * S);
+    const least = short * .7 / (WIDE * 1.15 * S);
     buf.width = sl.width = Math.ceil(cw / least) + 2; buf.height = sl.height = Math.ceil(ch / least) + 2;
     bx.imageSmoothingEnabled = false;
     setZoom(zoom.span);
@@ -86,9 +96,10 @@ export function createRenderer(canvas){
     return true;
   }
   /* A view `yards` across, nudged to a whole-number scale when one is close, so views at rest are perfectly crisp. */
-  const snap = yards => { const n = Math.round(short / (S * yards)), s = n >= 1 ? short / (S * n) : yards; return Math.abs(s - yards) / yards < .12 ? s : yards; };
+  const snap = yards => { const e = eff(), n = Math.round(e / (S * yards)), s = n >= 1 ? e / (S * n) : yards; return Math.abs(s - yards) / yards < .12 ? s : yards; };
   function setZoom(span){
-    zoom.span = span; bs = short / (span * S);
+    zoom.span = span; bs = eff() / (span * S);
+    offB = portrait ? 0 : Math.round((insT - insB) / 2 / bs);
     Wb = Math.min(buf.width, Math.ceil(cw / bs)); Hb = Math.min(buf.height, Math.ceil(ch / bs));
   }
   /* Before the snap with the route preview on: as close as frames every receiver and the first stretch of his route
@@ -133,18 +144,19 @@ export function createRenderer(canvas){
   /* World to buffer pixels. The camera is pinned to whole pixels and everything is placed from there, so the players,
      the ball and the turf move together on one pixel grid instead of shimmering against each other. */
   const toBuf = (x, y, z = 0) => {
-    const cx = Math.round(cam.x * S), cy = Math.round(cam.y * S), hw = Wb >> 1, hh = Hb >> 1;
+    const cx = Math.round(cam.x * S), cy = Math.round(cam.y * S), hw = Wb >> 1, hh = (Hb >> 1) + offB;
     return portrait ? [Math.round(y * S) - cy + hw, hh - (Math.round(x * S) - cx) - Math.round(z * S * .8)]
       : [Math.round(x * S) - cx + hw + Math.round(z * S * .3), Math.round(y * S) - cy + hh - Math.round(z * S * .75)];
   };
-  const toScreen = (x, y, z = 0) => { const [a, b] = toBuf(x, y, z), f = bs / k; return [Math.round(a * f), Math.round(b * f)]; };
+  const toScreen = (x, y, z = 0) => { const [a, b] = toBuf(x, y, z), f = bs / k; return [Math.round(M ? cw / k - a * f : a * f), Math.round(b * f)]; };
   const toWorld = (ux, uy) => {
+    if (M) ux = cw / k - ux;
     const px = ux * k / bs, py = uy * k / bs;
-    const cx = Math.round(cam.x * S), cy = Math.round(cam.y * S), hw = Wb >> 1, hh = Hb >> 1;
+    const cx = Math.round(cam.x * S), cy = Math.round(cam.y * S), hw = Wb >> 1, hh = (Hb >> 1) + offB;
     return portrait ? { x: (cx + hh - py) / S, y: (cy + px - hw) / S } : { x: (cx + px - hw) / S, y: (cy + py - hh) / S };
   };
   /* A screen-space drag (UI px) as a field vector in yards, at the original scale whatever the zoom. */
-  const dragToWorld = (dx, dy) => portrait ? { x: -dy / OLD, y: dx / OLD } : { x: dx / OLD, y: dy / OLD };
+  const dragToWorld = (dx, dy) => portrait ? { x: -dy / OLD, y: dx / OLD } : { x: (M ? -dx : dx) / OLD, y: dy / OLD };
   /* Buffer px to UI px, and how far above a player's feet his head is on screen (the original sprites stood ~10 px). */
   const f2u = () => bs / k;
   const lift = () => Math.round(28 * f2u()) - 10;
@@ -162,7 +174,7 @@ export function createRenderer(canvas){
   let ov = null, ovBake = null, fly = null;   // the pregame flyover's overview (baked a slice at a time) and the shot under way
   function prepare(G){
     const C = G.cond || {}, sky = C.sky || 'clear';
-    const key = `${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${C.time === 'afternoon' || !C.time ? 'sun' : 'flat'}${sky}|${G.youDefend ? 'D' : ''}`;
+    const key = `${M ? 'M' : ''}${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${C.time === 'afternoon' || !C.time ? 'sun' : 'flat'}${sky}|${G.youDefend ? 'D' : ''}`;
     if (key !== teamsKey){
       teamsKey = key;
       // On defense your team (G.opp in those scenes) wears its colors and their offense wears road white.
@@ -175,11 +187,11 @@ export function createRenderer(canvas){
         const hit = baked.get(fk);
         if (hit){
           baked.delete(fk); baked.set(fk, hit); art = hit.art; crowd = hit.crowd[portrait] || null; crowdKey = `${fk}|${portrait}`;
-          bake = crowd ? null : { fk, field: art, p: portrait, cs: A.buildCrowdSteps(portrait, home, away, sky), at: 0 };
+          bake = crowd ? null : { fk, field: art, p: portrait, cs: A.buildCrowdSteps(portrait, home, away, sky, M), at: 0 };
         }
         // Baking a field takes a while (most of a second on a phone): it's done a little each frame (pumpBake), the
         // old one staying up meanwhile, and only once the choice has settled for a moment.
-        else bake = { fk, h: home, a: away, sky, shade, steps: null, at: performance.now() + (art ? 220 : 0) };
+        else bake = { fk, h: home, a: away, sky, shade, m: M, steps: null, at: performance.now() + (art ? 220 : 0) };
       }
       loadLogo(G.youDefend ? G.opp.img : G.me.img);
     }
@@ -188,18 +200,18 @@ export function createRenderer(canvas){
     if (art && crowdKey && ck !== crowdKey && !bake){
       crowdKey = ck; const e = baked.get(fieldKey);
       if (e?.crowd[portrait]) crowd = e.crowd[portrait];
-      else { crowd = null; bake = { fk: fieldKey, field: art, p: portrait, cs: A.buildCrowdSteps(portrait, home, away, turf), at: 0 }; }
+      else { crowd = null; bake = { fk: fieldKey, field: art, p: portrait, cs: A.buildCrowdSteps(portrait, home, away, turf, M), at: 0 }; }
     }
   }
   /* A slice of the waiting bake: about 5 ms a frame, so the game keeps running (the first field of a game bakes all at
      once, there being nothing to show meanwhile). */
   function pumpBake(){
     const B = bake; if (!B || performance.now() < B.at) return;
-    B.steps ||= A.buildFieldSteps(B.h, B.a, B.sky, B.shade);
+    B.steps ||= A.buildFieldSteps(B.h, B.a, B.sky, B.shade, B.m);
     const end = performance.now() + (art ? 5 : 1e9);
     // The field first, then the stands; both go up together once both are done.
     let r;
-    if (!B.field){ do r = B.steps.next(); while (!r.done && performance.now() < end); if (!r.done) return; B.field = r.value; B.p = portrait; B.cs = A.buildCrowdSteps(portrait, B.h, B.a, B.sky); }
+    if (!B.field){ do r = B.steps.next(); while (!r.done && performance.now() < end); if (!r.done) return; B.field = r.value; B.p = portrait; B.cs = A.buildCrowdSteps(portrait, B.h, B.a, B.sky, B.m); }
     do r = B.cs.next(); while (!r.done && performance.now() < end);
     if (!r.done) return;
     bake = null; art = B.field; crowd = r.value; crowdKey = `${B.fk}|${B.p}`;   // turned meanwhile: prepare() rebuilds it
@@ -209,11 +221,12 @@ export function createRenderer(canvas){
   }
   function loadLogo(img){
     const src = img?.src || ''; if (src === logoSrc) return;
-    logoSrc = src; logo = null; if (!src) return;
+    logoSrc = src; logo = logoM = null; if (!src) return;
     // Our own copy, asking for CORS so it can be posterized; without it, a plain one.
     const im = new Image(); im.crossOrigin = 'anonymous';
-    im.onload = () => { if (logoSrc === src) logo = A.paintLogo(im); };
-    im.onerror = () => { const p = new Image(); p.onload = () => { if (logoSrc === src) logo = A.paintLogo(p); }; p.src = src; };
+    const got = c => { if (logoSrc === src){ logo = c; logoM = A.flipped(c); } };
+    im.onload = () => got(A.paintLogo(im));
+    im.onerror = () => { const p = new Image(); p.onload = () => got(A.paintLogo(p)); p.src = src; };
     im.src = src;
   }
   /* Jersey numbers: stable for each team's position slot, never two alike on a team. */
@@ -236,7 +249,8 @@ export function createRenderer(canvas){
     bx.setTransform(1, 0, 0, 1, 0, 0);
     if (crowd?.sides) sideStands(G);
     if (crowd) stands(G);
-    if (logo){ const [x, y] = toBuf(50, MID); bx.globalAlpha = .93; bx.drawImage(logo, x - (logo.width >> 1), y - (logo.height >> 1)); bx.globalAlpha = 1; }
+    const lg = M ? logoM : logo;
+    if (lg){ const [x, y] = toBuf(50, MID); bx.globalAlpha = .93; bx.drawImage(lg, x - (lg.width >> 1), y - (lg.height >> 1)); bx.globalAlpha = 1; }
   }
   function stands(G){
     const C = crowd, [ox, oy] = standsAt(C);
@@ -331,11 +345,15 @@ export function createRenderer(canvas){
     const [ox, oy] = standsAt(C); if (ox > Wb || oy > Hb || ox + C.c.width < 0 || oy + C.c.height < 0) return;
     const roar = (G.cheer || 0) > 0, night = G.cond?.time === 'night';
     if (night) bx.drawImage(C.glow, ox, oy);
-    if (portrait) bx.setTransform(1, 0, 0, 1, ox, oy); else bx.setTransform(0, 1, -1, 0, ox + C.c.width, oy);
+    // Mirrored (landscape only), each lettered strip is laid down flipped across its own depth, so the finished
+    // picture's mirror turns it back the right way round.
+    const lay = (v0, h) => portrait ? bx.setTransform(1, 0, 0, 1, ox, oy) : M ? bx.setTransform(0, 1, 1, 0, ox + C.c.width - 2 * v0 - h, oy) : bx.setTransform(0, 1, -1, 0, ox + C.c.width, oy);
     const hotT = roar && Math.floor(t * 5) % 2, tape = hotT ? C.tapeHot : C.tape, seg = hotT ? C.segHot : C.seg;
+    lay(C.ribY, 7);
     bx.drawImage(tape, Math.floor(t * (roar ? 70 : 16)) % seg, 0, C.along, 7, 0, C.ribY, C.along, 7);
     const hot = roar ? 1 + Math.floor(t * 3) % 2 : 0, key = `${G.score?.[0]}|${G.score?.[1]}|${G.quarter}|${hot}|${!!logo}|${C.face.width}`;
     if (key !== C.faceKey){ C.faceKey = key; A.paintBoard(C, home || G.me, away || G.opp, G.score || [0, 0], G.quarter, logo, hot); }
+    lay(C.faceAt[1], C.face.height);
     bx.drawImage(C.face, C.faceAt[0], C.faceAt[1]);
     bx.setTransform(1, 0, 0, 1, 0, 0);
   }
@@ -371,7 +389,12 @@ export function createRenderer(canvas){
     for (const s of C.stands){
       const [ox, oy] = sideAt(s); if (ox > Wb || oy > Hb || ox + s.c.width < 0 || oy + s.c.height < 0) continue;
       const [a0, a1] = sideSpan(s, ox, oy), n = a1 - a0; if (n <= 0) continue;
-      if (!portrait){ bx.drawImage(tape, run + a0, 0, n, 7, ox + a0, oy + s.led, n, 7); continue; }
+      if (!portrait){
+        // Mirrored, the strip is drawn flipped in place so the finished picture's mirror turns it back.
+        if (M){ bx.setTransform(-1, 0, 0, 1, 2 * (ox + a0) + n, 0); bx.drawImage(tape, run + a0, 0, n, 7, ox + a0, oy + s.led, n, 7); bx.setTransform(1, 0, 0, 1, 0, 0); }
+        else bx.drawImage(tape, run + a0, 0, n, 7, ox + a0, oy + s.led, n, 7);
+        continue;
+      }
       // Standing up the canvas runs top to bottom with the field: near side reads downward, far side upward.
       if (s.far) bx.setTransform(0, -1, 1, 0, ox + s.led, oy + a1); else bx.setTransform(0, 1, -1, 0, ox + s.led + 7, oy + a0);
       bx.drawImage(tape, run + a0, 0, n, 7, 0, 0, n, 7);
@@ -1039,7 +1062,7 @@ export function createRenderer(canvas){
     b1.globalCompositeOperation = 'copy'; b1.drawImage(buf, 0, 0, Wb, Hb, px / 4, py / 4, Wb / 4, Hb / 4);
     b1.globalCompositeOperation = 'multiply'; b1.drawImage(bl1, 0, 0); b1.drawImage(bl1, 0, 0);
     b2.globalCompositeOperation = 'copy'; b2.drawImage(bl1, 0, 0, w2 * 3, h2 * 3, 0, 0, w2, h2);
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = 'screen';
+    ctx.save(); ctx.setTransform(M ? -1 : 1, 0, 0, 1, M ? cw : 0, 0); ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = 'screen';
     const x0 = ox * k - px * bs, y0 = oy * k - py * bs;
     ctx.globalAlpha = a * .55; ctx.drawImage(bl1, 0, 0, w1, h1, x0, y0, w1 * 4 * bs, h1 * 4 * bs);
     ctx.globalAlpha = a; ctx.drawImage(bl2, 0, 0, w2, h2, x0, y0, w2 * 12 * bs, h2 * 12 * bs);
@@ -1461,7 +1484,9 @@ export function createRenderer(canvas){
     // Onto the screen, then the overlays in UI pixels.
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false;
     if (sh){ ctx.fillStyle = '#24222a'; ctx.fillRect(0, 0, cw, ch); }
+    if (M) ctx.setTransform(-1, 0, 0, 1, cw, 0);
     ctx.drawImage(buf, 0, 0, Wb, Hb, ox * k, oy * k, Wb * bs, Hb * bs);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     const glow = !view.covered && (lit.bloom || SKY[G.cond?.sky]?.bloom); if (glow) bloom(glow, ox, oy);
     ctx.setTransform(k, 0, 0, k, 0, 0);
     if (!G.cond || G.cond.sky === 'clear') dust(dt, G.cond?.time === 'night');
@@ -1511,11 +1536,20 @@ export function createRenderer(canvas){
   function endFly(){ const cb = fly?.done; fly = null; cb?.(); return 0; }
   function paintOv(G){
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    FO.paintFly(ctx, { ov, cw, ch, portrait, k, t: fly.t, alpha: fly.alpha, art, logo, wind: G.cond?.wind, variant: fly.variant, match: { home: G.me, away: G.opp, cond: G.cond } });
+    FO.paintFly(ctx, { ov, cw, ch, portrait, k, t: fly.t, alpha: fly.alpha, art, logo: M ? logoM : logo, mirror: M, wind: G.cond?.wind, variant: fly.variant, match: { home: G.me, away: G.opp, cond: G.cond } });
   }
 
   return {
     resize, draw, toWorld, toScreen, dragToWorld, snapCamera,
+    /* Landscape: drive toward the left (true) or the right. */
+    setMirror(on){ mir = !!on; mirrorNow(); },
+    /* The covered strips at the top and bottom, in CSS px (landscape only). */
+    setInsets(top, bottom){
+      const d = window.devicePixelRatio || 1, t2 = Math.round(top * d), b2 = Math.round(bottom * d);
+      if (Math.abs(t2 - insT) < 2 && Math.abs(b2 - insB) < 2) return;
+      insT = t2; insB = b2; setZoom(zoom.span);
+    },
+    get mirrored(){ return M; },
     flyStart(G, done, variant){ fly = { done, wait: 0, on: false, t: 0, sk: 0, skip: false, alpha: 1, cheered: false, variant: variant || (Math.random() < .125 ? 'b2' : 'jets') }; },
     flySkip(){ if (!fly) return; if (fly.on) fly.skip = true; else endFly(); },
     get flying(){ return !!fly; }, get flyLevel(){ return fly?.on ? FO.flyLevel(fly.t, fly.variant) : .05; },

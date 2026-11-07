@@ -22,7 +22,7 @@ import * as W from './weather.js';
 
 const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
-const saved = { diff: 'pro', len: 'standard', sound: true, atmos: 1, routes: true, time: 'random', sky: 'random', ...store.get('pixelbowl', {}) };
+const saved = { diff: 'pro', len: 'standard', sound: true, atmos: 1, routes: true, time: 'random', sky: 'random', dir: 'left', ...store.get('pixelbowl', {}) };
 delete saved.record; delete saved.hd; saved.results ||= {};   // (hd: the old HD switch; HD is the only look now)
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
@@ -182,7 +182,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-moves" hidden><button class="pb-mv" type="button" data-mv="juke" aria-label="Juke">JUKE</button><button class="pb-mv" type="button" data-mv="truck" aria-label="Truck">TRUCK</button></div>
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
-  canvas = $('.pb-cv'); R = createRenderer(canvas); R.resize();
+  canvas = $('.pb-cv'); R = createRenderer(canvas); R.setMirror(saved.dir === 'left'); R.resize();
   bindTeams(() => ({ me: (keyCtx?.main || G)?.me }));   // the home band plays for your team (and its chant)
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
   if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
@@ -261,6 +261,7 @@ function loop(ts){
   if (!modalEl?.isConnected) modalEl = document.querySelector('.pb-modal');
   raf = requestAnimationFrame(loop);
   R.resize();   // cheap when nothing changed; catches any size change the observer missed
+  if (++insetTick % 15 === 0) insets();
   // Opened straight to #play before the board's team data arrived: fill in the real teams once it does.
   if (waitingData && state.standings && colors){ waitingData = false; if (phase === 'setup' && !document.querySelector('.sz-hub,.sz-gw,.sz-new,.sz-load') && (G?.me.name === 'Team' || G?.me.color === '#5a6470')){ pick = defaults(openPrefill); setup(); } }
   const dt = Math.min(.05, last ? (ts - last) / 1000 : 0); last = ts;
@@ -337,6 +338,7 @@ function setup(){
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
     ${wxRow()}
+    ${dirRow()}
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label>
       ${atmosHTML()}
@@ -1551,13 +1553,22 @@ function pause(){
     ? [btn('resume', 'RESUME', false), btn('endsess', G.seasonDrill ? 'BACK TO GAME WEEK' : 'END SESSION'), btn('menu', 'MAIN MENU'), btn('exit', 'EXIT TO BOARD')]
     : [btn('resume', 'RESUME', false), done ? '' : btn('restart', 'RESTART GAME'),
       main.season ? btn('s-hub', done ? 'SEASON HUB' : "SEASON HUB (GAME WON'T COUNT)") : btn('menu', 'MAIN MENU'), btn('exit', 'EXIT TO BOARD')];
-  modal(`<div class="pb-card"><h2>PAUSED</h2>${drill || keyCtx ? '' : scoreLine()}<div class="pb-checks pb-vol1">${atmosHTML()}</div><div class="pb-btns col">${items.join('')}</div></div>`, false, 'pause');
+  modal(`<div class="pb-card"><h2>PAUSED</h2>${drill || keyCtx ? '' : scoreLine()}<div class="pb-checks pb-vol1">${atmosHTML()}</div>${dirRow()}<div class="pb-btns col">${items.join('')}</div></div>`, false, 'pause');
 }
 let behind = null;
 function unpause(){ paused = false; closeModal('pause'); }
 
 /* ---------- HUD, banners, modals ---------- */
 let lastHud = '';
+/* Sideways, the score bug covers the top of the screen and the play bar the bottom: the renderer frames the field
+   between them. The bottom is a fixed strip (the bar comes and goes with the snap; the view shouldn't jump with it). */
+let insetTick = 0;
+const LAND_BOT = 60;
+function insets(){
+  if (!R || R.portrait || $('.pb-hud').hidden) return R?.setInsets(0, 0);
+  const top = canvas.getBoundingClientRect().top, hud = [$('.pb-bugw'), $('.pb-dd')].map(el => el?.offsetHeight ? el.getBoundingClientRect().bottom : 0);
+  R.setInsets(Math.max(0, Math.max(...hud) - top), LAND_BOT);
+}
 function showHud(on){ $('.pb-hud').hidden = !on; const wx = $('.pb-wxhud'); if (wx){ wx.innerHTML = ''; wx.dataset.hk = ''; } $('.pb-tools').hidden = !on; root.classList.toggle('pb-tools-on', on); if (!on){ $('.pb-bar').innerHTML = ''; $('.pb-hint').textContent = ''; } lastHud = ''; }
 function hud(){
   if (!root || !G || $('.pb-hud').hidden) return;
@@ -1733,6 +1744,10 @@ function onClick(e){
     case 'set':
       if (b.dataset.v === 'random' && saved[b.dataset.k] === 'random') cond = null;   // Random again: a new roll
       saved[b.dataset.k] = b.dataset.v; save(); return wxOpen ? wxSheet() : setup();
+    case 'dir':
+      saved.dir = b.dataset.v; save(); R?.setMirror(saved.dir === 'left');
+      document.querySelectorAll('[data-pb="dir"]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === saved.dir)));
+      return;
     case 'wx': return wxSheet();
     case 'reroll': cond = null; return wxOpen ? wxSheet() : setup();
     case 'toss': return afterToss();
@@ -1768,6 +1783,10 @@ function onClick(e){
   }
 }
 /* "Crowd & music": the crowd, its reactions and the band, quieter or off; the whistle, snap and hits stay as they are. */
+/* Which way your offense drives with the phone on its side: toward the left (the default) suits a right thumb.
+   Portrait always drives up the screen. */
+const dirRow = () => `<div class="pb-opt pb-dir"><span>Sideways, drive</span><div class="pb-seg">${[['left', '◀ Left'], ['right', 'Right ▶']].map(([v, l]) =>
+  `<button type="button" data-pb="dir" data-v="${v}" aria-pressed="${saved.dir === v}">${l}</button>`).join('')}</div></div>`;
 const atmosHTML = () => `<label class="pb-vol"><span>Crowd &amp; music <b>${Math.round(saved.atmos * 100)}%</b></span>
   <input type="range" min="0" max="100" step="5" value="${Math.round(saved.atmos * 100)}" style="--p:${Math.round(saved.atmos * 100)}%" data-pb-vol aria-label="Crowd and music volume"></label>`;
 function onInput(e){
@@ -1969,7 +1988,7 @@ function keyup(e){ const k = KEYMAP[e.key.toLowerCase()]; if (k) keys.delete(k);
 function readKeys(){
   const u = keys.has('up'), d = keys.has('down'), l = keys.has('left'), r = keys.has('right');
   const lat = R.portrait ? (r ? 1 : 0) - (l ? 1 : 0) : (d ? 1 : 0) - (u ? 1 : 0);
-  const fwd = R.portrait ? (u ? 1 : 0) - (d ? 1 : 0) : (r ? 1 : 0) - (l ? 1 : 0);
+  const fwd = R.portrait ? (u ? 1 : 0) - (d ? 1 : 0) : ((r ? 1 : 0) - (l ? 1 : 0)) * (R.mirrored ? -1 : 1);
   input.steer = lat;
   input.qbKeys = lat || fwd ? { x: fwd, y: lat } : null;
   input.defKeys = input.qbKeys;
