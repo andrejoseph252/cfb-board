@@ -68,26 +68,28 @@ function slot(t, { size = '', right = '' } = {}){
   const rk = t.rank !== t.seed ? `<span class="po-rk" title="Committee rank">${t.rank ? '#' + t.rank : 'NR'}</span>` : '';
   return `<a class="po-t${size ? ' ' + size : ''}" href="${teamHref(t.id)}" style="--tc:${color(t)}" aria-label="Seed ${t.seed}, ${esc(t.name)}${t.rank ? `, ranked ${t.rank}` : ''}">
     <span class="po-seed">${t.seed}</span>${logo(t.logo, 'logo po-logo')}
-    <span class="po-nm"><b>${esc(t.name)}</b><span class="po-meta">${esc(t.record || '')}${rk}${tag}</span></span>
+    <span class="po-nm"><b>${esc(t.name)}</b><span class="po-meta">${size === 'bye' ? '<span class="po-bye">Bye</span>' : ''}${esc(t.record || '')}${rk}${tag}</span></span>
     ${right || (size === 'bye' && f?.title != null ? `<span class="po-r" title="Chance to win the title (ESPN FPI)"><b>${f.title < 1 ? '<1' : Math.round(f.title)}%</b><small>title</small></span>` : '')}</a>`;
 }
-/* A spot waiting on a game: the possible teams' logos, and who they are. */
-const tbd = (ts, label) => `<div class="po-tbd"><span class="po-tl">${ts.map(t => logo(t.logo, 'logo po-mini')).join('')}</span><span>${label}</span></div>`;
+/* One side of a first-round game: seed, logo, name, record (and its committee rank when that differs from the seed). */
+const side = (t, r) => `<a class="po-gt${r ? ' r' : ''}" href="${teamHref(t.id)}" style="--tc:${color(t)}">
+    <span class="po-seed">${t.seed}</span>${logo(t.logo, 'logo po-logo')}
+    <span class="po-nm"><b>${esc(t.name)}</b><span class="po-meta">${esc(t.record || '')}${t.rank !== t.seed ? `<span class="po-rk">${t.rank ? '#' + t.rank : 'NR'}</span>` : ''}</span></span></a>`;
 
-/* A quarter of the bracket: the bye team on top, the first-round game on its campus feeding the spot below it. */
+/* A quarter of the bracket, in the order it's played: the first-round game on the higher seed's campus (its two
+   sides, then each side's chance to win as one bar), then the bye team the winner goes on to face. */
 function pod(S, top){
   const a = S[8 - top], b = S[7 + top];   // 1: 8 v 9, 2: 7 v 10, 3: 6 v 11, 4: 5 v 12
   const bye = S[top - 1], p = homeWin(a, b);
-  const fav = p == null ? null : p >= .5 ? [a, p] : [b, 1 - p];
-  const odds = t => fav && fav[0] === t ? `<span class="po-r" title="Chance to win, from ESPN FPI ratings with home field"><b>${pc(fav[1])}%</b><small>to win</small></span>` : '<span class="po-r"></span>';
-  return `<section class="po-pod" aria-label="Quarterfinal: ${esc(bye.name)} and the ${a.seed}-${b.seed} winner">
-    <div class="po-h"><span>Quarterfinal</span><span class="po-bye">Bye</span></div>
+  const tags = [a, b].filter(t => t.bid).map(t => `<span class="po-bid ${t.bid.k}">${STAR}${esc(t.name)}: ${esc(t.bid.label)}</span>`).join('');
+  const wp = p == null ? '' : `<div class="po-wp" title="Chance to win, from ESPN FPI ratings with home field" style="--ca:${color(a)};--cb:${color(b)};--p:${(p * 100).toFixed(1)}%">
+      <b${p >= .5 ? ' class="fav"' : ''}>${pc(p)}%</b><span class="po-wpbar"><i></i><i></i></span><b${p < .5 ? ' class="fav"' : ''}>${pc(1 - p)}%</b></div>`;
+  return `<section class="po-pod" aria-label="First round ${a.seed} ${esc(a.name)} against ${b.seed} ${esc(b.name)}; the winner plays ${esc(bye.name)}">
+    <div class="po-h"><span>First round</span><span class="po-host">at ${esc(a.name)}</span></div>
+    <div class="po-g">${side(a)}<span class="po-vs">vs</span>${side(b, true)}</div>
+    ${wp}${tags ? `<div class="po-tags">${tags}</div>` : ''}
+    <div class="po-next" aria-hidden="true"><span>Winner faces</span></div>
     ${slot(bye, { size: 'bye' })}
-    ${tbd([a, b], `Winner of ${a.seed}&thinsp;·&thinsp;${b.seed}`)}
-    <div class="po-r1">
-      <div class="po-h sub"><span>First round</span><span>at ${esc(a.name)}</span></div>
-      ${slot(a, { right: odds(a) })}${slot(b, { right: odds(b) })}
-    </div>
   </section>`;
 }
 
@@ -119,9 +121,9 @@ function bubbleRow(t, inside){
   const c = confName(t.conf);
   return `<li class="po-b${inside ? ' in' : ''}" style="--tc:${color(t)}">
     <span class="po-brk">${t.rank ?? 'NR'}</span>${logo(t.logo, 'logo po-logo')}
-    <a class="po-bn" href="${teamHref(t.id)}"><b>${esc(t.name)}</b><span>${esc(t.record || '')}${c ? ` · ${esc(c)}` : ''}${inside ? ` · <em>${t.seed} seed</em>` : ''}</span></a>
+    <a class="po-bn" href="${teamHref(t.id)}"><b>${esc(t.name)}</b><span>${esc(t.record || '')}${c ? ` · ${esc(c)}` : ''}${inside && t.seed !== t.rank ? ` · <em>${t.seed} seed</em>` : ''}</span></a>
     ${thisWeek(t.id)}
-    ${p != null ? `<span class="po-pp" title="Chance to make the playoff (ESPN FPI)"><span class="po-ppbar"><i style="width:${Math.min(100, p)}%"></i></span><b>${p < 1 && p > 0 ? '<1' : Math.round(p)}%</b></span>` : '<span class="po-pp"></span>'}
+    ${p != null ? `<span class="po-pp" title="Chance to make the playoff (ESPN FPI)"><span class="po-ppbar"><i style="width:${Math.min(100, p)}%"></i></span><b>${p < 1 && p > 0 ? '<1' : Math.round(p)}%<small>playoff</small></b></span>` : '<span class="po-pp"></span>'}
   </li>`;
 }
 
@@ -132,21 +134,23 @@ export function viewPlayoff(){
   const F = field(c), S = F.seeds;
   if (S.length < 12) return `<div class="empty">Not enough ranked teams to build the bracket yet.</div>`;
   const released = c.date ? new Date(c.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-  const half = (x, y, side) => `<div class="po-half ${side}">${pod(S, x)}${pod(S, y)}<i class="po-join" aria-hidden="true"></i>
+  const favOf = ts => ts.map(t => [t, fpi(t.id)?.title]).filter(([, v]) => v != null).sort((m, n) => n[1] - m[1])[0]?.[0];
+  const half = (x, y, side) => `<div class="po-half ${side}">
+    <div class="po-hh"><b>${side === 'l' ? 'Top' : 'Bottom'} half</b><span>These two quarters' winners meet in a semifinal${(f => f ? ` · FPI favorite <b>${esc(f.name)}</b>` : '')(favOf([...quarter(x)(S), ...quarter(y)(S)]))}</span></div>
+    ${pod(S, x)}${pod(S, y)}<i class="po-join" aria-hidden="true"></i>
     ${stage('Semifinal', [quarter(x)(S), quarter(y)(S)], 'semi')}</div>`;
   const story = [
     ...F.jumped.map(t => `<b>${esc(t.name)}</b> (#${t.rank}) gets in as the ${t.bid.k === 'g6' ? 'top-ranked Group of Six team' : esc(t.bid.label.replace(' champ', '')) + ' leader'}`),
   ];
   const bumpNote = F.jumped.length && F.bumped.length
     ? `<p class="po-story">${story.join(' and ')}, which ${F.bumped.length === 1 ? 'bumps' : 'bump'} ${F.bumped.map(t => `<b>#${t.rank} ${esc(t.name)}</b>`).join(' and ')} out of the field.</p>` : '';
-  const champs = S.filter(t => t.bid?.k === 'champ').length;
 
   return `<div class="po">
     <header class="po-hero"><div class="po-hl">
       <div class="po-eyebrow">If the season ended today</div>
       <h2 class="po-title">The Playoff</h2>
-      <p class="po-sub">${esc(c.title || 'CFP rankings')}${released ? ` · released ${esc(released)}` : ''} · new rankings every Tuesday night</p>
-      <ul class="po-key"><li><span class="po-bid champ">${STAR}</span>${champs} projected champions + top Group of Six team get automatic bids</li><li><span class="po-kb">1–4</span>Byes, by ranking</li><li><span class="po-kb">5–12</span>First round on campus</li></ul></div>
+      <p class="po-sub">${esc(c.title || 'CFP rankings')}${released ? `, released ${esc(released)}` : ''}. New rankings every Tuesday night.</p>
+      <ul class="po-key"><li><span class="po-bid champ">${STAR}</span>Automatic bid</li><li><span class="po-kb">1–4</span>Bye</li><li><span class="po-kb">5–12</span>First round</li></ul></div>
       <ol class="po-field" aria-label="The field, by seed">${S.map(t => `<li style="--tc:${color(t)}"><a href="${teamHref(t.id)}" title="${t.seed} ${esc(t.name)}">${logo(t.logo, 'logo po-mini')}<span>${t.seed}</span></a></li>`).join('')}</ol>
     </header>
     <div class="po-bracket">

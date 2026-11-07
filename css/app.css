@@ -1949,9 +1949,6 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .po-join{display:none}
 .po-pod{display:grid;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:11px 11px 12px;min-width:0}
 .po-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 2px 2px;font:700 10.5px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.po-h.sub{letter-spacing:.1em;font-size:9.5px;padding:2px 2px 1px}
-.po-h.sub span:last-child{text-transform:none;letter-spacing:0;font-weight:600;font-size:11px}
-.po-bye{color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:3px 8px;letter-spacing:.1em}
 /* a team */
 .po-t{display:grid;grid-template-columns:22px 26px minmax(0,1fr) auto;align-items:center;gap:8px;padding:7px 10px 7px 9px;border-radius:11px;
   color:var(--ink);text-decoration:none;min-width:0;
@@ -1970,22 +1967,45 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .po-r{display:grid;justify-items:end;gap:2px;min-width:2.6em}
 .po-r b{font:800 17px/1 var(--display);font-variant-numeric:tabular-nums}
 .po-r small{font:700 8.5px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.po-t.bye{grid-template-columns:28px 36px minmax(0,1fr) auto;padding:11px 12px 11px 10px;gap:10px;border-radius:13px;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 26%,transparent),transparent 65%),var(--po-fill)}
-.po-t.bye .po-seed{font-size:28px}
-.po-t.bye .po-logo{width:36px;height:36px}
-.po-t.bye .po-nm b{font-size:17px}
-.po-t.bye .po-r b{font-size:20px}
-/* the spot the first-round winner takes, and the game that fills it */
-.po-tbd{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1.5px dashed var(--line);border-radius:11px;font-size:12.5px;color:var(--muted)}
-.po-tl{display:flex;gap:2px}
 .po-mini{width:20px;height:20px}
-.po-r1{position:relative;display:grid;gap:5px;margin-top:2px;padding-left:16px}
-.po-r1::before{content:"";position:absolute;left:5px;top:-8px;height:calc(50% + 8px);width:8px;border-left:2px solid var(--line);border-bottom:2px solid var(--line);border-bottom-left-radius:8px}
-.po-r1 .po-t{grid-template-columns:20px 22px minmax(0,1fr) auto;padding:6px 9px 6px 8px}
-.po-r1 .po-seed{font-size:17px}
-.po-r1 .po-logo{width:22px;height:22px}
-.po-r1 .po-nm b{font-size:13.5px}
+.po-bye{font:800 9px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:3px 6px}
+/* the bye team, the quarter's anchor */
+.po-t.bye{grid-template-columns:26px 34px minmax(0,1fr) auto;padding:10px 12px 10px 10px;gap:10px;border-radius:13px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 26%,transparent),transparent 65%),var(--po-fill)}
+.po-t.bye .po-seed{font-size:26px}
+.po-t.bye .po-logo{width:34px;height:34px}
+.po-t.bye .po-nm b{font-size:16.5px}
+.po-t.bye .po-r b{font-size:19px}
+/* the first-round game: two sides facing each other, then each side's chance as one bar */
+.po-h .po-host{text-transform:none;letter-spacing:0;font-weight:600;font-size:11.5px}
+.po-g{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px}
+.po-g .po-vs{font-size:9.5px}
+.po-gt{display:grid;grid-template-columns:auto 24px minmax(0,1fr);align-items:center;gap:6px;min-width:0;padding:7px 8px;border-radius:11px;color:var(--ink);text-decoration:none;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 16%,transparent),transparent 70%),var(--po-fill);box-shadow:inset 3px 0 0 var(--tc);transition:transform .15s}
+.po-gt.r{grid-template-columns:minmax(0,1fr) 24px auto;text-align:right;
+  background:linear-gradient(270deg,color-mix(in srgb,var(--tc) 16%,transparent),transparent 70%),var(--po-fill);box-shadow:inset -3px 0 0 var(--tc)}
+.po-gt.r .po-seed{order:3} .po-gt.r .po-logo{order:2} .po-gt.r .po-nm{order:1}
+.po-gt.r .po-meta{justify-content:flex-end}
+.po-gt:hover{transform:translateY(-1px)} .po-gt:hover b{text-decoration:underline;text-underline-offset:2px}
+.po-gt .po-seed{font-size:17px;min-width:.9em}
+.po-gt .po-logo{width:24px;height:24px}
+.po-gt .po-nm b{font-size:13.5px}
+.po-wp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:2px 2px 0}
+.po-wp b{font:800 14px/1 var(--display);color:var(--muted);font-variant-numeric:tabular-nums;min-width:2.4em}
+.po-wp b:last-child{text-align:right}
+.po-wp b.fav{color:var(--ink)}
+.po-wpbar{display:flex;height:5px;gap:2px}
+.po-wpbar i{display:block;border-radius:999px;background:var(--ca)} .po-wpbar i:first-child{width:var(--p)} .po-wpbar i:last-child{flex:1;background:var(--cb)}
+.po-tags{display:flex;flex-wrap:wrap;gap:4px 10px;padding:0 2px}
+.po-tags .po-bid{text-transform:none;letter-spacing:.01em;font-size:11px;font-weight:700}
+.po-next{position:relative;display:flex;justify-content:center;margin:2px 0 0;height:18px}
+.po-next::before{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:2px dashed var(--line)}
+.po-next span{position:relative;align-self:center;background:var(--surface);padding:0 8px;font:700 9.5px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+/* phones and tablets: each half says what it is; wide screens draw its semifinal instead */
+.po-hh{grid-column:1/-1;display:grid;gap:3px;padding:6px 2px 0}
+.po-hh > b{font:800 20px/1 var(--display);letter-spacing:.01em;text-transform:uppercase}
+.po-hh span{font-size:12.5px;color:var(--muted)} .po-hh span b{color:var(--ink);font-weight:700}
+.po-half .po-stage.semi{display:none}
 /* semifinals and the title game */
 .po-stage{position:relative;display:grid;justify-items:center;gap:8px;text-align:center;padding:12px 10px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
 .po-sn{font:700 10.5px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
@@ -2008,7 +2028,6 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
 .po-stage.title .po-mini{width:30px;height:30px}
 @media (min-width:700px){
   .po-half{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .po-half .po-stage.semi{grid-column:1/-1}
 }
 /* wide: the halves mirror into the title game */
 @media (min-width:1200px){
@@ -2017,10 +2036,11 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
   .po-half{row-gap:14px;column-gap:0}
   .po-half.l{grid-template-columns:minmax(0,1fr) 26px 150px}
   .po-half.r{grid-template-columns:150px 26px minmax(0,1fr)}
-  .po-half > .po-pod:nth-child(1){grid-row:1} .po-half > .po-pod:nth-child(2){grid-row:2}
+  .po-half > .po-pod:nth-of-type(1){grid-row:1} .po-half > .po-pod:nth-of-type(2){grid-row:2}
   .po-half.l > .po-pod{grid-column:1} .po-half.r > .po-pod{grid-column:3}
   .po-half .po-join{display:block;position:relative;grid-row:1/3;grid-column:2}
-  .po-half .po-stage.semi{grid-row:1/3;grid-column:3;align-self:center}
+  .po-hh{display:none}
+  .po-half .po-stage.semi{display:grid;grid-row:1/3;grid-column:3;align-self:center}
   .po-half.r .po-stage.semi{grid-column:1}
   .po-join::before{content:"";position:absolute;top:25%;bottom:25%;left:0;right:50%;border:2px solid var(--line);border-left:0;border-radius:0 12px 12px 0}
   .po-join::after{content:"";position:absolute;top:50%;left:50%;right:0;border-top:2px solid var(--line)}
@@ -2058,7 +2078,8 @@ a.po-wk:hover{text-decoration:underline;text-underline-offset:2px}
 .po-pp{display:grid;grid-template-columns:minmax(0,1fr) 3em;align-items:center;gap:8px}
 .po-ppbar{height:6px;border-radius:999px;background:var(--soft);overflow:hidden}
 .po-ppbar i{display:block;height:100%;border-radius:inherit;background:var(--tc)}
-.po-pp b{font:800 15px/1 var(--display);text-align:right;font-variant-numeric:tabular-nums}
+.po-pp b{display:grid;justify-items:end;gap:2px;font:800 15px/1 var(--display);text-align:right;font-variant-numeric:tabular-nums}
+.po-pp small{font:700 8.5px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .po-bh{padding:8px 2px 0;font:700 10.5px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--good)}
 .po-bh:first-child{padding-top:0}
 .po-bh.out{padding-top:0;color:var(--muted)}
@@ -2067,9 +2088,19 @@ a.po-wk:hover{text-decoration:underline;text-underline-offset:2px}
 .po-cut span{position:relative;padding:4px 12px;border-radius:999px;background:var(--x-hi);color:var(--bg);font:800 10.5px/1 var(--body);letter-spacing:.18em;text-transform:uppercase;
   box-shadow:0 0 0 4px var(--bg),0 4px 14px color-mix(in srgb,var(--x-hi) 35%,transparent)}
 @media (max-width:640px){
-  .po-title{font-size:40px}
-  .po-hero{padding:16px 16px 14px}
-  .po-b{grid-template-columns:24px 26px minmax(0,1fr) 78px;row-gap:6px;padding:9px 10px}
+  .po-title{font-size:36px;margin:6px 0 4px}
+  .po-hero{padding:14px 14px 12px;margin-bottom:14px}
+  .po-sub{font-size:12px}
+  .po-key{margin-top:10px;gap:6px 12px;font-size:11.5px}
+  .po-field{margin-top:12px;gap:5px}
+  .po-field a{padding:6px 0 5px;border-radius:10px}
+  .po-field .po-mini{width:24px;height:24px}
+  .po-field span{font-size:12.5px}
+  .po-pod{padding:10px}
+  .po-final{grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}
+  .po-cup svg{width:40px;height:40px}
+  .po-b{grid-template-columns:24px 26px minmax(0,1fr) auto;row-gap:6px;padding:9px 10px}
   .po-b .po-wk{grid-column:3/5;grid-row:2}
-  .po-pp{grid-template-columns:minmax(0,1fr) 2.6em;gap:6px}
+  .po-pp{grid-template-columns:auto}
+  .po-ppbar{display:none}
 }
