@@ -1,6 +1,132 @@
 {
- "updated": "2026-11-07T10:43:59+00:00",
+ "updated": "2026-11-07T16:40:22+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Maryland @ Purdue (12:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqagt8/game_thread_maryland_purdue_1230_pm_et/",
+   "published": "2026-11-07T16:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Maryland",
+    "Purdue"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Duke @ NC State (12:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqagsk/game_thread_duke_nc_state_1230_pm_et/",
+   "published": "2026-11-07T16:30:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Duke",
+    "NC State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Non-D1 Games \u2014 Saturday, November 7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9r1b/game_thread_nond1_games_saturday_november_7/",
+   "published": "2026-11-07T16:00:19+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Tulsa @ Tulane (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9r09/game_thread_tulsa_tulane_1200_pm_et/",
+   "published": "2026-11-07T16:00:18+00:00",
+   "gameId": null,
+   "teams": [
+    "Tulsa",
+    "Tulane"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] UCLA @ Minnesota (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qza/game_thread_ucla_minnesota_1200_pm_et/",
+   "published": "2026-11-07T16:00:17+00:00",
+   "gameId": null,
+   "teams": [
+    "UCLA",
+    "Minnesota"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Florida State @ Boston College (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qy6/game_thread_florida_state_boston_college_1200_pm/",
+   "published": "2026-11-07T16:00:15+00:00",
+   "gameId": null,
+   "teams": [
+    "Florida State",
+    "Boston College"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Clemson @ Syracuse (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qxe/game_thread_clemson_syracuse_1200_pm_et/",
+   "published": "2026-11-07T16:00:14+00:00",
+   "gameId": null,
+   "teams": [
+    "Clemson",
+    "Syracuse"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Iowa State @ Baylor (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qwo/game_thread_iowa_state_baylor_1200_pm_et/",
+   "published": "2026-11-07T16:00:13+00:00",
+   "gameId": null,
+   "teams": [
+    "Iowa State",
+    "Baylor"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] BYU @ Utah (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qw0/game_thread_byu_utah_1200_pm_et/",
+   "published": "2026-11-07T16:00:11+00:00",
+   "gameId": null,
+   "teams": [
+    "BYU",
+    "Utah"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Texas @ Missouri (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qv6/game_thread_texas_missouri_1200_pm_et/",
+   "published": "2026-11-07T16:00:10+00:00",
+   "gameId": null,
+   "teams": [
+    "Texas",
+    "Missouri"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] FCS Games \u2014 Saturday, November 7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qug/game_thread_fcs_games_saturday_november_7/",
+   "published": "2026-11-07T16:00:09+00:00",
+   "gameId": null,
+   "teams": null
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] North Carolina @ UConn (12:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xq9qti/game_thread_north_carolina_uconn_1200_pm_et/",
+   "published": "2026-11-07T16:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "North Carolina",
+    "UConn"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Arizona Defeats TCU 29-28",
