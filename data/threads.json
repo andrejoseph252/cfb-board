@@ -1,6 +1,127 @@
 {
- "updated": "2026-11-07T20:35:03+00:00",
+ "updated": "2026-11-07T22:15:17+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Kentucky @ Tennessee (6:15 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqig7e/game_thread_kentucky_tennessee_615_pm_et/",
+   "published": "2026-11-07T22:15:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Kentucky",
+    "Tennessee"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Boise State @ Colorado State (6:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqi432/game_thread_boise_state_colorado_state_600_pm_et/",
+   "published": "2026-11-07T22:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Boise State",
+    "Colorado State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Oklahoma State Defeats Kansas State 66-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqhgzr/postgame_thread_oklahoma_state_defeats_kansas/",
+   "published": "2026-11-07T21:30:17+00:00",
+   "gameId": "401856854",
+   "teams": [
+    "Oklahoma State",
+    "Kansas State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Old Dominion Defeats Coastal Carolina 21-8",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqhf88/postgame_thread_old_dominion_defeats_coastal/",
+   "published": "2026-11-07T21:28:10+00:00",
+   "gameId": "401869945",
+   "teams": [
+    "Old Dominion",
+    "Coastal Carolina"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Auburn Defeats Arkansas 26-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqhc01/postgame_thread_auburn_defeats_arkansas_2623/",
+   "published": "2026-11-07T21:24:10+00:00",
+   "gameId": "401856738",
+   "teams": [
+    "Auburn",
+    "Arkansas"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Duke Defeats NC State 41-3",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqgspw/postgame_thread_duke_defeats_nc_state_413/",
+   "published": "2026-11-07T21:00:17+00:00",
+   "gameId": "401858286",
+   "teams": [
+    "Duke",
+    "NC State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] South Alabama @ Louisiana (5:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqgshz/game_thread_south_alabama_louisiana_500_pm_et/",
+   "published": "2026-11-07T21:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "South Alabama",
+    "Louisiana"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Maryland Defeats Purdue 34-29",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqglfa/postgame_thread_maryland_defeats_purdue_3429/",
+   "published": "2026-11-07T20:51:13+00:00",
+   "gameId": "401858515",
+   "teams": [
+    "Maryland",
+    "Purdue"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UCLA Defeats Minnesota 34-20",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqgkod/postgame_thread_ucla_defeats_minnesota_3420/",
+   "published": "2026-11-07T20:50:17+00:00",
+   "gameId": "401858512",
+   "teams": [
+    "UCLA",
+    "Minnesota"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas Defeats Missouri 34-20",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqggny/postgame_thread_texas_defeats_missouri_3420/",
+   "published": "2026-11-07T20:45:16+00:00",
+   "gameId": "401856743",
+   "teams": [
+    "Texas",
+    "Missouri"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Baylor Defeats Iowa State 42-31",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqgaw0/postgame_thread_baylor_defeats_iowa_state_4231/",
+   "published": "2026-11-07T20:38:10+00:00",
+   "gameId": "401856853",
+   "teams": [
+    "Baylor",
+    "Iowa State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Utah Defeats BYU 28-20",
@@ -2071,17 +2192,6 @@
    "teams": [
     "Jacksonville State",
     "New Mexico State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Kennesaw State @ Middle Tennessee (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xi1x9c/game_thread_kennesaw_state_middle_tennessee_700/",
-   "published": "2026-10-28T22:00:10+00:00",
-   "gameId": null,
-   "teams": [
-    "Kennesaw State",
-    "Middle Tennessee"
    ]
   }
  ],
