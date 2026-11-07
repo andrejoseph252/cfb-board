@@ -17,7 +17,6 @@ import { viewPicks } from './views/picks.js';
 import { syncAction, syncInput, syncPress } from './views/game.js';
 import { rememberQuarter } from './views/drives.js';
 import { viewMyTeam, picking, pickList } from './views/teamtab.js';
-import { faceoff } from './views/faceoff.js';
 import { news, hasUnseen, setNewsFilter, markRead, toggleStory } from './news.js';
 
 const TABS = [
@@ -109,7 +108,6 @@ function renderMain(){
   if (html === lastMain) return;
   const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq', y = window.scrollY;
   v.innerHTML = html; lastMain = html;
-  faceoff(v);   // Best games: face-off cards, before the browser paints
   // A refresh never moves the page (phones can lose the spot when the tapped element is replaced); a new tab
   // scrolls to the top in setTab, before this runs.
   if (window.scrollY !== y) window.scrollTo(0, y);
