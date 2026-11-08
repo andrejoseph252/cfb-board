@@ -1,6 +1,39 @@
 {
- "updated": "2026-11-08T05:20:47+00:00",
+ "updated": "2026-11-08T06:45:59+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas Tech Defeats West Virginia 53-48",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqrof1/postgame_thread_texas_tech_defeats_west_virginia/",
+   "published": "2026-11-08T06:22:13+00:00",
+   "gameId": "401856856",
+   "teams": [
+    "Texas Tech",
+    "West Virginia"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Hawai'i Defeats UTEP 17-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqr65l/postgame_thread_hawaii_defeats_utep_1714/",
+   "published": "2026-11-08T05:51:11+00:00",
+   "gameId": "401864532",
+   "teams": [
+    "Hawai'i",
+    "UTEP"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Utah State Defeats Fresno State 17-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqr3a9/postgame_thread_utah_state_defeats_fresno_state/",
+   "published": "2026-11-08T05:46:13+00:00",
+   "gameId": "401860913",
+   "teams": [
+    "Utah State",
+    "Fresno State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Liberty Defeats New Mexico State 30-14",
