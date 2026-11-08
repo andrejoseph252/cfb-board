@@ -1,6 +1,28 @@
 {
- "updated": "2026-11-08T06:45:59+00:00",
+ "updated": "2026-11-08T12:11:00+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas State Defeats Oregon State 42-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqshlb/postgame_thread_texas_state_defeats_oregon_state/",
+   "published": "2026-11-08T07:14:11+00:00",
+   "gameId": "401860912",
+   "teams": [
+    "Texas State",
+    "Oregon State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Wyoming Defeats UNLV 41-35",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqsfxr/postgame_thread_wyoming_defeats_unlv_4135/",
+   "published": "2026-11-08T07:11:11+00:00",
+   "gameId": "401864535",
+   "teams": [
+    "Wyoming",
+    "UNLV"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Texas Tech Defeats West Virginia 53-48",
