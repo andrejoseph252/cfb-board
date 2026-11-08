@@ -1,6 +1,149 @@
 {
- "updated": "2026-11-08T00:02:27+00:00",
+ "updated": "2026-11-08T01:28:19+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisiana Defeats South Alabama 28-26",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqmagn/postgame_thread_louisiana_defeats_south_alabama/",
+   "published": "2026-11-08T01:21:11+00:00",
+   "gameId": "401869968",
+   "teams": [
+    "Louisiana",
+    "South Alabama"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] FIU Defeats Missouri State 23-20",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqlyho/postgame_thread_fiu_defeats_missouri_state_2320/",
+   "published": "2026-11-08T01:04:12+00:00",
+   "gameId": "401871074",
+   "teams": [
+    "FIU",
+    "Missouri State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] North Texas Defeats Rice 52-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqlhqy/postgame_thread_north_texas_defeats_rice_5223/",
+   "published": "2026-11-08T00:40:21+00:00",
+   "gameId": "401862821",
+   "teams": [
+    "North Texas",
+    "Rice"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Vanderbilt Defeats Mississippi State 25-23",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqlelq/postgame_thread_vanderbilt_defeats_mississippi/",
+   "published": "2026-11-08T00:36:10+00:00",
+   "gameId": "401856742",
+   "teams": [
+    "Vanderbilt",
+    "Mississippi State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Wisconsin Defeats Rutgers 31-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqlb00/postgame_thread_wisconsin_defeats_rutgers_3110/",
+   "published": "2026-11-08T00:31:12+00:00",
+   "gameId": "401858517",
+   "teams": [
+    "Wisconsin",
+    "Rutgers"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Oregon Defeats Ohio State 41-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1xql83g/postgame_thread_oregon_defeats_ohio_state_4128/",
+   "published": "2026-11-08T00:27:11+00:00",
+   "gameId": "401858514",
+   "teams": [
+    "Oregon",
+    "Ohio State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UCF Defeats Kansas 33-32",
+   "url": "https://www.reddit.com/r/CFB/comments/1xql7cp/postgame_thread_ucf_defeats_kansas_3332/",
+   "published": "2026-11-08T00:26:11+00:00",
+   "gameId": "401856850",
+   "teams": [
+    "UCF",
+    "Kansas"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisiana Tech Defeats Troy 41-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1xql7ch/postgame_thread_louisiana_tech_defeats_troy_4117/",
+   "published": "2026-11-08T00:26:11+00:00",
+   "gameId": "401871098",
+   "teams": [
+    "Louisiana Tech",
+    "Troy"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Houston Defeats Cincinnati 31-24",
+   "url": "https://www.reddit.com/r/CFB/comments/1xql3rt/postgame_thread_houston_defeats_cincinnati_3124/",
+   "published": "2026-11-08T00:21:12+00:00",
+   "gameId": "401856851",
+   "teams": [
+    "Houston",
+    "Cincinnati"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] San Jos\u00e9 State Defeats Northern Illinois 30-19",
+   "url": "https://www.reddit.com/r/CFB/comments/1xql3rm/postgame_thread_san_jos\u00e9_state_defeats_northern/",
+   "published": "2026-11-08T00:21:12+00:00",
+   "gameId": "401864534",
+   "teams": [
+    "San Jos\u00e9 State",
+    "Northern Illinois"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Middle Tennessee Defeats WKU 45-42",
+   "url": "https://www.reddit.com/r/CFB/comments/1xql29b/postgame_thread_middle_tennessee_defeats_wku_4542/",
+   "published": "2026-11-08T00:19:11+00:00",
+   "gameId": "401871076",
+   "teams": [
+    "Middle Tennessee",
+    "WKU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Alabama Defeats LSU 31-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqks1d/postgame_thread_alabama_defeats_lsu_3113/",
+   "published": "2026-11-08T00:05:14+00:00",
+   "gameId": "401856740",
+   "teams": [
+    "Alabama",
+    "LSU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Wake Forest Defeats Merrimack 77-0",
+   "url": "https://www.reddit.com/r/CFB/comments/1xqkr8s/postgame_thread_wake_forest_defeats_merrimack_770/",
+   "published": "2026-11-08T00:04:13+00:00",
+   "gameId": "401858290",
+   "teams": [
+    "Wake Forest",
+    "Merrimack"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Penn State Defeats Washington 28-25",
