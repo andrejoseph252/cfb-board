@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-08T18:34:29+00:00",
+ "updated": "2026-11-08T22:33:17+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2698,50 +2698,6 @@
    "teams": [
     "Miles",
     "Fort Valley State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Troy @ James Madison (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xiyc57/game_thread_troy_james_madison_730_pm_et/",
-   "published": "2026-10-29T22:30:08+00:00",
-   "gameId": null,
-   "teams": [
-    "Troy",
-    "James Madison"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] FAU @ North Texas (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xiyc4c/game_thread_fau_north_texas_730_pm_et/",
-   "published": "2026-10-29T22:30:06+00:00",
-   "gameId": null,
-   "teams": [
-    "FAU",
-    "North Texas"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Fort Valley State @ Miles (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xixlev/game_thread_fort_valley_state_miles_700_pm_et/",
-   "published": "2026-10-29T22:00:14+00:00",
-   "gameId": null,
-   "teams": [
-    "Fort Valley State",
-    "Miles"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] South Carolina State @ Morgan State (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xixldw/game_thread_south_carolina_state_morgan_state_700/",
-   "published": "2026-10-29T22:00:12+00:00",
-   "gameId": null,
-   "teams": [
-    "South Carolina State",
-    "Morgan State"
    ]
   }
  ],
