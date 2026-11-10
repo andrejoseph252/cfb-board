@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T21:08:57+00:00",
+ "updated": "2026-11-10T03:51:32+00:00",
  "threads": [
   {
    "kind": "post",
@@ -2569,91 +2569,6 @@
    "teams": [
     "Sacramento State",
     "Kent State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Baylor Defeats UCF 41-9",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjzcg9/postgame_thread_baylor_defeats_ucf_419/",
-   "published": "2026-10-31T03:05:12+00:00",
-   "gameId": "401856844",
-   "teams": [
-    "Baylor",
-    "UCF"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Tulane Defeats Charlotte 38-31",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjz6s9/postgame_thread_tulane_defeats_charlotte_3831/",
-   "published": "2026-10-31T02:57:13+00:00",
-   "gameId": "401862813",
-   "teams": [
-    "Tulane",
-    "Charlotte"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Dartmouth Defeats Harvard 24-14",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjyfkl/postgame_thread_dartmouth_defeats_harvard_2414/",
-   "published": "2026-10-31T02:18:19+00:00",
-   "gameId": "401867838",
-   "teams": [
-    "Dartmouth",
-    "Harvard"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Kent State @ Sacramento State (10:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjxgdx/game_thread_kent_state_sacramento_state_1030_pm_et/",
-   "published": "2026-10-31T01:30:07+00:00",
-   "gameId": null,
-   "teams": [
-    "Kent State",
-    "Sacramento State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Baylor @ UCF (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjtf5e/game_thread_baylor_ucf_730_pm_et/",
-   "published": "2026-10-30T22:30:07+00:00",
-   "gameId": null,
-   "teams": [
-    "Baylor",
-    "UCF"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Non-D1 Games \u2014 Friday, October 30",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjspu3/game_thread_nond1_games_friday_october_30/",
-   "published": "2026-10-30T22:00:12+00:00",
-   "gameId": null,
-   "teams": null
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Harvard @ Dartmouth (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjspt6/game_thread_harvard_dartmouth_700_pm_et/",
-   "published": "2026-10-30T22:00:11+00:00",
-   "gameId": null,
-   "teams": [
-    "Harvard",
-    "Dartmouth"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Tulane @ Charlotte (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xjsps8/game_thread_tulane_charlotte_700_pm_et/",
-   "published": "2026-10-30T22:00:09+00:00",
-   "gameId": null,
-   "teams": [
-    "Tulane",
-    "Charlotte"
    ]
   }
  ],
