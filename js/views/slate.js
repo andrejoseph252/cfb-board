@@ -1,7 +1,7 @@
 import { esc, norm, etDay, etMinutes, inET } from '../util.js';
 import { state } from '../state.js';
 import { pins } from '../picks.js';
-import { excitement, isHot, finalExcitement } from '../excitement.js';
+import { excitement, isHot, finalExcitement, TIERS as HYPE } from '../excitement.js';
 import { lineFor } from '../lines.js';
 import { recapBanner } from './recap.js';
 import { mySide } from '../myteam.js';
@@ -23,7 +23,7 @@ export function viewWeek(){
   // Best games need every upcoming game's score. Until those are in (a first visit; later ones have them kept), the
   // section holds its place with blank cards, so it arrives once and doesn't push the rest of the board down.
   const pre = gs.filter(g => g.state === 'pre'), waiting = predsPending();
-  const must = waiting ? [] : pre.map(g => [g, excitement(g).score]).filter(([, s]) => s >= 65).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
+  const must = waiting ? [] : pre.map(g => [g, excitement(g).score]).filter(([, s]) => s >= HYPE[1][0]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
   let h = '';
   if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. An orange outline marks the tightest games late.</p>' + grid(live, 'live');
   // The one-line recap bar opens on tap; it sits under live games and above Best games.

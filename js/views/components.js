@@ -247,14 +247,16 @@ function oddsBlock(g){
 /* Remember which breakdowns are expanded so live re-renders don't collapse them. */
 export const openXc = new Set();
 
-/* Two-word drivers for the collapsed excitement row: what's pushing the score up (or down). */
+/* Two short reasons for the collapsed hype row: what makes this a big game (or not), most telling first. */
 function drivers(x){
   const r = k => { const p = x.parts.find(q => q.k === k); return p ? p.pts / p.max : 0; };
+  const why = k => x.parts.find(q => q.k === k)?.why || '';
   const t = [];
+  if (x.rival) t.push('Rivalry');
+  if (/both near the top/.test(why('Stakes'))) t.push('Conference race');
+  if (r('Rankings') >= .75) t.push(/vs/.test(why('Rankings')) ? 'Top-10 matchup' : 'Top-5 team');
   if (r('Matchup quality') >= .75) t.push('Top teams');
-  if (r('Competitiveness') >= .75) t.push('Close odds'); else if (r('Competitiveness') <= .3) t.push('Lopsided');
-  if (r('Scoring pace') >= .7) t.push('Shootout'); else if (r('Scoring pace') <= .2) t.push('Low scoring');
-  if (r('Stakes') >= .8) t.push('Big stakes');
+  if (r('Close line') >= .8) t.push('Close line'); else if (r('Close line') <= .3) t.push('Lopsided');
   return t.slice(0, 2).join(' · ');
 }
 const CHEV = '<svg class="xc-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -286,9 +288,9 @@ export function excitementBadge(g, { open = false } = {}){
   if (g.state === 'post') return '';
   if (g.state === 'in') return liveExcitement(g);
   const x = excitement(g);
-  if (x.pending) return '<div class="xc pending"><span class="xc-sum">Excitement <b>…</b></span></div>';
+  if (x.pending) return '<div class="xc pending"><span class="xc-sum">Hype <b>…</b></span></div>';
   const [, label, cls] = x.tier;
-  return `<details class="xc" data-xc="${esc(g.id)}"${open || openXc.has(g.id) ? ' open' : ''}><summary class="xc-sum" title="Excitement ${x.score}"><span class="xc-score ${cls}">${x.score}</span>
+  return `<details class="xc" data-xc="${esc(g.id)}"${open || openXc.has(g.id) ? ' open' : ''}><summary class="xc-sum" title="Hype ${x.score} of 100: how big a game this is"><span class="xc-score ${cls}">${x.score}</span>
       <b class="xc-label">${esc(label)}</b><span class="xc-tags">${esc(drivers(x))}</span>${CHEV}</summary>
     <ul class="xc-parts">${x.parts.map(p => `<li><span class="xc-k">${esc(p.k)}</span>
       <span class="xc-bar"><i style="width:${(p.pts / p.max) * 100}%"></i></span>

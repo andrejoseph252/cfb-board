@@ -6,7 +6,7 @@ import * as api from '../api.js';
 import { parseSchedule } from '../models.js';
 import { marketsFor, realMarket, sourceLabel } from '../markets.js';
 import { lineFor } from '../lines.js';
-import { excitement } from '../excitement.js';
+import { excitement, TIERS } from '../excitement.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
 import { useData } from '../resource.js';
 import { logo, panel, barColors, ballClass, ballIcon, stepPath, teamHref, gameHref } from './components.js';
@@ -130,14 +130,14 @@ export function theLine(g, s){
 export function hype(g){
   const x = excitement(g);
   if (x.pending) return panel('Hype meter', '<p class="muted">Scoring this matchup…</p>');
-  const [, label, cls] = x.tier, a = Math.PI * (1 - x.score / 100);
+  const [, label, cls] = x.tier, a = Math.PI * (1 - x.score / 100), cut = TIERS.map(t => t[0]);   // the gauge's bands are the tiers
   const R = 80, cx = 100, cy = 92, px = cx + R * Math.cos(a), py = cy - R * Math.sin(a);
   const arc = (from, to, c) => {
     const f = Math.PI * (1 - from / 100), t = Math.PI * (1 - to / 100);
     return `<path d="M${cx + R * Math.cos(f)},${cy - R * Math.sin(f)} A${R},${R} 0 0 1 ${cx + R * Math.cos(t)},${cy - R * Math.sin(t)}" stroke="${c}" />`;
   };
-  const gauge = `<svg class="gauge" viewBox="0 0 200 104" role="img" aria-label="Excitement ${x.score} of 100, ${esc(label)}">
-    <g fill="none" stroke-width="14">${arc(0, 44.5, 'var(--x-lo)')}${arc(45.5, 64.5, 'var(--x-mid)')}${arc(65.5, 79.5, 'color-mix(in srgb,var(--x-hi) 70%,var(--x-mid))')}${arc(80.5, 100, 'var(--x-hi)')}</g>
+  const gauge = `<svg class="gauge" viewBox="0 0 200 104" role="img" aria-label="Hype ${x.score} of 100, ${esc(label)}">
+    <g fill="none" stroke-width="14">${arc(0, cut[2] - .5, 'var(--x-lo)')}${arc(cut[2] + .5, cut[1] - .5, 'var(--x-mid)')}${arc(cut[1] + .5, cut[0] - .5, 'color-mix(in srgb,var(--x-hi) 70%,var(--x-mid))')}${arc(cut[0] + .5, 100, 'var(--x-hi)')}</g>
     <g fill="none" stroke="var(--surface)" stroke-width="16" opacity=".55">${x.score < 100 ? arc(Math.min(99.5, x.score + .5), 100, 'var(--surface)') : ''}</g>
     <line x1="${cx}" y1="${cy}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/>
     <circle cx="${cx}" cy="${cy}" r="7" fill="var(--ink)"/></svg>`;

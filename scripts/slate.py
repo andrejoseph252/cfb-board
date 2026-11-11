@@ -45,7 +45,8 @@ def odds(o):
 def competitor(k):
     out = pick(k, "homeAway", "curatedRank", "rank", "score", "winner")
     if k.get("records"):
-        out["records"] = [pick(k["records"][0], "summary")]
+        # Overall first (the board's record), plus the conference record (the pregame score's conference race).
+        out["records"] = [pick(k["records"][0], "summary")] + [pick(r, "summary", "type") for r in k["records"][1:] if r.get("type") == "vsconf"]
     t = k.get("team") or {}
     out["team"] = pick(t, "id", "location", "shortDisplayName", "displayName", "abbreviation", "logo", "color", "alternateColor", "conferenceId")
     if not t.get("logo") and t.get("logos"):

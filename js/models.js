@@ -27,6 +27,7 @@ function team(tm, x){
     conf: tm.conferenceId != null ? Number(tm.conferenceId) : null,
     rank: (rk && rk <= 25) ? rk : null, score: score ?? null,
     record: x.records?.[0]?.summary ?? x.record?.[0]?.summary ?? null,
+    confRecord: (x.records || x.record || []).find(r => r.type === 'vsconf')?.summary ?? null,
     winner: !!x.winner
   };
 }

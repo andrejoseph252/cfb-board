@@ -1,18 +1,29 @@
 /*
- Pregame excitement, 0-100, as an itemized sum so every point is explainable:
-   Matchup quality  up to 55  ESPN's Matchup Quality (FPI-based: how good both teams are and how evenly matched)
-   Competitiveness  up to 25  closeness of the market price to 50/50
-   Scoring pace     up to 10  sportsbook over/under, else both teams' points per game
-   Stakes           up to 10  ranked teams, conference game, both teams with 1 loss or fewer
+ The pregame score ("Hype", 0-100): how big a game this is, the ones everyone wants to watch and the ones that
+ decide something, as an itemized sum so every point is explainable:
+   Matchup quality  up to 40  ESPN's Matchup Quality (FPI-based: how good both teams are and how evenly matched)
+   Close line       up to 20  how near the market price is to 50/50: a close game decides something even when it isn't
+                              a headliner (Wake Forest–SMU), and it's the best sign the game will be worth watching
+   Rankings         up to 15  how high the better team is ranked, and the other one too if it's ranked
+   Stakes           up to 15  a conference race (both teams near the top of the conference), a conference game, both
+                              teams with one loss or fewer
+   Rivalry          up to 10  a traditional rivalry (js/rivals.js)
+ Weights were set by replaying weeks 1-10 of 2026 (scripts/hype_backtest.mjs) against two things: how much money was
+ traded on each game (attention) and how close and dramatic it turned out. These keep both about where the old
+ formula had them (0.68 and 0.43 rank correlation) while catching rivalries and conference races it missed; giving
+ quality more weight finds the most-bet games slightly better but makes the score blind to close games.
 */
 import * as api from './api.js';
 import { state, invalidateSoon } from './state.js';
 import { primaryMarket, sourceLabel } from './markets.js';
-import { clamp, parseRecord, pct } from './util.js';
+import { parseRecord, pct } from './util.js';
+import { isRivalry } from './rivals.js';
 
 const cache = new Map();
 
-export const TIERS = [[80, 'Must watch', 'hi'], [65, 'Worth watching', 'mid'], [45, 'Decent', 'lo'], [0, 'Low stakes', 'min']];
+/* Cutoffs set so the tiers keep their share of games: Must watch the top ~5% (two or three a week), Worth watching
+   the next ~13%, Decent the next third. */
+export const TIERS = [[62, 'Must watch', 'hi'], [48, 'Worth watching', 'mid'], [32, 'Decent', 'lo'], [0, 'Low stakes', 'min']];
 export const tierOf = s => TIERS.find(([t]) => s >= t);
 
 function fpiQuality(g){
@@ -25,6 +36,10 @@ function fpiQuality(g){
   const bal = p != null ? 1 - Math.abs(2 * p - 1) : 0.5;
   return 100 * s * (0.6 + 0.4 * bal);
 }
+
+/* In its conference's race: at least two conference wins and no more than one conference loss (or unbeaten in it). */
+const inRace = t => { const r = parseRecord(t.confRecord); return !!r && r.l <= 1 && r.w >= (r.l ? 2 : 1); };
+const nearRace = t => { const r = parseRecord(t.confRecord); return !!r && r.l <= 2 && r.w >= 2; };
 
 export function excitement(g){
   const key = g.id;
@@ -39,39 +54,42 @@ export function excitement(g){
   if (mq != null) mqNote = `ESPN Matchup Quality ${mq.toFixed(0)}/100`;
   else { mq = fpiQuality(g); mqNote = mq != null ? `Estimated from FPI ranks (ESPN rating unavailable): ${mq.toFixed(0)}/100` : null; }
   if (mq == null){ mq = 30; mqNote = 'No FPI or ESPN rating for these teams, assumed below average'; }
-  parts.push({ k: 'Matchup quality', pts: 0.55 * mq, max: 55, why: mqNote });
+  parts.push({ k: 'Matchup quality', pts: 0.4 * mq, max: 40, why: mqNote });
 
-  // 2. Competitiveness
+  // 2. Close line
   const m = primaryMarket(g);
   let p = m?.pHome, pSrc = m ? sourceLabel(m.source) : null;
   if (p == null && pred?.pHome != null){ p = pred.pHome; pSrc = 'ESPN FPI projection'; }
   if (p != null){
     const fav = p >= .5 ? g.home : g.away, fp = Math.max(p, 1 - p);
-    parts.push({ k: 'Competitiveness', pts: 25 * (1 - Math.abs(2 * p - 1)), max: 25,
+    parts.push({ k: 'Close line', pts: 20 * (1 - Math.abs(2 * p - 1)), max: 20,
       why: `${pSrc}: ${fav.abbr} ${pct(fp)}%${fp < .6 ? ', near coin flip' : fp > .85 ? ', lopsided' : ''}` });
-  } else parts.push({ k: 'Competitiveness', pts: 12.5, max: 25, why: 'No line or projection yet, scored as average' });
+  } else parts.push({ k: 'Close line', pts: 10, max: 20, why: 'No line or projection yet, scored as average' });
 
-  // 3. Scoring pace
-  let total = g.book?.ou, tSrc = 'Over/under';
-  if (total == null){
-    const s = state.standings?.byTeam, pa = s?.[g.away.id]?.ppg, ph = s?.[g.home.id]?.ppg;
-    if (pa != null && ph != null){ total = pa + ph; tSrc = `Combined scoring avg (${g.away.abbr} ${pa.toFixed(1)}, ${g.home.abbr} ${ph.toFixed(1)})`; }
-  }
-  if (total != null) parts.push({ k: 'Scoring pace', pts: 10 * clamp((total - 40) / 30, 0, 1), max: 10,
-    why: `${tSrc}: ${Number(total).toFixed(1)} pts${total >= 60 ? ', shootout potential' : total < 45 ? ', defensive game' : ''}` });
-  else parts.push({ k: 'Scoring pace', pts: 5, max: 10, why: 'No total or scoring data, scored as average' });
+  // 3. Rankings
+  const rk = [g.away.rank, g.home.rank].filter(Boolean).sort((a, b) => a - b), at = r => (26 - r) / 25;
+  const rkPts = rk.length ? 10 * at(rk[0]) + (rk[1] ? 5 * at(rk[1]) : 0) : 0;
+  parts.push({ k: 'Rankings', pts: rkPts, max: 15,
+    why: rk.length === 2 ? `#${g.away.rank} vs #${g.home.rank}` : rk.length ? `#${rk[0]} against an unranked team` : 'Neither team ranked' });
 
   // 4. Stakes
   let st = 0; const bits = [];
-  if (g.home.rank && g.away.rank){ st += 5; bits.push(`#${g.away.rank} vs #${g.home.rank}`); }
-  else if (g.home.rank || g.away.rank){ st += 2; bits.push('one ranked team'); }
-  if (g.confGame){ st += 3; bits.push('conference game'); }
+  if (g.confGame){
+    const a = inRace(g.away), h = inRace(g.home);
+    if (a && h){ st += 8; bits.push('conference race: both near the top'); }
+    else if ((a && nearRace(g.home)) || (h && nearRace(g.away))){ st += 4; bits.push('conference race: one contender'); }
+    st += 3; bits.push('conference game');
+  }
   const ra = parseRecord(g.away.record), rh = parseRecord(g.home.record);
-  if (ra && rh && ra.l <= 1 && rh.l <= 1 && ra.w + rh.w > 0){ st += 2; bits.push('both teams 1 loss or fewer'); }
-  parts.push({ k: 'Stakes', pts: st, max: 10, why: bits.length ? bits.join(', ') : 'Unranked, non-conference' });
+  if (ra && rh && ra.l <= 1 && rh.l <= 1 && ra.w + rh.w > 0){ st += 4; bits.push('both teams 1 loss or fewer'); }
+  parts.push({ k: 'Stakes', pts: st, max: 15, why: bits.length ? bits.join(', ') : 'Non-conference, nothing on the line' });
+
+  // 5. Rivalry
+  const rival = isRivalry(g);
+  parts.push({ k: 'Rivalry', pts: rival ? 10 : 0, max: 10, why: rival ? 'A traditional rivalry' : 'Not a rivalry game' });
 
   const score = Math.round(parts.reduce((s, x) => s + x.pts, 0));
-  const r = { score, tier: tierOf(score), parts, pending: pred === undefined };
+  const r = { score, tier: tierOf(score), parts, pending: pred === undefined, rival };
   cache.set(key, { v: state.version, r });
   return r;
 }
