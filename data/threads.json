@@ -1,6 +1,28 @@
 {
- "updated": "2026-11-11T03:18:09+00:00",
+ "updated": "2026-11-11T11:29:38+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Miami (OH) Defeats Ohio 34-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1xt8saz/postgame_thread_miami_oh_defeats_ohio_3417/",
+   "published": "2026-11-11T04:48:18+00:00",
+   "gameId": "401866460",
+   "teams": [
+    "Miami (OH)",
+    "Ohio"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Bowling Green Defeats Kent State 33-28",
+   "url": "https://www.reddit.com/r/CFB/comments/1xt7gon/postgame_thread_bowling_green_defeats_kent_state/",
+   "published": "2026-11-11T03:38:12+00:00",
+   "gameId": "401866459",
+   "teams": [
+    "Bowling Green",
+    "Kent State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Western Michigan Defeats Akron 42-14",
@@ -1505,72 +1527,6 @@
    "teams": [
     "Delaware Valley",
     "King's"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Fresno State Defeats Oregon State 38-22",
-   "url": "https://www.reddit.com/r/CFB/comments/1xkw3tn/postgame_thread_fresno_state_defeats_oregon_state/",
-   "published": "2026-11-01T06:35:14+00:00",
-   "gameId": "401860924",
-   "teams": [
-    "Fresno State",
-    "Oregon State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Boise State Defeats Texas State 46-45",
-   "url": "https://www.reddit.com/r/CFB/comments/1xkvoyq/postgame_thread_boise_state_defeats_texas_state/",
-   "published": "2026-11-01T06:09:13+00:00",
-   "gameId": "401860908",
-   "teams": [
-    "Boise State",
-    "Texas State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] UNLV Defeats Northern Illinois 31-24",
-   "url": "https://www.reddit.com/r/CFB/comments/1xkvhw8/postgame_thread_unlv_defeats_northern_illinois/",
-   "published": "2026-11-01T05:57:10+00:00",
-   "gameId": "401864530",
-   "teams": [
-    "UNLV",
-    "Northern Illinois"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Washington Defeats Nebraska 17-10",
-   "url": "https://www.reddit.com/r/CFB/comments/1xkt1cg/postgame_thread_washington_defeats_nebraska_1710/",
-   "published": "2026-11-01T03:31:11+00:00",
-   "gameId": "401858504",
-   "teams": [
-    "Washington",
-    "Nebraska"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Pittsburgh Defeats Georgia Tech 34-11",
-   "url": "https://www.reddit.com/r/CFB/comments/1xkt0ti/postgame_thread_pittsburgh_defeats_georgia_tech/",
-   "published": "2026-11-01T03:30:21+00:00",
-   "gameId": "401858281",
-   "teams": [
-    "Pittsburgh",
-    "Georgia Tech"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Memphis Defeats Army 49-22",
-   "url": "https://www.reddit.com/r/CFB/comments/1xksvn5/postgame_thread_memphis_defeats_army_4922/",
-   "published": "2026-11-01T03:22:12+00:00",
-   "gameId": "401862814",
-   "teams": [
-    "Memphis",
-    "Army"
    ]
   }
  ],
