@@ -8,7 +8,7 @@ import { useData } from '../resource.js';
 import { teamLink, panel, fmtDelay } from './components.js';
 import { chartHTML } from './wpchart.js';
 import { quarterDrives } from './drives.js';
-import { banner, theLine, lineChart, hype, tape, recentForm } from './preview.js';
+import { banner, theLine, lineChart, tape, recentForm } from './preview.js';
 import { threadsFor, searchUrl } from '../threads.js';
 import { lineFor } from '../lines.js';
 import { ats, atsWhy, fmtLine } from '../ats.js';
@@ -44,7 +44,7 @@ export function viewGame(id){
   if (g.syncing) return h;
   if (g.state === 'pre'){
     loadPredictions([g]);
-    h += theLine(g, s) + betPanel(g) + hype(g) + tape(g) + recentForm(g);
+    h += theLine(g, s) + betPanel(g) + tape(g) + recentForm(g);
   } else {
     // Finished and live games only show the pregame line when it actually moved.
     const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';
@@ -188,7 +188,7 @@ function betPanel(g){
         <p class="bp-sum">${b.state === 'none' ? 'No price to bet the moneyline yet.' : `<b>${money(amt)}</b> on ${esc(betHow(pk, b))} wins <b class="pos">${money(b.toWin)}</b>`}</p></div>
         <p class="note">Your bet locks at kickoff.${type === 'ml' ? ' Moneyline pays at the price when you picked.' : ' Spread pays −110 against the line when you picked.'} Play money only.</p>`;
     }
-    return `<section class="panel betp" data-gid="${esc(g.id)}"><h3>Your pick</h3><div class="bp-sides">${side('away')}${side('home')}</div>${bet}</section>`;
+    return `<section class="panel betp" data-gid="${esc(g.id)}"><h3>Your pick</h3><div class="pb"><div class="bp-sides">${side('away')}${side('home')}</div>${bet}</div></section>`;
   }
   if (!pk) return '';
   const b = grade(pk, g.id);
@@ -196,8 +196,8 @@ function betPanel(g){
     : b.state === 'open' ? `<b>To win ${money(b.toWin)}</b>`
     : `<b class="${b.net > 0 ? 'pos' : b.net < 0 ? 'neg' : ''}">${b.result === 'P' ? 'Push, $0' : signed(b.net)}</b>`;
   const how = b.state === 'none' ? (b.type === 'ml' ? 'moneyline' : 'spread') : esc(betHow(pk, b)) + (b.type === 'ats' && b.state === 'settled' && b.result !== 'P' ? `, ${b.result === 'W' ? 'covered' : 'missed'} by ${String(b.by).replace(/\.0$/, '')}` : '');
-  return `<section class="panel betp"><h3>Your pick: ${esc(pk.team)}</h3><div class="bp-done">
-    <span class="bp-row"><span><em>${money(b.amt)}</em> on ${how}</span>${v}</span></div></section>`;
+  return `<section class="panel betp"><h3>Your pick: ${esc(pk.team)}</h3><div class="pb"><div class="bp-done">
+    <span class="bp-row"><span><em>${money(b.amt)}</em> on ${how}</span>${v}</span></div></div></section>`;
 }
 
 const PAD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 8h10a4 4 0 0 1 4 4v1.5a3.5 3.5 0 0 1-6.3 2.1L13.5 14h-3l-1.2 1.6A3.5 3.5 0 0 1 3 13.5V12a4 4 0 0 1 4-4zM7.5 10.5v3M6 12h3M15.5 11.5h.01M17.5 13.5h.01"/></svg>';

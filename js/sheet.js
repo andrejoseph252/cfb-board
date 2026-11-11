@@ -2,6 +2,7 @@
    by its bar any time, or by its content once that's scrolled to the top. A quick flick closes it too; a short drag
    springs back. (On wider screens it's the side panel and none of this applies.) */
 import { closeDrawer } from './detail.js';
+import { store } from './util.js';
 
 const narrow = matchMedia('(max-width:640px)');
 export const sheetMode = () => narrow.matches;
@@ -26,6 +27,7 @@ addEventListener('touchmove', e => {
     if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
     if (dy <= 0 || Math.abs(dx) > dy || !drag.onBar && drag.sc.scrollTop > 0){ drag = null; return; }
     drag.on = true; drag.sheet.classList.remove('settle'); drag.sheet.classList.add('dragging');
+    if (hints < HINTS){ hints = HINTS; store.set('sheetHints', HINTS); }   // they know
   }
   if (e.cancelable) e.preventDefault();   // the sheet moves, the content doesn't scroll or bounce
   drag.dy = Math.max(0, dy);
@@ -53,4 +55,20 @@ function end(){
   }
 }
 addEventListener('touchend', end, { passive: true });
+
+/* The first few times a page opens as a sheet, it dips a little and springs back once it has settled (its grabber
+   stretching as it goes), so it's clear it can be pulled down. Never once someone has dragged one themselves. */
+const HINTS = 3;
+let hints = store.get('sheetHints', 0);
+export function hint(){
+  if (!sheetMode() || hints >= HINTS || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  store.set('sheetHints', ++hints);
+  const sheet = $('#drawer .sheet');
+  setTimeout(() => {
+    if ($('#drawer').hidden || drag) return;
+    sheet.classList.add('hinting');
+    sheet.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(26px)', offset: .38 }, { transform: 'translateY(-3px)', offset: .78 }, { transform: 'translateY(0)' }],
+      { duration: 720, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.catch(() => {}).finally(() => sheet.classList.remove('hinting'));
+  }, 650);
+}
 addEventListener('touchcancel', end, { passive: true });

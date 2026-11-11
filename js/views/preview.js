@@ -1,15 +1,15 @@
 /* Game drawer pieces with some broadcast flavor: the matchup banner, the line and its movement,
-   the hype gauge, a mirrored tale of the tape and each team's recent form. */
+   a tale of the tape comparing the two teams and each team's recent form. */
 import { esc, pct, fmtTime } from '../util.js';
 import { state, CONF, apRank } from '../state.js';
 import * as api from '../api.js';
 import { parseSchedule } from '../models.js';
 import { marketsFor, realMarket, sourceLabel } from '../markets.js';
 import { lineFor } from '../lines.js';
-import { excitement, TIERS } from '../excitement.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
 import { useData } from '../resource.js';
-import { logo, panel, barColors, ballClass, ballIcon, stepPath, teamHref, gameHref } from './components.js';
+import { weekLabel } from '../picks.js';
+import { logo, panel, barColors, sideColors, ballClass, ballIcon, stepPath, teamHref, gameHref } from './components.js';
 
 /* Black or white text, whichever reads better on a team color. */
 export function inkOn(hex){
@@ -30,6 +30,8 @@ export function countdown(g){
   return 'Kickoff in ' + (d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`);
 }
 
+const PIN = '<svg class="mh-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5s4.5-4.1 4.5-7.6a4.5 4.5 0 0 0-9 0c0 3.5 4.5 7.6 4.5 7.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8" cy="6.9" r="1.6" fill="currentColor"/></svg>';
+const SKY = '<svg class="mh-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 12.5h7a2.75 2.75 0 0 0 .3-5.48A4 4 0 0 0 4.1 8.1a2.2 2.2 0 0 0 .4 4.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 export function banner(g, s){
   const [ca, ch] = barColors(g), done = g.state === 'post';
   const side = k => {
@@ -42,19 +44,25 @@ export function banner(g, s){
       <div class="mh-name${ballClass(g, t)}">${ap ? `<span class="mh-rank">#${ap}</span>` : ''}${t.id ? `<a class="tlink" href="${teamHref(t.id)}">${esc(t.name)}</a>` : esc(t.name)}${ballIcon(g, t)}</div>
       <div class="mh-rec">${esc(rec)}</div></div>`;
   };
-  const mid = g.state === 'pre' ? `<div class="mh-vs">${g.neutral ? 'vs' : 'at'}</div>`
+  // Before kickoff the middle holds the kickoff itself (when it's set), on frosted glass like the score.
+  const d = new Date(g.date), [, hm, ampm] = /^(.*?)\s*([AP]M)?$/i.exec(fmtTime(d)) || [, fmtTime(d), ''];
+  const mid = g.state === 'pre' ? (g.tbd ? `<div class="mh-vs">${g.neutral ? 'vs' : 'at'}</div>`
+      : `<div class="mh-kick"><span class="mh-at">${g.neutral ? 'vs' : 'at'}</span><b>${esc(hm)}${ampm ? `<small>${esc(ampm)}</small>` : ''}</b><span class="mh-day">${esc(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))}</span></div>`)
     : `<div class="mh-score"><span class="${done && g.home.winner ? 'dim' : ''}">${esc(g.away.score)}</span><i></i><span class="${done && g.away.winner ? 'dim' : ''}">${esc(g.home.score)}</span></div>
        <div class="mh-status${g.state === 'in' ? ' live' : ''}"${g.state === 'in' && g.syncDelay != null && !g.syncing ? ` data-sclk="${esc(g.id)}"` : ''}>${esc(g.detail || '')}</div>`;
-  const d = new Date(g.date), up = upset(g);
+  const up = upset(g);
   const strip = [
     up ? `<b class="mh-upset${up.big ? ' big' : ''}">${BOLT}${up.big ? 'Big upset' : 'Upset'}</b><span>${esc(upsetWhy(g, up))}</span>` : null,
     g.state === 'pre' ? `<b>${esc(countdown(g))}</b>` : null,
-    g.state === 'pre' ? esc(`${d.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'})}${g.tbd ? '' : ' · ' + fmtTime(d)}`) : g.state === 'in' && g.sit ? `<b>${esc(g.sit)}</b>` : null,
+    g.state === 'pre' && g.tbd ? esc(d.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'})) : g.state === 'in' && g.sit ? `<b>${esc(g.sit)}</b>` : null,
     g.tv ? `<span class="mh-tv">${esc(g.tv)}</span>` : null,
-    s.venue ? esc(s.venue + (s.city ? ', ' + s.city : '')) : null,
-    g.state === 'pre' && s.weather ? esc(s.weather) : null
+    // The place and its weather stay together, so a narrow screen wraps between items, never inside one.
+    s.venue || (g.state === 'pre' && s.weather) ? `<span class="mh-where">${s.venue ? `<span>${PIN}${esc(s.venue + (s.city ? ', ' + s.city : ''))}</span>` : ''}${g.state === 'pre' && s.weather ? `<span class="mh-wx">${SKY}${esc(s.weather)}</span>` : ''}</span>` : null
   ].filter(Boolean);
-  return `<header class="mh" data-title="${esc(`${g.away.name} ${g.neutral ? 'vs' : 'at'} ${g.home.name}`)}"
+  // The drawer bar's context line: the week, and what kind of game.
+  const kind = g.confGame && CONF[g.home.conf] ? `${CONF[g.home.conf]} game` : g.neutral ? 'Neutral site' : 'Non-conference';
+  const eyebrow = [g.week && g.st ? weekLabel(g.st, g.week) : null, kind].filter(Boolean).join(' · ');
+  return `<header class="mh" data-title="${esc(`${g.away.name} ${g.neutral ? 'vs' : 'at'} ${g.home.name}`)}" data-eyebrow="${esc(eyebrow)}"
       style="--away:${esc(ca)};--home:${esc(ch)};--away-ink:${inkOn(ca)};--home-ink:${inkOn(ch)}">
     <div class="mh-field" aria-hidden="true"></div>${side('away')}<div class="mh-mid">${mid}</div>${side('home')}</header>
     <div class="mh-strip">${strip.map(x => `<span>${x}</span>`).join('')}</div>`;
@@ -126,27 +134,6 @@ export function theLine(g, s){
     (facts.length ? `<div class="facts">${facts.map(x => `<span>${x}</span>`).join('')}</div>` : ''));
 }
 
-/* ---------- hype gauge ---------- */
-export function hype(g){
-  const x = excitement(g);
-  if (x.pending) return panel('Hype meter', '<p class="muted">Scoring this matchup…</p>');
-  const [, label, cls] = x.tier, a = Math.PI * (1 - x.score / 100), cut = TIERS.map(t => t[0]);   // the gauge's bands are the tiers
-  const R = 80, cx = 100, cy = 92, px = cx + R * Math.cos(a), py = cy - R * Math.sin(a);
-  const arc = (from, to, c) => {
-    const f = Math.PI * (1 - from / 100), t = Math.PI * (1 - to / 100);
-    return `<path d="M${cx + R * Math.cos(f)},${cy - R * Math.sin(f)} A${R},${R} 0 0 1 ${cx + R * Math.cos(t)},${cy - R * Math.sin(t)}" stroke="${c}" />`;
-  };
-  const gauge = `<svg class="gauge" viewBox="0 0 200 104" role="img" aria-label="Hype ${x.score} of 100, ${esc(label)}">
-    <g fill="none" stroke-width="14">${arc(0, cut[2] - .5, 'var(--x-lo)')}${arc(cut[2] + .5, cut[1] - .5, 'var(--x-mid)')}${arc(cut[1] + .5, cut[0] - .5, 'color-mix(in srgb,var(--x-hi) 70%,var(--x-mid))')}${arc(cut[0] + .5, 100, 'var(--x-hi)')}</g>
-    <g fill="none" stroke="var(--surface)" stroke-width="16" opacity=".55">${x.score < 100 ? arc(Math.min(99.5, x.score + .5), 100, 'var(--surface)') : ''}</g>
-    <line x1="${cx}" y1="${cy}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/>
-    <circle cx="${cx}" cy="${cy}" r="7" fill="var(--ink)"/></svg>`;
-  const parts = `<ul class="xc-parts">${x.parts.map(p => `<li><span class="xc-k">${esc(p.k)}</span>
-      <span class="xc-bar"><i style="width:${(p.pts / p.max) * 100}%"></i></span>
-      <span class="xc-pts">${p.pts.toFixed(0)}/${p.max}</span><span class="xc-why">${esc(p.why)}</span></li>`).join('')}</ul>`;
-  return panel('Hype meter', `<div class="hype"><div class="hype-g">${gauge}<div class="hype-n"><b>${x.score}</b><span class="hype-l ${cls}">${esc(label)}</span></div></div>${parts}</div>`);
-}
-
 /* ---------- tale of the tape ---------- */
 /* National percentile (0-1, 1 = best) of a value within all FBS teams. */
 function pctile(v, all, lowerBetter){
@@ -156,31 +143,57 @@ function pctile(v, all, lowerBetter){
 }
 const nth = (v, all, lowerBetter) => 1 + all.filter(x => lowerBetter ? x < v : x > v).length;
 
+/* How the two teams have played this season, as a compact comparison: one line per stat in plain words, each team's
+   national rank in its own column, and the better side of each line marked with a pill in that team's color (no pill
+   when they're within a few spots: even). A one-line verdict above says what it adds up to. Overall, offense and
+   defense are ESPN's FPI ratings (adjusted for the opponents each team has played); points come from the standings. */
 export function tape(g){
   const f = state.fpi, st = state.standings;
+  if (!f && !st) return '';
+  const fp = t => f?.byTeam[t.id], sd = t => st?.byTeam[t.id];
+  const gp = r => r?.overall ? r.overall.w + r.overall.l + r.overall.t : 0;
+  const ppg = r => r?.ppg ?? null, opp = r => r?.pa != null && gp(r) ? r.pa / gp(r) : null;
   const fpiAll = k => f ? f.list.map(t => t[k]).filter(v => v != null) : [];
-  const stAll = k => st ? Object.values(st.byTeam).map(k).filter(v => v != null) : [];
-  const allowed = t => t?.pa != null && t.overall ? t.pa / Math.max(1, t.overall.w + t.overall.l + t.overall.t) : null;
-  const rows = [
-    ['FPI rating', t => f?.byTeam[t.id]?.fpi, fpiAll('fpi'), false, 1],
-    ['Offense efficiency', t => f?.byTeam[t.id]?.off, fpiAll('off'), false, 1],
-    ['Defense efficiency', t => f?.byTeam[t.id]?.def, fpiAll('def'), false, 1],
-    ['Points per game', t => st?.byTeam[t.id]?.ppg, stAll(t => t.ppg), false, 1],
-    ['Allowed per game', t => allowed(st?.byTeam[t.id]), stAll(allowed), true, 1]
-  ].map(([k, get, all, lower, dp]) => {
-    const va = get(g.away), vh = get(g.home);
-    if (va == null && vh == null) return '';
-    const qa = pctile(va, all, lower), qh = pctile(vh, all, lower);
-    const edge = va != null && vh != null && va !== vh ? ((lower ? va < vh : va > vh) ? 'a' : 'h') : '';
-    const cell = (v, q, s) => `<span class="tp-v${edge === s ? ' edge' : ''}">${v == null ? '–' : v.toFixed(dp)}${v != null && all.length ? `<small>#${nth(v, all, lower)}</small>` : ''}</span>`;
-    return `<div class="tp-row">${cell(va, qa, 'a')}<span class="tp-bar a"><i style="width:${((qa ?? 0) * 100).toFixed(0)}%"></i></span>
-      <span class="tp-k">${esc(k)}</span><span class="tp-bar h"><i style="width:${((qh ?? 0) * 100).toFixed(0)}%"></i></span>${cell(vh, qh, 'h')}</div>`;
-  }).join('');
-  if (!rows) return '';
-  const [ca, ch] = barColors(g);
-  return panel('Tale of the tape', `<div class="tape" style="--ca:${esc(ca)};--ch:${esc(ch)}">
-    <div class="tp-row tp-head"><span>${logo(g.away.logo, 'logo sm')}${esc(g.away.abbr)}</span><span></span><span></span><span></span><span>${esc(g.home.abbr)}${logo(g.home.logo, 'logo sm')}</span></div>${rows}</div>
-    <p class="note">Bars show where each team ranks nationally (longer is better); the small number is its FBS rank.</p>`);
+  const stAll = fn => st ? Object.values(st.byTeam).map(fn).filter(v => v != null) : [];
+  const rank = (v, all, lower) => v == null || !all.length ? null : nth(v, all, lower);
+  const offAll = fpiAll('off'), defAll = fpiAll('def'), ppgAll = stAll(ppg), oppAll = stAll(opp);
+  const of = t => { const x = fp(t), r = sd(t);
+    return { overall: x?.rank ?? null, off: rank(x?.off, offAll, false), def: rank(x?.def, defAll, false), sos: x?.sosRank ?? null,
+      ppg: ppg(r), ppgRk: rank(ppg(r), ppgAll, false), opp: opp(r), oppRk: rank(opp(r), oppAll, true) }; };
+  const A = of(g.away), H = of(g.home);
+  // [label, away rank, home rank, away figure, home figure]: lower rank is better; within 8 spots is even.
+  const lines = [
+    ['Overall', A.overall, H.overall],
+    ['Offense', A.off, H.off],
+    ['Defense', A.def, H.def],
+    ['Points scored', A.ppgRk, H.ppgRk, A.ppg, H.ppg],
+    ['Points allowed', A.oppRk, H.oppRk, A.opp, H.opp],
+    ['Schedule faced', A.sos, H.sos]
+  ].filter(([, ra, rh]) => ra != null && rh != null);
+  if (!lines.length) return '';
+  const better = (ra, rh) => Math.abs(ra - rh) < 8 ? null : ra < rh ? 'a' : 'h';
+  const cell = (side, rk, fig, win) => `<span class="tot-c ${side}${win ? ' win' : ''}"><b>#${rk}</b>${fig != null ? `<small>${fig.toFixed(1)}</small>` : ''}</span>`;
+  const rows = lines.map(([k, ra, rh, fa, fh]) => { const w = better(ra, rh);
+    return `<div class="tot-row" role="row">${cell('a', ra, fa, w === 'a')}<span class="tot-k" role="rowheader">${esc(k)}</span>${cell('h', rh, fh, w === 'h')}</div>`; }).join('');
+
+  // The verdict: who's stronger, and where the other side holds up.
+  const ov = A.overall && H.overall ? better(A.overall, H.overall) : null;
+  let verdict = '';
+  if (A.overall && H.overall && !ov) verdict = 'Evenly matched on paper.';
+  else if (ov){
+    const [W, L, Wd, Ld] = ov === 'a' ? [g.away, g.home, A, H] : [g.home, g.away, H, A];
+    const but = [];
+    if (Ld.off && Wd.def && Ld.off <= Wd.def) but.push(`${L.name}'s offense matches up well with ${W.name}'s defense`);
+    if (Ld.def && Wd.off && Ld.def <= Wd.off) but.push(`${L.name}'s defense can slow ${W.name}'s offense`);
+    const leads = lines.filter(([, ra, rh]) => better(ra, rh) === ov).length;
+    verdict = but.length ? `${W.name} is the stronger team, but ${but.join(' and ')}.` : `${W.name} is the stronger team, ahead in ${leads} of ${lines.length}.`;
+  }
+  const [ca, ch] = sideColors(g), ink = c => /^#[0-9a-f]{6}$/i.test(c) ? inkOn(c) : '#fff';
+  const head = t => `<span class="tot-t">${logo(t.logo, 'logo sm')}<b>${esc(t.abbr)}</b></span>`;
+  return panel('Tale of the tape', `<div class="tot" role="table" aria-label="Season comparison, national ranks" style="--ca:${esc(ca)};--ch:${esc(ch)};--ia:${ink(ca)};--ih:${ink(ch)}">
+    ${verdict ? `<p class="tot-verdict">${esc(verdict)}</p>` : ''}
+    <div class="tot-row tot-head" role="row">${head(g.away)}<span class="tot-k">National rank</span>${head(g.home)}</div>
+    ${rows}</div>`);
 }
 
 /* ---------- recent form ---------- */
@@ -195,9 +208,13 @@ function formRow(g, side){
     const me = String(x.home.id) === String(t.id) ? 'home' : 'away', o = x[other(me)];
     const won = x[me].winner || (!o.winner && Number(x[me].score) > Number(o.score));
     return `<a class="form-tile ${won ? 'W' : 'L'}" href="${gameHref(x.id)}" title="${won ? 'W' : 'L'} ${esc(x[me].score)}-${esc(o.score)} ${me === 'home' ? 'vs' : 'at'} ${esc(o.name)}">
-      <b>${won ? 'W' : 'L'}</b>${logo(o.logo, 'form-logo')}<small>${esc(x[me].score)}-${esc(o.score)}</small></a>`;
+      ${logo(o.logo, 'form-logo')}<small><span class="sr">${won ? 'Won' : 'Lost'} </span>${esc(x[me].score)}-${esc(o.score)}</small></a>`;
   }).join('');
-  return `<div class="form-row"><span class="form-team">${logo(t.logo, 'logo sm')}${esc(t.abbr)}</span><div class="form-tiles">${tiles || '<span class="muted small">No games yet</span>'}</div></div>`;
+  // The run in one line: record over these games and the average margin.
+  const res = past.map(x => { const me = String(x.home.id) === String(t.id) ? 'home' : 'away'; return Number(x[me].score) - Number(x[other(me)].score); });
+  const w = res.filter(m => m > 0).length, avg = res.length ? res.reduce((a, b) => a + b, 0) / res.length : 0;
+  const sum = res.length ? `<span class="form-sum"><b>${w}-${res.length - w}</b> last ${res.length} · ${avg >= 0 ? '+' : '−'}${Math.abs(avg).toFixed(1)} avg margin</span>` : '';
+  return `<div class="form-row"><span class="form-team">${logo(t.logo, 'logo sm')}${esc(t.abbr)}</span>${sum}<div class="form-tiles">${tiles || '<span class="muted small">No games yet</span>'}</div></div>`;
 }
 
-export const recentForm = g => panel('Recent form', formRow(g, 'away') + formRow(g, 'home') + '<p class="note">Last five games, oldest first. Tap one for the box score.</p>');
+export const recentForm = g => panel('Recent form', formRow(g, 'away') + formRow(g, 'home') + '<p class="note tot-note">Last five, oldest first · tap one for the box score</p>');

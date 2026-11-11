@@ -2,6 +2,7 @@
    so browser back/forward pages through the teams and games you've opened. */
 import { $, esc } from './util.js';
 import { morph } from './morph.js';
+import { hint } from './sheet.js';
 import { viewTeam } from './views/team.js';
 import { viewGame, isLive } from './views/game.js';
 import { viewNews } from './views/news.js';
@@ -45,7 +46,7 @@ export function renderDetail(){
   }
   const key = r.type + ':' + r.id;
   el.classList.remove('closing');
-  if (el.hidden){ restoreFocus = document.activeElement; el.hidden = false; document.body.classList.add('drawer-open'); }
+  if (el.hidden){ restoreFocus = document.activeElement; el.hidden = false; document.body.classList.add('drawer-open'); hint(); }
   // Typing a clock time into the stream sync panel: hold refreshes until they're done, so the boxes keep what they typed.
   if (key === lastKey && document.activeElement?.matches?.('#drawerBody .syncp input')) return;
   // A bug in one view shows an error in the drawer instead of leaving it stuck on its loading skeleton.
@@ -58,9 +59,16 @@ export function renderDetail(){
     lastHtml = html;
   }
   $('#drawerBack').hidden = depth < 2;
-  $('#drawerTitle').textContent = body.querySelector('[data-title]')?.dataset.title || (r.type === 'team' ? 'Team schedule' : r.type === 'ballots' ? 'AP ballots' : 'Game');
-  if (key !== lastKey){ $('#drawerScroll').scrollTop = 0; $('#drawerClose').focus({ preventScroll: true }); lastKey = key; }
+  const head = body.querySelector('[data-title]');
+  $('#drawerTitle').textContent = head?.dataset.title || (r.type === 'team' ? 'Team schedule' : r.type === 'ballots' ? 'AP ballots' : r.type === 'news' ? 'News' : 'Game');
+  // A small line of context above the title (the view's own, or what kind of page this is).
+  $('#drawerEyebrow').textContent = head?.dataset.eyebrow ?? ({ team: 'Schedule', ballots: 'AP poll', news: 'College football' })[r.type] ?? '';
+  if (key !== lastKey){ $('#drawerScroll').scrollTop = 0; $('#drawerClose').focus({ preventScroll: true }); lastKey = key; scrolled(); }
 }
+
+/* The bar sits flush with the page until the content scrolls under it; then a hairline separates them. */
+const scrolled = () => $('.sheet-bar').classList.toggle('scrolled', $('#drawerScroll').scrollTop > 2);
+$('#drawerScroll').addEventListener('scroll', scrolled, { passive: true });
 
 /* Live games on this week's board refresh with each board poll (see loadBoard). One opened from elsewhere, like
    a team schedule while you're viewing another week, refreshes on its own at the same pace. */
