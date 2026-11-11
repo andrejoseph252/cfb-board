@@ -429,24 +429,25 @@ img.ld{opacity:0!important}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .panel h3{margin:0 0 10px;font:800 21px/1 var(--display)}
 .panel h4{margin:0 0 8px;font-size:14px}
-/* A section's content wrapper; it only becomes a box on a game page (below). */
-.pb{display:contents}
+/* A section's content wrapper; it only becomes a box on a game page (below). (Not ".pb": that's the arcade game's
+   full-screen root, js/game/pixelbowl.js.) */
+.panel-body{display:contents}
 /* Game page: editorial sections. Each title sits on the page above its card, a bold condensed heading; the card holds
    only the content. Headings and cards alternate down the page, so a title never reads as part of what's under it. */
-#drawerBody .panel:has(> .pb){background:none;border:0;padding:0;margin:0 0 24px}
-#drawerBody .panel:has(> .pb) > .pb{display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;
+#drawerBody .panel:has(> .panel-body){background:none;border:0;padding:0;margin:0 0 24px}
+#drawerBody .panel:has(> .panel-body) > .panel-body{display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;
   box-shadow:0 1px 0 color-mix(in srgb,var(--ink) 4%,transparent) inset}
-#drawerBody .panel:has(> .pb) > h3,#drawerBody .quarter-drives > .qd-head h3{margin:0;font:800 24px/1 var(--display);letter-spacing:.005em;text-transform:uppercase;color:var(--ink)}
-#drawerBody .panel:has(> .pb) > h3{margin:0 2px 10px}
+#drawerBody .panel:has(> .panel-body) > h3,#drawerBody .quarter-drives > .qd-head h3{margin:0;font:800 24px/1 var(--display);letter-spacing:.005em;text-transform:uppercase;color:var(--ink)}
+#drawerBody .panel:has(> .panel-body) > h3{margin:0 2px 10px}
 /* After each heading, a speed stripe: a short solid dash, a gap, then a line fading out to the edge. */
-#drawerBody .panel:has(> .pb) > h3,#drawerBody .quarter-drives > .qd-head h3{display:flex;align-items:center;gap:12px}
-#drawerBody .panel:has(> .pb) > h3::after,#drawerBody .quarter-drives > .qd-head h3::after{content:"";flex:1;min-width:40px;height:3px;border-radius:2px;
+#drawerBody .panel:has(> .panel-body) > h3,#drawerBody .quarter-drives > .qd-head h3{display:flex;align-items:center;gap:12px}
+#drawerBody .panel:has(> .panel-body) > h3::after,#drawerBody .quarter-drives > .qd-head h3::after{content:"";flex:1;min-width:40px;height:3px;border-radius:2px;
   background:linear-gradient(90deg,var(--ink) 0 22px,transparent 22px 28px,color-mix(in srgb,var(--ink) 38%,transparent) 28px,transparent 100%)}
 #drawerBody .quarter-drives > .qd-head > div{flex:1;min-width:0}
 #drawerBody .quarter-drives > .qd-head{gap:14px}
 #drawerBody .quarter-drives > .qd-head{margin:0 2px 10px;align-items:flex-end}
 #drawerBody .quarter-drives > .qd-head > small{color:var(--muted)}
-#drawerBody .quarter-drives > .pb{padding:14px 14px 12px}
+#drawerBody .quarter-drives > .panel-body{padding:14px 14px 12px}
 .panel .note{margin:10px 0 0}
 .facts{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:10px;font-size:13px;color:var(--muted)}
 .facts b{color:var(--ink)}

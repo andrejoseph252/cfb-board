@@ -347,7 +347,7 @@ export function detailHead({ title, label, sub, logoSrc, color, right = '' }){
     ${logoSrc ? logo(logoSrc, 'logo lg') : ''}
     <div class="dhead-main"><h2>${title}</h2>${sub ? `<div class="dsub">${sub}</div>` : ''}</div>${right}</header>`;
 }
-/* A section: its title, then its content in .pb (no box of its own except on a game page, where the title sits above the
+/* A section: its title, then its content in .panel-body (no box of its own except on a game page, where the title sits above the
    card on the page and only the content is carded). */
-export const panel = (title, body, extra = '') => `<section class="panel"${extra}>${title ? `<h3>${esc(title)}</h3>` : ''}<div class="pb">${body}</div></section>`;
+export const panel = (title, body, extra = '') => `<section class="panel"${extra}>${title ? `<h3>${esc(title)}</h3>` : ''}<div class="panel-body">${body}</div></section>`;
 export const dateShort = d => fmtDay(new Date(d));

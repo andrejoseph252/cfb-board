@@ -188,7 +188,7 @@ function betPanel(g){
         <p class="bp-sum">${b.state === 'none' ? 'No price to bet the moneyline yet.' : `<b>${money(amt)}</b> on ${esc(betHow(pk, b))} wins <b class="pos">${money(b.toWin)}</b>`}</p></div>
         <p class="note">Your bet locks at kickoff.${type === 'ml' ? ' Moneyline pays at the price when you picked.' : ' Spread pays −110 against the line when you picked.'} Play money only.</p>`;
     }
-    return `<section class="panel betp" data-gid="${esc(g.id)}"><h3>Your pick</h3><div class="pb"><div class="bp-sides">${side('away')}${side('home')}</div>${bet}</div></section>`;
+    return `<section class="panel betp" data-gid="${esc(g.id)}"><h3>Your pick</h3><div class="panel-body"><div class="bp-sides">${side('away')}${side('home')}</div>${bet}</div></section>`;
   }
   if (!pk) return '';
   const b = grade(pk, g.id);
@@ -196,7 +196,7 @@ function betPanel(g){
     : b.state === 'open' ? `<b>To win ${money(b.toWin)}</b>`
     : `<b class="${b.net > 0 ? 'pos' : b.net < 0 ? 'neg' : ''}">${b.result === 'P' ? 'Push, $0' : signed(b.net)}</b>`;
   const how = b.state === 'none' ? (b.type === 'ml' ? 'moneyline' : 'spread') : esc(betHow(pk, b)) + (b.type === 'ats' && b.state === 'settled' && b.result !== 'P' ? `, ${b.result === 'W' ? 'covered' : 'missed'} by ${String(b.by).replace(/\.0$/, '')}` : '');
-  return `<section class="panel betp"><h3>Your pick: ${esc(pk.team)}</h3><div class="pb"><div class="bp-done">
+  return `<section class="panel betp"><h3>Your pick: ${esc(pk.team)}</h3><div class="panel-body"><div class="bp-done">
     <span class="bp-row"><span><em>${money(b.amt)}</em> on ${how}</span>${v}</span></div></div></section>`;
 }
 

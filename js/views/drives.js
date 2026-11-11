@@ -59,7 +59,7 @@ export function quarterDrives(g, s){
       </summary><div class="qd-drive-list">${[...q.rows].reverse().map(rowHTML).join('') || '<p class="qd-no-plays">Drive details are not available yet.</p>'}</div></details>`;
   }).join('');
   return `<section class="panel quarter-drives" data-game="${esc(id)}" aria-label="Quarter summaries"><header class="qd-head"><div><h3>Drives</h3></div><small>${plural(s.drives.length, 'drive')}<span>Latest first</span></small></header>
-    <div class="pb"><div class="qd-quarters">${cards}</div><p class="qd-footnote">Quarter scores include all points. Drives are grouped by where they finish.</p></div></section>`;
+    <div class="panel-body"><div class="qd-quarters">${cards}</div><p class="qd-footnote">Quarter scores include all points. Drives are grouped by where they finish.</p></div></section>`;
 }
 
 /* Opening a drive closes the one above it, which can pull the new one up out of view: once the close has animated
