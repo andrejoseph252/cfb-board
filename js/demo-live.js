@@ -6,6 +6,7 @@
    Everything else (FPI, standings, rankings, markets, threads) passes through untouched. If last week can't be
    replayed (week 1, bowl season, an ESPN hiccup) the demo quietly shows the real board instead. */
 
+window.__demo = true;   // data.js and markets.js: nothing here is kept for the next visit, or read from the last
 const realFetch = window.fetch.bind(window);
 const SITE = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football';
 

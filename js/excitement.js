@@ -6,7 +6,7 @@
    Stakes           up to 10  ranked teams, conference game, both teams with 1 loss or fewer
 */
 import * as api from './api.js';
-import { state, invalidate } from './state.js';
+import { state, invalidateSoon } from './state.js';
 import { primaryMarket, sourceLabel } from './markets.js';
 import { clamp, parseRecord, pct } from './util.js';
 
@@ -105,7 +105,7 @@ let finals = null, sorted = [];
 export function loadFinalExcitement(){
   return api.finals().then(j => {
     if (j?.g === finals) return;
-    finals = j?.g || {}; sorted = Object.values(finals).map(x => x[0]).sort((a, b) => a - b); invalidate();
+    finals = j?.g || {}; sorted = Object.values(finals).map(x => x[0]).sort((a, b) => a - b); invalidateSoon();
   }).catch(() => {});
 }
 /* Share of this season's finished games with a lower index, 0-100, or null before the file loads. */

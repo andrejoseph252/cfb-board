@@ -2,12 +2,12 @@
    swing), poll movers and your picks. Shown all week at the top of This week, below any live games. */
 import { outcome, grade } from './bets.js';
 import * as api from './api.js';
-import { state, invalidate, CONF } from './state.js';
+import { state, CONF, invalidateSoon } from './state.js';
 import { parseEvent, parseProbabilities } from './models.js';
 import { realizedExcitement } from './excitement.js';
 import { picks, winnerSide } from './picks.js';
 import { upset } from './upset.js';
-import { pool } from './util.js';
+import { pool, store } from './util.js';
 
 /* The week to recap: this week once every game is final, otherwise the one before it on ESPN's calendar. */
 export function recapWeek(){
@@ -26,6 +26,16 @@ export const showRecap = () => !!recapWeek();
 
 const games = new Map(), swings = new Map();
 let loading = null;
+/* A finished week doesn't change, so what the recap needs from it (its results, and the win % swings of its closest
+   games) is kept on this device for the rest of the week instead of being downloaded again on every visit: about a
+   megabyte of scoreboard and eight per-play feeds. */
+let swingsFor = '';
+const keptRecap = window.__demo ? null : store.get('kept.recap', null);
+if (keptRecap && Date.now() - keptRecap.at < 6 * 864e5){
+  if (keptRecap.games) games.set(keptRecap.k, keptRecap.games);
+  for (const [id, x] of keptRecap.swings || []) swings.set(id, x);
+  swingsFor = keptRecap.k;
+}
 
 function loadWeek(w){
   const k = `${w.st}-${w.week}`;
@@ -33,14 +43,13 @@ function loadWeek(w){
   if (games.has(k)) return games.get(k);
   if (loading !== k){
     loading = k;
-    api.scoreboard(w.week, w.st, 30 * 60e3).then(j => { games.set(k, (j.events || []).map(parseEvent)); invalidate('main'); }).catch(() => { loading = null; });
+    api.scoreboard(w.week, w.st, 30 * 60e3).then(j => { games.set(k, (j.events || []).map(parseEvent)); invalidateSoon('main'); }).catch(() => { loading = null; });
   }
   return null;
 }
 
 /* Only close finishes between FBS teams can be the game of the week; fetch the per-play feed for the eight tightest,
    ranked matchups first among equally close games. */
-let swingsFor = '';
 const fbs = g => CONF[g.home.conf] && CONF[g.away.conf];
 function loadSwings(k, finals){
   if (swingsFor === k) return;
@@ -50,7 +59,11 @@ function loadSwings(k, finals){
     const pts = parseProbabilities(await api.probabilities(g.id, false));
     const x = realizedExcitement(pts);
     if (x) swings.set(g.id, { ...x, pts: pts.map(p => p.home) });
-  }).then(() => invalidate('main'));
+  }).then(() => {
+    // Only a week that's over for good (not this week's games as they finish).
+    if (!window.__demo && `${state.st}-${state.week}` !== k) store.set('kept.recap', { k, at: Date.now(), games: games.get(k) || null, swings: [...swings].filter(([id]) => finals.some(g => g.id === id)) });
+    invalidateSoon('main');
+  });
 }
 
 const margin = g => Math.abs(Number(g.home.score) - Number(g.away.score));

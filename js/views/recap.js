@@ -25,25 +25,25 @@ const matchup = (g, ws) => { const ls = ws === 'home' ? 'away' : 'home';
 function cards(r){
   const out = [];
   const u = r.upsets[0];
-  if (u) out.push(`<a class="rc-card" href="${gameHref(u.g.id)}"><span class="rc-kick rc-upset">${BOLT}Upset of the week</span>${matchup(u.g, u.ws)}
+  if (u) out.push(`<a class="rc-card" data-k="rc-upset" href="${gameHref(u.g.id)}"><span class="rc-kick rc-upset">${BOLT}Upset of the week</span>${matchup(u.g, u.ws)}
     <p>${esc(upsetWhy(u.g, u.u))}</p>
     ${r.upsets.length > 1 ? `<ul class="rc-list">${r.upsets.slice(1, 4).map(x => `<li>${esc(x.g[x.ws].abbr)} over ${esc(rk(x.g[x.ls]) + x.g[x.ls].abbr)}${x.p != null ? ` <span class="muted">${pct(x.p)}%</span>` : ''}</li>`).join('')}</ul>` : ''}</a>`);
   if (r.classic){
     const c = r.classic, ws = c.g.home.winner ? 'home' : 'away';
-    out.push(`<a class="rc-card" href="${gameHref(c.g.id)}"><span class="rc-kick">Game of the week</span>${matchup(c.g, ws)}${swingSpark(c.g, c.pts)}
+    out.push(`<a class="rc-card" data-k="rc-classic" href="${gameHref(c.g.id)}"><span class="rc-kick">Game of the week</span>${matchup(c.g, ws)}${swingSpark(c.g, c.pts)}
       <p><b>${esc(c.label)}</b>: excitement ${c.index.toFixed(1)}, the favorite flipped ${c.flips} time${c.flips === 1 ? '' : 's'}.</p></a>`);
-  } else if (r.classicLoading) out.push('<div class="rc-card rc-wait"><span class="rc-kick">Game of the week</span><p class="muted">Replaying the close ones…</p></div>');
-  if (r.fallen.length) out.push(`<div class="rc-card"><span class="rc-kick">Ranked teams that fell</span><div class="rc-big">${r.fallen.length}</div>
+  } else if (r.classicLoading) out.push('<div class="rc-card rc-wait" data-k="rc-classic"><span class="rc-kick">Game of the week</span><p class="muted">Replaying the close ones…</p></div>');
+  if (r.fallen.length) out.push(`<div class="rc-card" data-k="rc-fallen"><span class="rc-kick">Ranked teams that fell</span><div class="rc-big">${r.fallen.length}</div>
     <ul class="rc-list">${r.fallen.slice(0, 5).map(({ g, ls }) => { const ws = ls === 'home' ? 'away' : 'home';
       return `<li><a href="${gameHref(g.id)}">${logo(g[ls].logo, 'logo sm')}#${g[ls].rank} ${esc(g[ls].name)}</a> <span class="muted">lost to ${esc(rk(g[ws]) + g[ws].abbr)} <span class="nw">${esc(score(g, ws))}</span></span></li>`; }).join('')}</ul></div>`);
   if (r.poll && (r.poll.up.length || r.poll.down.length)){
     const row = ({ t, d }) => `<li><a href="${teamHref(t.id)}">${logo(t.logo, 'logo sm')}#${t.rank} ${esc(t.name)}</a> <span class="mv ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</span></li>`;
-    out.push(`<div class="rc-card"><span class="rc-kick">New AP poll</span><ul class="rc-list">${r.poll.up.map(row).join('')}${r.poll.down.map(row).join('')}</ul>
+    out.push(`<div class="rc-card" data-k="rc-poll"><span class="rc-kick">New AP poll</span><ul class="rc-list">${r.poll.up.map(row).join('')}${r.poll.down.map(row).join('')}</ul>
       ${r.poll.debut.length ? `<p>New: ${r.poll.debut.map(t => `<a href="${teamHref(t.id)}">#${t.rank} ${esc(t.name)}</a>`).join(', ')}</p>` : ''}</div>`);
   }
   if (r.pk){
     const edge = r.pk.w - r.pk.exp;
-    out.push(`<div class="rc-card"><span class="rc-kick">Your picks</span><div class="rc-big">${r.pk.w}–${r.pk.l}${r.pk.push ? `–${r.pk.push}` : ''}</div>
+    out.push(`<div class="rc-card" data-k="rc-picks"><span class="rc-kick">Your picks</span><div class="rc-big">${r.pk.w}–${r.pk.l}${r.pk.push ? `–${r.pk.push}` : ''}</div>
       <p>${r.pk.money ? `<b class="${r.pk.net > 0 ? 'pos' : r.pk.net < 0 ? 'neg' : ''}">${signed(r.pk.net)}</b> on the week · ` : ''}${edge >= 0 ? '+' : '−'}${Math.abs(edge).toFixed(1)} wins vs. what the market expected.</p><button class="chipbtn" data-tab="picks">All picks</button></div>`);
   }
   return out.join('');

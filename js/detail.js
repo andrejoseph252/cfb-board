@@ -1,6 +1,7 @@
 /* Drawer for team schedules, game detail, AP ballots and news, driven by the URL hash (#team/ID, #game/ID, #ballots/ID, #news)
    so browser back/forward pages through the teams and games you've opened. */
 import { $, esc } from './util.js';
+import { morph } from './morph.js';
 import { viewTeam } from './views/team.js';
 import { viewGame, isLive } from './views/game.js';
 import { viewNews } from './views/news.js';
@@ -52,9 +53,9 @@ export function renderDetail(){
   try{ html = r.type === 'news' ? viewNews() : r.type === 'team' ? viewTeam(r.id) : r.type === 'ballots' ? viewBallots(r.id) : viewGame(r.id); }
   catch(e){ console.error(e); html = `<div class="err"><b>Something went wrong showing this.</b> ${esc(e.message)}</div>`; }
   if (html !== lastHtml || key !== lastKey){
-    const open = key === lastKey ? [...body.querySelectorAll('details[open][data-k]')].map(d => d.dataset.k) : [];
-    body.innerHTML = html; lastHtml = html;
-    for (const k of open) body.querySelector(`details[data-k="${CSS.escape(k)}"]`)?.setAttribute('open', '');
+    // The same drawer refreshing changes only what's different (morph.js keeps its open fold-outs as they are).
+    if (key === lastKey) morph(body, html); else body.innerHTML = html;
+    lastHtml = html;
   }
   $('#drawerBack').hidden = depth < 2;
   $('#drawerTitle').textContent = body.querySelector('[data-title]')?.dataset.title || (r.type === 'team' ? 'Team schedule' : r.type === 'ballots' ? 'AP ballots' : 'Game');

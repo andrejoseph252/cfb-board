@@ -94,7 +94,12 @@ a{color:inherit}
 /* hero */
 .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 16px;padding:22px 0 16px;flex-wrap:wrap}
 .hero h1{margin:0;font:800 clamp(56px,12vw,104px)/.82 var(--display);letter-spacing:-.01em}
-.hero .sub{margin-top:8px;color:var(--muted);font-size:14px}
+.hero > div:first-child{min-width:0}
+/* One line at every width, so it never grows a second one and pushes the board down; narrow screens drop the
+   optional words (main.js wraps them in <i>). */
+.hero .sub{margin-top:8px;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero .sub i{font-style:normal}
+@media (max-width:520px){.hero .sub i{display:none}}
 .ctrl{display:flex;gap:8px;align-items:center}
 .ctrl select,.ctrl button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:0 12px;height:38px}
 .ctrl select{min-width:9.5em;font-weight:600}
@@ -138,6 +143,11 @@ main > .chips:first-child{margin-bottom:18px}
 .note{color:var(--muted);font-size:13.5px;max-width:68ch;margin:-4px 0 14px}
 .note.sub{margin:14px 0 10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+/* Long lists: a kickoff window or a conference further down isn't laid out or painted until it's near the screen,
+   so opening a tab costs what's on screen, not the whole list. (Each keeps the height it last had, so scrolling is
+   steady.) Not the first two of a list: what's on screen from the start is drawn in full in its first frame, logos
+   included (a skipped section's pictures start loading a frame later). */
+.kgroup:nth-of-type(n+3),section.split:nth-of-type(n+3){content-visibility:auto;contain-intrinsic-size:auto 640px}
 
 /* team links */
 .tlink{text-decoration:none;color:inherit}
@@ -158,6 +168,15 @@ main > .chips:first-child{margin-bottom:18px}
 .logo{width:30px;height:30px;object-fit:contain;display:block}
 /* The few logos that stay lost on a dark theme even in ESPN's dark version (js/darklogos.js) sit on a light disc. */
 img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
+/* A picture still on its way is clear until it arrives, then fades in (components.js takes 'ld' off). */
+img{transition:opacity .15s ease-out}
+img.ld{opacity:0!important}
+/* Blank cards holding a list's place (Best games while its scores load): same parts, so the same height. */
+.game.ghost{cursor:default;pointer-events:none}
+.game.ghost .stripe,.game.ghost .logo{background:var(--soft);box-shadow:none}
+.game.ghost .logo{border-radius:50%}
+.game.ghost .tn{display:inline-block;width:46%;border-radius:4px;background:var(--soft)}
+.game.ghost .foot .status{display:inline-block;width:30%;border-radius:4px;background:var(--soft)}
 .game .logo{width:22px;height:22px}
 .logo.sm{width:20px;height:20px;display:inline-block;vertical-align:-5px}
 .logo.lg{width:56px;height:56px}
@@ -340,6 +359,8 @@ img.disc{background:#E8EEE9;border-radius:50%;padding:12%;box-sizing:border-box}
 .err button{margin-top:10px;background:var(--ink);color:var(--bg);border:0;border-radius:8px;padding:8px 14px;font-weight:600}
 .skeleton{height:150px;border-radius:12px;background:var(--soft);margin-bottom:12px}
 .skeleton.tall{height:420px}
+.skeleton.wait{margin-top:14px}
+.wpc-modes button:disabled{opacity:.45}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* drawer: side sheet on wide screens, full screen on phones */

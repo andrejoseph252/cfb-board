@@ -1,6 +1,6 @@
 /* Pregame price history from data/lines.json (kept by the GitHub Action): how each game's line moved during the week. */
 import * as api from './api.js';
-import { invalidate } from './state.js';
+import { invalidateSoon } from './state.js';
 import { nameMatch } from './markets.js';
 
 const SRC = { K: 'Kalshi', P: 'Polymarket' };
@@ -8,7 +8,7 @@ let list = null;
 const memo = new Map();
 
 export function loadLines(){
-  return api.lines().then(j => { if (j.m !== list){ list = j.m || []; memo.clear(); invalidate(); } }).catch(() => {});
+  return api.lines().then(j => { if (j.m !== list){ list = j.m || []; memo.clear(); invalidateSoon(); } }).catch(() => {});
 }
 
 /* A 3-point median drops one-snapshot spikes from thin markets without flattening real moves. */

@@ -1,5 +1,5 @@
-import { norm } from './util.js';
-import { withTimeout, takeEarly, keep, kept } from './api.js';
+import { norm, store } from './util.js';
+import { withTimeout, takeEarly } from './api.js';
 
 const KALSHI = 'https://api.elections.kalshi.com/trade-api/v2/markets';
 const POLY = 'https://gamma-api.polymarket.com/events';
@@ -50,22 +50,23 @@ async function fetchPoly(){
   return [];
 }
 
-let data = null, loadedAt = 0;
+/* The prices kept from the last visit (up to 12 hours), so a board drawn from its kept slate has its odds from the
+   first frame. Not on the demo page, whose games aren't this week's. */
+const keptPrices = window.__demo ? null : store.get('kept.markets', null);
+let data = keptPrices && Date.now() - keptPrices.at < 12 * 3600e3 ? keptPrices.v : null, loadedAt = 0;
 const matchCache = new Map();
 
 const MARKETS = new URL('data/markets.json', location.href).href;
-/* The prices kept from the last visit, so a board drawn from its kept slate has its odds too. */
-export async function loadKeptMarkets(){ if (!data){ const k = await kept(MARKETS); if (k && !data) data = k.data; } }
 export async function loadMarkets(force){
   if (!force && Date.now() - loadedAt < 5 * 60e3) return false;
   matchCache.clear();
   try{
     const r = await (takeEarly(MARKETS) || fetch(MARKETS, {cache:'no-store', ...withTimeout()}));
     if (r.ok){
-      const text = await r.text(), j = JSON.parse(text);
-      keep(MARKETS, text);
+      const j = await r.json();
       if ((j.kalshi?.length || 0) + (j.polymarket?.length || 0) > 0){
         data = j; loadedAt = Date.now();
+        if (!window.__demo) store.set('kept.markets', { at: loadedAt, v: j });
         return true;
       }
     }

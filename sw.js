@@ -9,7 +9,7 @@
    - Scores, stats, team logos (ESPN already lets browsers keep those for hours) and everything else: untouched.
    On install it also keeps every file the current page uses (the first visit loaded them before this was running).
    The page later asks it to fetch the game's modules too ("warm"), when nothing else is downloading. */
-const FILES = 'cfb-files-v1', PAGES = 'cfb-pages-v1', KEEP = [FILES, PAGES, 'cfb-data-v1'];
+const FILES = 'cfb-files-v1', PAGES = 'cfb-pages-v1', KEEP = [FILES, PAGES];
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {

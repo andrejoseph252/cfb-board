@@ -25,7 +25,11 @@ const useDataFor = id => useData('game:' + id, () => api.summary(id, isLive(id))
 export function viewGame(id){
   const e = useDataFor(id);
   if (e.err && !e.data) return `<div class="err"><b>Couldn't load this game.</b> ${esc(e.err)}</div>`;
-  if (!e.data) return '<div class="skeleton"></div><div class="skeleton tall"></div>';
+  // A game on the board opens on its header right away (teams, score, kickoff are already here); the rest follows.
+  if (!e.data){
+    const b = state.byId[id];
+    return b && !b.syncing ? banner(b, { venue: b.venue }) + '<div class="skeleton tall wait"></div>' : '<div class="skeleton"></div><div class="skeleton tall"></div>';
+  }
   // Prefer the scoreboard's copy (has odds + conference flags) merged over the summary's. Synced to a stream, the
   // summary is cut back to the moment the board is showing.
   const board = state.byId[id], s = board ? cutToBoard(board, e.data) : e.data;
@@ -239,13 +243,13 @@ function lineScore(g){
 
 function wpPanel(g, s){
   // Full per-play feed (win + cover + over/under); fall back to the summary's win-only series while it loads or if it fails.
-  const all = useData('prob:' + g.id, () => api.probabilities(g.id, isLive(g.id)), parseProbabilities).data;
+  const feed = useData('prob:' + g.id, () => api.probabilities(g.id, isLive(g.id)), parseProbabilities), all = feed.data;
   const pr = all && s.keep ? all.filter(p => s.keep.has(String(p.pid))) : all;
   const pts = pr?.length >= 5 ? pr : s.wp;
   if (pts.length < 5) return '';
   const plays = new Map();
   for (const d of s.drives) for (const p of d.plays) if (p.id) plays.set(String(p.id), p);
-  const chart = chartHTML(g, pts, plays, s.line);
+  const chart = chartHTML(g, pts, plays, s.line, !all && !feed.err);
   if (!chart) return '';
   const x = realizedExcitement(pts), live = g.state === 'in', rank = live ? null : seasonRank(x.index);
   return panel('Win probability', chart + `<div class="facts"><span>${live ? 'Excitement so far' : 'Excitement index'} <b>${x.index.toFixed(1)}</b> · ${x.label}</span>

@@ -2,12 +2,27 @@ export const $ = s => document.querySelector(s);
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const pct = p => Math.round(p * 100);
 export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
-export const fmtTime = d => d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
-export const fmtDay = d => new Date(d).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+/* Date formatters are built once: making one costs far more than using it, and every card on every redraw asks. */
+const TIME = new Intl.DateTimeFormat([], {hour:'numeric', minute:'2-digit'});
+const DAY = new Intl.DateTimeFormat(undefined, {weekday:'short', month:'short', day:'numeric'});
+const WEEKDAY = new Intl.DateTimeFormat(undefined, {weekday:'short'});
+export const fmtTime = d => TIME.format(d);
+export const fmtDay = d => DAY.format(new Date(d));
+export const fmtWeekday = d => WEEKDAY.format(new Date(d));
 export const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-export const norm = s => (s || '').toLowerCase().replace(/&/g,'and').replace(/\bstate\b/g,'st').replace(/\bst\./g,'st')
-  .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+/* Team names in a plain form for matching. The same few hundred names are asked for tens of thousands of times
+   (every game against every market), so each is worked out once. */
+const normed = new Map();
+export function norm(s){
+  s ||= '';
+  let n = normed.get(s);
+  if (n === undefined){
+    n = s.toLowerCase().replace(/&/g,'and').replace(/\bstate\b/g,'st').replace(/\bst\./g,'st').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+    if (normed.size < 5000) normed.set(s, n);
+  }
+  return n;
+}
 
 export function parseRecord(s){
   const m = /^(\d+)-(\d+)(?:-(\d+))?/.exec(s || '');
@@ -32,7 +47,8 @@ export async function pool(items, n, fn){
    kickoff windows are grouped by ET wherever you're watching; each card still shows the kickoff in your own time. */
 const ET_ZONE = 'America/New_York';
 const etClock = new Intl.DateTimeFormat('en-US', { timeZone: ET_ZONE, hour: 'numeric', minute: 'numeric', hourCycle: 'h23' });
-export const etDay = d => new Date(d).toLocaleDateString(undefined, { timeZone: ET_ZONE, weekday: 'long', month: 'short', day: 'numeric' });
+const ET_DAY = new Intl.DateTimeFormat(undefined, { timeZone: ET_ZONE, weekday: 'long', month: 'short', day: 'numeric' });
+export const etDay = d => ET_DAY.format(new Date(d));
 export function etMinutes(d){
   const p = Object.fromEntries(etClock.formatToParts(new Date(d)).map(x => [x.type, x.value]));
   return (Number(p.hour) % 24) * 60 + Number(p.minute);

@@ -1,4 +1,5 @@
 import { store } from './util.js';
+import { quiet } from './api.js';
 
 export const state = {
   tab: store.get('tab', 'week'), conf: store.get('conf', 'all'), tier: store.get('tier', 'p4'), q: '',
@@ -21,6 +22,23 @@ export function invalidate(...parts){
     frame = 0; const todo = [...dirty]; dirty.clear();
     for (const p of todo) renderers[p]?.();
   });
+}
+
+/* For data that fills in behind the board (standings, FPI, line history, last week's recap...): pieces that land
+   within a moment of each other are drawn together, one redraw instead of one each. Scores and anything the reader
+   did go through invalidate() and are drawn on the next frame. */
+const soon = new Set();
+let soonTimer = 0, soonFirst = 0;
+export function invalidateSoon(...parts){
+  state.version++;
+  for (const p of parts.length ? parts : ['main', 'detail']) soon.add(p);
+  if (!soonTimer){ soonFirst = performance.now(); soonTimer = setTimeout(flushSoon, 90); }
+}
+/* Drawn once the downloads still under way have landed too (so the board fills in in one step, not five), but
+   never more than a second and a quarter after the first piece arrived. */
+function flushSoon(){
+  if (!quiet() && performance.now() - soonFirst < 1250){ soonTimer = setTimeout(flushSoon, 50); return; }
+  soonTimer = 0; const ps = [...soon]; soon.clear(); invalidate(...ps);
 }
 
 export const CONF = {1:'ACC',4:'Big 12',5:'Big Ten',8:'SEC',9:'Pac-12',151:'American',17:'Mountain West',37:'Sun Belt',15:'MAC',12:'Conference USA',18:'Independents'};

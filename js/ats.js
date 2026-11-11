@@ -4,12 +4,12 @@
    kickoff, since ESPN's scoreboard drops it at the final), the scoreboard's own line while it still has one, or a
    line passed in by the caller (the game drawer has ESPN's summary, which keeps it). */
 import * as api from './api.js';
-import { invalidate } from './state.js';
+import { invalidateSoon } from './state.js';
 import { upset } from './upset.js';
 
 let map = null;
 export function loadSpreads(){
-  return api.spreads().then(j => { if (j?.g !== map){ map = j?.g || {}; invalidate(); } }).catch(() => {});
+  return api.spreads().then(j => { if (j?.g !== map){ map = j?.g || {}; invalidateSoon(); } }).catch(() => {});
 }
 
 /* The home team's closing spread (negative: home favored) and ESPN's text for it, or null. */

@@ -1,4 +1,5 @@
 import { $, esc, store, fmtTime } from './util.js';
+import { morph } from './morph.js';
 import { state, onRender, invalidate } from './state.js';
 import { loadBoard, refreshStandings, refreshFpi, refreshRankings, anyLive, LIVE_POLL } from './data.js';
 import { initSettings } from './settings.js';
@@ -7,7 +8,8 @@ import { picks, weekLabel, togglePin, setPick, setBet, removePick } from './pick
 import './pull.js';
 import { fire } from './live.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
-import { openXc, logoUrl } from './views/components.js';
+import { openXc, logoUrl, warm, warmView } from './views/components.js';
+import * as api from './api.js';
 import { inkOn } from './views/preview.js';
 import { isMine, setMyTeam, myTeam } from './myteam.js';
 import { viewWeek, weekList } from './views/slate.js';
@@ -41,19 +43,23 @@ const BT_ICON = {
 };
 
 /* ---------- rendering ---------- */
-let lastTabs = '', lastMain = '', firstPaint = false, entering = false, enterOff = 0;
+let lastTabs = '', lastMain = '', lastSub = '', firstPaint = false, entering = false, enterOff = 0;
 function renderHeader(){
-  $('#wkTitle').textContent = state.week ? weekLabel(state.st, state.week) : 'This week';
+  const title = state.week ? weekLabel(state.st, state.week) : 'This week';
+  if ($('#wkTitle').textContent !== title) $('#wkTitle').textContent = title;
   const gs = state.games, live = gs.filter(g => g.state === 'in').length, rr = gs.filter(g => g.home.rank && g.away.rank).length;
-  $('#wkSub').textContent = state.loading && !gs.length ? 'Loading the slate…' :
-    `${gs.length} FBS games · ${rr} ranked matchup${rr === 1 ? '' : 's'}${live ? ` · ${live} live` : ''}${state.updated ? ` · Updated ${fmtTime(state.updated)}` : ''}`;
+  // One line at every width (a second line appearing when games go live would push the whole board down): the words
+  // in <i> drop out on narrow screens.
+  const sub = state.loading && !gs.length ? 'Loading the slate…' :
+    `${gs.length} <i>FBS </i>games · ${rr} ranked<i> matchup${rr === 1 ? '' : 's'}</i>${live ? ` · ${live} live` : ''}${state.updated ? ` · Updated ${esc(fmtTime(state.updated))}` : ''}`;
+  if (sub !== lastSub){ $('#wkSub').innerHTML = sub; lastSub = sub; }
   const counts = { week: gs.length, picks: Object.values(picks).filter(p => !p.result).length || null };
   // The My team tab is labeled with the team once one is picked.
   const label = (k, l) => k === 'team' && myTeam ? esc(myTeam.name) : l;
   const tabs = TABS.map(([k, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${label(k, l)}${counts[k] ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('');
   const tkey = tabs + (myTeam?.logo || '') + (myTeam?.color || '') + (state.standings ? 1 : 0) + (document.documentElement.dataset.theme || '');
   if (tkey !== lastTabs){
-    $('#tabs').innerHTML = tabs; lastTabs = tkey;
+    morph($('#tabs'), tabs); lastTabs = tkey;
     // Phones: the same tabs as a bar along the bottom, icon over a short label.
     const mineAbbr = myTeam && (state.standings?.byTeam[myTeam.id]?.abbr || myTeam.name);
     const short = { week: 'Week', conf: 'Conf', rankings: 'Rankings', team: myTeam ? esc(mineAbbr) : 'My team', picks: 'Picks' };
@@ -64,8 +70,8 @@ function renderHeader(){
     const tc = myTeam && (myTeam.color || '#3A3A3A');
     bt.classList.toggle('on-team', state.tab === 'team' && !!myTeam);
     if (tc){ bt.style.setProperty('--team', tc); bt.style.setProperty('--team-ink', inkOn(tc)); }
-    bt.innerHTML = TABS.map(([k]) => `<button class="btab" type="button" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">
-      <span class="bt-i">${k === 'team' && myTeam?.logo ? `<img class="bt-ld" src="${esc(logoUrl(myTeam.logo, 72, 'dark'))}" alt=""><img class="bt-ll" src="${esc(logoUrl(myTeam.logo, 72, 'light'))}" alt="">` : BT_ICON[k]}${k === 'picks' && counts.picks ? `<em>${counts.picks}</em>` : ''}</span><span class="bt-l">${short[k]}</span></button>`).join('');
+    morph(bt, TABS.map(([k]) => `<button class="btab" type="button" data-tab="${k}" aria-current="${state.tab === k ? 'page' : 'false'}">
+      <span class="bt-i">${k === 'team' && myTeam?.logo ? `<img class="bt-ld" src="${esc(logoUrl(myTeam.logo, 72, 'dark'))}" alt=""><img class="bt-ll" src="${esc(logoUrl(myTeam.logo, 72, 'light'))}" alt="">` : BT_ICON[k]}${k === 'picks' && counts.picks ? `<em>${counts.picks}</em>` : ''}</span><span class="bt-l">${short[k]}</span></button>`).join(''));
   }
   renderWeekPicker();
   renderStale();
@@ -105,9 +111,12 @@ function mainHTML(){
 }
 function renderMain(){
   const html = mainHTML();
-  if (html === lastMain) return;
+  if (hold || html === lastMain) return;
   const v = $('#view'), fid = document.activeElement?.id, keep = fid === 'q' || fid === 'tq', y = window.scrollY;
-  v.innerHTML = html; lastMain = html;
+  // Another tab is all new; a refresh of the same one changes only what's different (morph.js), so logos don't
+  // blink and nothing that stayed the same is rebuilt.
+  if (entering || !v.firstChild) v.innerHTML = html; else morph(v, html);
+  lastMain = html;
   // A refresh never moves the page (phones can lose the spot when the tapped element is replaced); a new tab
   // scrolls to the top in setTab, before this runs.
   if (window.scrollY !== y) window.scrollTo(0, y);
@@ -115,12 +124,58 @@ function renderMain(){
   // The class comes off once the cards are in: left on, every later refresh (a pick, a live update) would replay it.
   if (entering){ entering = false; v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); clearTimeout(enterOff); enterOff = setTimeout(() => v.classList.remove('enter'), 600); }
   if (!firstPaint && state.games.length){ firstPaint = true; settle(); }
+  warmView(); keepScreen();
   const box = keep ? $('#' + fid) : null;
   if (box){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
   // Team picker: put the cursor in its search box (desktop only; on phones that would pop the keyboard).
   else if ($('#tq') && matchMedia('(pointer: fine)').matches && !document.activeElement?.closest('#view')) $('#tq').focus({ preventScroll: true });
 }
-onRender({ header: renderHeader, main: () => { renderHeader(); renderMain(); }, detail: renderDetail });
+onRender({ header: () => { if (!hold) renderHeader(); }, main: () => { if (!hold) renderHeader(); renderMain(); }, detail: renderDetail });
+
+/* ---------- the last screen, kept for the next visit ----------
+   The board as it was last drawn (this tab's HTML, the header, the tab bars) is saved a moment after each redraw. On
+   the next visit a few lines in index.html put it back on screen before any of the app's scripts have downloaded,
+   so the page opens on the board instead of on blank boxes. The scripts then take it over in place: nothing is
+   redrawn until this visit's data is in (hold), then only what changed since is updated (morph.js). A tap or a key
+   ends the wait at once, and so does a game in progress, where a fresh score matters more than a tidy arrival.
+   Saved per build (another version's HTML may not fit this one's styles) and used for 12 hours, like the kept data. */
+const BUILD = document.querySelector('meta[name="app-version"]')?.dataset.build || '';
+let hold = !!window.__snap, snapTimer = 0;
+function keepScreen(){
+  if (window.__demo) return;
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(() => {
+    if (hold || state.q || state.pickedWeek || state.loading || !state.games.length || picking.on || state.tab !== store.get('tab', 'week')) return;
+    const bt = $('#btabs');
+    // Pictures still on their way are saved as plain pictures (the fade-in class is this visit's business).
+    const view = $('#view').innerHTML.replace(/(<img[^>]*?class="[^"]*?) ld(?=")/g, '$1');
+    if (view.length > 6e5) return;
+    store.set('snap', { b: BUILD, at: Date.now(), tab: state.tab, view, title: $('#wkTitle').textContent, sub: $('#wkSub').innerHTML,
+      wk: $('#week').innerHTML, tabs: $('#tabs').innerHTML, bt: bt.innerHTML, btc: bt.className, bts: bt.getAttribute('style') || '' });
+  }, 900);
+}
+function release(){
+  if (!hold) return;
+  hold = false; invalidate('main');
+}
+if (hold){
+  const t0 = performance.now(); let quietAt = 0, inAt = 0;
+  const check = () => {
+    if (!hold) return;
+    const now = performance.now();
+    if (!state.loading){
+      inAt ||= now;
+      quietAt = api.quiet() ? quietAt || now : 0;
+      // The fresh scoreboard is in. Draw once its companions (line history, last week's recap...) are too, within
+      // 1.2 seconds; right away if a game is on.
+      if (anyLive() || (quietAt && now - quietAt > 120) || now - inAt > 1200) return release();
+    }
+    if (now - t0 > 6000) return release();
+    setTimeout(check, 40);
+  };
+  check();
+  for (const ev of ['click', 'input', 'keydown']) addEventListener(ev, release, { capture: true, once: true });
+}
 
 /* ---------- events ---------- */
 function setTab(k){
@@ -174,6 +229,30 @@ document.addEventListener('click', e => {
   else if (d.bettype) setBet(g, { type: d.bettype });
   else if (d.betamt) setBet(g, { amt: d.betamt });
 });
+/* A game or team starts downloading while the tap is still landing (or the mouse is resting on it), so its drawer
+   opens with the data already here or nearly: the press of a tap, held a moment so a scroll doesn't count; a mouse
+   that stays put for a beat. */
+function prefetch(el){
+  const card = el.closest('.game[data-id]'), href = el.closest('a[href^="#"]')?.getAttribute('href') || el.closest('tr[data-href]')?.dataset.href || '';
+  const m = /^#(game|team)\/(.+)$/.exec(href) || (card && !el.closest('a, button, details') ? [0, 'game', card.dataset.id] : null);
+  if (!m) return;
+  const id = decodeURIComponent(m[2]);
+  if (m[1] === 'team') return void api.teamSchedule(id).catch(() => {});
+  const g = state.byId[id];
+  api.summary(id, g?.state === 'in').catch(() => {});
+  if (g) for (const t of [g.away, g.home]) warm(logoUrl(t.logo, 180, 'light'));
+}
+let intent = 0;
+document.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse') return prefetch(e.target);
+  clearTimeout(intent); const t = e.target; intent = setTimeout(() => prefetch(t), 70);
+}, { passive: true });
+for (const ev of ['pointercancel', 'pointermove', 'scroll']) document.addEventListener(ev, e => { if (e.pointerType !== 'mouse') clearTimeout(intent); }, { passive: true, capture: true });
+document.addEventListener('pointerover', e => {
+  if (e.pointerType !== 'mouse') return;
+  clearTimeout(intent); const t = e.target; intent = setTimeout(() => prefetch(t), 80);
+}, { passive: true });
+
 /* News stories: opening one on ESPN marks it read. On phones, tapping a story with a summary unfolds it instead;
    its "Read on ESPN" link opens it. */
 document.addEventListener('click', e => {
@@ -190,8 +269,8 @@ document.addEventListener('pointerdown', e => {
 });
 document.addEventListener('input', e => {
   if (e.target.closest?.('.syncp')) syncInput(e.target);
-  if (e.target.id === 'q'){ state.q = e.target.value; const l = $('#list'); if (l) l.innerHTML = weekList(); lastMain = ''; }
-  if (e.target.id === 'tq'){ picking.q = e.target.value; const l = $('#pickList'); if (l) l.innerHTML = pickList(); $('.pick-confs')?.classList.toggle('searching', !!picking.q); lastMain = ''; }
+  if (e.target.id === 'q'){ state.q = e.target.value; const l = $('#list'); if (l) morph(l, weekList()); lastMain = ''; }
+  if (e.target.id === 'tq'){ picking.q = e.target.value; const l = $('#pickList'); if (l) morph(l, pickList()); $('.pick-confs')?.classList.toggle('searching', !!picking.q); lastMain = ''; }
 });
 // A bet's "Other" amount (game drawer) applies when you leave the box or press Enter, not on every keystroke.
 document.addEventListener('change', e => {

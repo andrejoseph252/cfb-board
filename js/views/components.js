@@ -1,4 +1,4 @@
-import { esc, pct, fmtTime, fmtDay, plural } from '../util.js';
+import { esc, pct, fmtTime, fmtDay, fmtWeekday, plural } from '../util.js';
 import { state } from '../state.js';
 import { marketsFor, sourceLabel } from '../markets.js';
 import { pins, picks } from '../picks.js';
@@ -31,11 +31,48 @@ export function logoUrl(src, px, variant){
 }
 /* Whether a logo needs the light disc behind it here. */
 export const needsDisc = src => darkUI() && DISC.has(teamOf(ESPN_LOGO.exec(src || '')?.[1] || ''));
+/* Pictures this visit has already shown are in the browser's memory, so the next place one appears (another tab, a
+   drawer, further down the list) it's drawn in the same frame as everything around it. One that hasn't loaded yet is
+   fetched when it nears the screen and fades in ('ld', taken off when it arrives) instead of popping in. */
+const shown = new Map();   // address -> a copy held here, which is what keeps it in the browser's memory
+const hold = url => { if (url && !shown.has(url)){ const im = new Image(); im.src = url; shown.set(url, im); } };
+const arrived = e => {
+  const t = e.target; if (t?.localName !== 'img') return;
+  // Team logos only (a few hundred small files); news photos come and go.
+  if (e.type === 'load' && /teamlogos/.test(t.src)) hold(t.getAttribute('src'));
+  if (t.classList.contains('ld')) t.classList.remove('ld');
+};
+document.addEventListener('load', arrived, true);
+document.addEventListener('error', arrived, true);
+// Pictures already on the page when this starts (the screen kept from the last visit) count as shown.
+for (const im of document.images) if (/teamlogos/.test(im.src) && im.complete && im.naturalWidth) hold(im.getAttribute('src'));
+const warming = new Map();
+/* Fetch a picture ahead of its use (a drawer's big logos while the tap is still landing). */
+export function warm(url){
+  if (!url || shown.has(url) || warming.has(url)) return;
+  const im = new Image(); warming.set(url, im);
+  im.onload = () => { shown.set(url, im); warming.delete(url); }; im.onerror = () => warming.delete(url);
+  im.src = url;
+}
+/* Once the screen is drawn and quiet: fetch the pictures further down this view now, so scrolling never catches
+   one arriving. */
+let warmTimer = 0;
+export function warmView(){
+  // Not on a connection that's slow or set to save data: there the pictures load as they're reached, as before.
+  const c = navigator.connection;
+  if (c && (c.saveData || /2g|3g/.test(c.effectiveType || ''))) return;
+  clearTimeout(warmTimer);
+  warmTimer = setTimeout(() => (window.requestIdleCallback || setTimeout)(() => {
+    for (const im of document.querySelectorAll('#view img[loading="lazy"]')) im.loading = 'eager';
+  }), 1200);
+}
+const imgAttrs = url => shown.has(url) ? ["", " decoding=\"sync\""] : [' ld', ' loading="lazy"'];
 /* A logo on a white disc ('on-light' in cls) keeps its regular colors. */
 export const logo = (src, cls = 'logo') => {
   if (!src) return `<span class="${cls}"></span>`;
-  const light = /\bon-light\b/.test(cls);
-  return `<img class="${cls}${!light && needsDisc(src) ? ' disc' : ''}" src="${esc(logoUrl(src, /\b(lg|mh-logo)\b/.test(cls) ? 180 : 72, light ? 'light' : undefined))}" alt="" loading="lazy">`;
+  const light = /\bon-light\b/.test(cls), url = logoUrl(src, /\b(lg|mh-logo)\b/.test(cls) ? 180 : 72, light ? 'light' : undefined);
+  const [ld, how] = imgAttrs(url);
+  return `<img class="${cls}${!light && needsDisc(src) ? ' disc' : ''}${ld}" src="${esc(url)}" alt=""${how}>`;
 };
 
 /* Team name that opens the schedule drawer. Pass {logo:true} to include the logo inside the link. My team gets a star. */
@@ -45,9 +82,9 @@ export function teamLink(t, { rank = true, withLogo = false, label } = {}){
   return `<a class="tlink" href="${teamHref(t.id)}">${withLogo ? logo(t.logo, 'logo sm') : ''}${rank && t.rank ? `<span class="rank">${t.rank}</span>` : ''}${esc(label ?? t.name)}${star}</a>`;
 }
 
-export const sec = (title, n, unit = 'game') => `<h2 class="sec">${esc(title)}${n != null ? `<span class="n">${plural(n, unit)}</span>` : ''}</h2>`;
+export const sec = (title, n, unit = 'game') => `<h2 class="sec" data-k="h:${esc(title)}">${esc(title)}${n != null ? `<span class="n">${plural(n, unit)}</span>` : ''}</h2>`;
 /* A titled run of cards whose header sticks under the tabs while you scroll through it. */
-export const group = (label, n, body, ctx = '') => `<section class="kgroup"><div class="kgroup-h"><span class="kpill">${esc(label)}</span>${ctx ? `<span class="kctx">${esc(ctx)}</span>` : ''}<span class="kn">${n}</span></div>${body}</section>`;
+export const group = (label, n, body, ctx = '') => `<section class="kgroup" data-k="kg:${esc(label)}:${esc(ctx)}"><div class="kgroup-h"><span class="kpill">${esc(label)}</span>${ctx ? `<span class="kctx">${esc(ctx)}</span>` : ''}<span class="kn">${n}</span></div>${body}</section>`;
 export const empty = msg => `<div class="empty">${msg}</div>`;
 export const chips = (items, active, attr) => `<div class="chips" role="group">${items.map(([v, l]) =>
   `<button class="chip" data-${attr}="${esc(v)}" aria-pressed="${String(active) === String(v)}">${esc(l)}</button>`).join('')}</div>`;
@@ -137,7 +174,7 @@ export function statusHTML(g, bare = false){
   if (g.state === 'in') return `<span class="status live">${esc(g.detail)}</span>${g.sit && !bare ? `<span>${esc(g.sit)}</span>` : ''}`;
   if (g.state === 'post') return `<span class="status">${esc(g.detail || 'Final')}</span>`;
   const d = new Date(g.date);
-  return `<span class="status">${d.toLocaleDateString(undefined, {weekday:'short'})} ${fmtTime(d)}</span>`;
+  return `<span class="status">${fmtWeekday(d)} ${fmtTime(d)}</span>`;
 }
 
 export function meter(g, p, label){
@@ -146,7 +183,7 @@ export function meter(g, p, label){
     <span style="width:${pa}%;background:${esc(ca)}"></span><span style="width:${ph}%;background:${esc(ch)}"></span></div>`;
 }
 
-const dayName = t => new Date(t).toLocaleDateString(undefined, {weekday:'short'});
+const dayName = fmtWeekday;
 
 /* Step path through [ms, value] points scaled into a w x h box (values 0-1, 1 at the top unless lo/hi zoom it). */
 export function stepPath(pts, w, h, lo = 0, hi = 1){
@@ -288,7 +325,13 @@ export function card(g){
       <button class="pinbtn" data-pin aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} ${esc(g.away.name)} at ${esc(g.home.name)}" title="${pinned ? 'Unpin' : 'Pin'}">${PIN}</button></div>
   </article>`;
 }
-export const grid = gs => `<div class="grid">${gs.map(g => card(g)).join('')}</div>`;
+/* key: a name for this list when its section can come and go, so a redraw matches it to itself (morph.js). */
+export const grid = (gs, key) => `<div class="grid"${key ? ` data-k="g:${esc(key)}"` : ''}>${gs.map(g => card(g)).join('')}</div>`;
+
+/* Blank cards the size of an upcoming game's, holding a list's place until its games are known. */
+const GHOST = `<article class="game ghost" aria-hidden="true">${'<div class="row"><span class="stripe"></span><span class="logo"></span><span class="tname"><span class="tn">&nbsp;</span></span><span></span><span class="score"></span></div>'.repeat(2)}
+  <div class="meter"></div><div class="odds"><b>&nbsp;</b></div><div class="xc pending"><span class="xc-sum">&nbsp;</span></div><div class="foot"><span class="status">&nbsp;</span></div></article>`;
+export const ghostGrid = (n, key) => `<div class="grid"${key ? ` data-k="g:${esc(key)}"` : ''}>${GHOST.repeat(n)}</div>`;
 
 /* Shared header for detail drawers (team schedule + game). */
 export function detailHead({ title, label, sub, logoSrc, color, right = '' }){

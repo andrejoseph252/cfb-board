@@ -6,7 +6,8 @@ import { lineFor } from '../lines.js';
 import { recapBanner } from './recap.js';
 import { mySide } from '../myteam.js';
 import { myTeamBar } from './mybar.js';
-import { grid, sec, empty, chips, group } from './components.js';
+import { grid, sec, empty, chips, group, ghostGrid } from './components.js';
+import { predsPending } from '../data.js';
 
 const ranked = g => g.home.rank || g.away.rank;
 const bestRank = g => Math.min(g.home.rank || 99, g.away.rank || 99);
@@ -19,15 +20,18 @@ export function viewWeek(){
   const core = gs.filter(g => g.state === 'in' && (ranked(g) || pins.has(g.id) || mySide(g))).sort((a, b) => mineFirst(a, b) || bestRank(a) - bestRank(b) || byKick(a, b));
   const live = [...core, ...gs.filter(g => g.state === 'in' && !core.includes(g) && isHot(g)).sort(byKick)];
   const pinned = gs.filter(g => pins.has(g.id) || mySide(g)).sort(mineFirst);
-  const must = gs.filter(g => g.state === 'pre' && !excitement(g).pending)
-    .map(g => [g, excitement(g).score]).filter(([, s]) => s >= 65).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
+  // Best games need every upcoming game's score. Until those are in (a first visit; later ones have them kept), the
+  // section holds its place with blank cards, so it arrives once and doesn't push the rest of the board down.
+  const pre = gs.filter(g => g.state === 'pre'), waiting = predsPending();
+  const must = waiting ? [] : pre.map(g => [g, excitement(g).score]).filter(([, s]) => s >= 65).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([g]) => g);
   let h = '';
-  if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. An orange outline marks the tightest games late.</p>' + grid(live);
+  if (live.length) h += sec('Live now', live.length) + '<p class="note">Top 25, pinned and close late games in progress. An orange outline marks the tightest games late.</p>' + grid(live, 'live');
   // The one-line recap bar opens on tap; it sits under live games and above Best games.
   h += recapBanner() + myTeamBar();
-  if (must.length) h += sec('Best games to watch', must.length) + grid(must);
+  if (waiting) h += sec('Best games to watch', null) + ghostGrid(Math.min(6, Math.ceil(pre.length / 5)), 'best');
+  else if (must.length) h += sec('Best games to watch', must.length) + grid(must, 'best');
   h += sec('Pinned', pinned.length);
-  h += pinned.length ? grid(pinned) : empty('Tap the pin on any game to keep it here and in the live strip.');
+  h += pinned.length ? grid(pinned, 'pinned') : empty('Tap the pin on any game to keep it here and in the live strip.');
   h += sec('Games', null) + `<div class="filters"><input class="search" id="q" type="search" placeholder="Search all teams" value="${esc(state.q)}" aria-label="Search games by team">
     ${chips(TIERS.map(([k, l, f]) => [k, `${l} ${gs.filter(f).length}`]), state.tier, 'tier')}
     ${chips([['time', 'By time'], ['xc', 'Most exciting'], ['moves', 'Line moves']], state.sort || 'time', 'sort')}</div><div id="list">${weekList()}</div>`;

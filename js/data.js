@@ -1,12 +1,12 @@
 /* Loaders: fetch through api.js (cached), normalize, store on state, request a render. */
 import * as api from './api.js';
 import { parseEvent, parseStandings, parseFpi, parsePredictor, parseRankings } from './models.js';
-import { state, invalidate } from './state.js';
-import { loadMarkets, loadKeptMarkets } from './markets.js';
+import { state, invalidate, invalidateSoon } from './state.js';
+import { loadMarkets } from './markets.js';
 import { loadLines } from './lines.js';
 import { loadSpreads } from './ats.js';
 import { loadFinalExcitement } from './excitement.js';
-import { pool } from './util.js';
+import { pool, store } from './util.js';
 import { resolvePicks, backfillPicks } from './picks.js';
 import * as sync from './sync.js';
 import * as live from './live.js';
@@ -54,24 +54,20 @@ export async function loadBoard({ silent = false, fresh = false } = {}){
 }
 
 /* A visit's first load draws something before ESPN's scoreboard arrives, if it can:
-   - the slate kept on this device from the last visit (under 12 hours old), with its kept standings, FPI and
-     rankings; "Updated" shows when it's from, and the fresh scoreboard replaces it a moment later;
+   - the board as this device last had it (under 12 hours old; see "kept between visits" below), which is on screen
+     from the very first frame; "Updated" shows when it's from, and the fresh scoreboard replaces it a moment later;
    - or, for someone new, the slate the GitHub Action saved (data/slate.json, a ninth of ESPN's size and from the
      site's own server), but only when nothing can have changed since: no game under way, no kickoff since it was
      saved, and the week not over (ESPN may have moved on to the next one). On a game day that's rarely true, and
      the board simply waits for ESPN.
-   Whichever of these arrives after ESPN's scoreboard is dropped. */
+   If it arrives after ESPN's scoreboard it's dropped. */
 async function drawFirst(board, markets, seq){
   const late = board.then(() => null, () => null);
-  const [k] = await Promise.all([api.kept(api.scoreboardUrl()), loadKeptMarkets()]);
-  let first = k && { sb: k.data, at: k.at };
-  if (!first){
-    const s = await Promise.race([api.slate().catch(() => null), late]);
-    if (s && settled(s)){ await Promise.race([markets, late]); first = { sb: s.sb, at: Date.parse(s.at) }; }
-  }
-  if (!first || raw || seq !== boardSeq) return;
-  apply(first.sb, true, true); state.updated = new Date(first.at); invalidate('main', 'header');
-  if (k){ refreshStandings(); refreshFpi(); refreshRankings(); }   // their kept copies, so the cards are complete
+  const s = await Promise.race([api.slate().catch(() => null), late]);
+  if (!s || !settled(s)) return;
+  await Promise.race([markets, late]);
+  if (raw || seq !== boardSeq) return;
+  apply(s.sb, true, true); state.updated = new Date(Date.parse(s.at)); invalidate('main', 'header');
 }
 function settled(s){
   const now = Date.now(), ev = s.sb?.events || [], stateOf = e => e.competitions?.[0]?.status?.type?.state;
@@ -84,7 +80,35 @@ function apply(j, follow, kept = false){
   state.season = j.season?.year ?? state.season;
   if (follow){ state.week = String(j.week?.number); state.st = String(j.season?.type); state.current = `${state.st}-${state.week}`; }
   raw = (j.events || []).map(parseEvent).sort((a, b) => new Date(a.date) - new Date(b.date));
+  if (follow && !kept) keepAs('board', { cal: state.cal, season: state.season, week: state.week, st: state.st, games: raw }, 60e3);
   showGames(kept);
+}
+
+/* ---------- kept between visits ----------
+   The current week's board, the standings, FPI and rankings as this device last had them, saved as the small shapes
+   the views use (about 200 KB in all, in localStorage). They're read back before the first frame, so a return
+   visit opens on the board it left, complete, and the fresh copies replace them as they download. (Until v3.9 the
+   whole of ESPN's answers were kept instead, 5 MB that had to be parsed again before anything could be drawn.) */
+const KEEP_MAX = 12 * 3600e3, keptAt = {};
+function keptOf(name){
+  if (window.__demo) return null;   // the demo's games aren't this week's
+  const k = store.get('kept.' + name, null);
+  return k && Date.now() - k.at < KEEP_MAX ? k : null;
+}
+function keepAs(name, v, every = 0){
+  if (window.__demo || Date.now() - (keptAt[name] || 0) < every) return;
+  keptAt[name] = Date.now(); store.set('kept.' + name, { at: keptAt[name], v });
+}
+const byId = confs => Object.fromEntries(confs.flatMap(c => c.teams).map(t => [t.id, t]));
+function restore(){
+  const b = keptOf('board'), s = keptOf('standings'), f = keptOf('fpi'), r = keptOf('rankings');
+  if (s) state.standings = { confs: s.v, byTeam: byId(s.v) };
+  if (f) state.fpi = f.v;
+  if (r) state.rankings = r.v;
+  if (!b?.v?.games?.length) return;
+  Object.assign(state, { cal: b.v.cal || [], season: b.v.season, week: b.v.week, st: b.v.st, current: `${b.v.st}-${b.v.week}`, updated: new Date(b.at) });
+  raw = b.v.games;
+  showGames(true);
 }
 
 // From the newest data, so a delayed board still refreshes at the live pace.
@@ -121,31 +145,61 @@ window.addEventListener('online', () => loadBoard({ silent: true }));
 /* Called on every board load; api.js TTLs (10 min standings, 60 min FPI) decide whether anything is actually fetched. */
 let standingsRaw, fpiRaw;
 export function refreshStandings(){
-  return api.standings().then(j => { if (j !== standingsRaw){ standingsRaw = j; state.standings = parseStandings(j); state.standingsErr = null; invalidate(); } })
+  return api.standings().then(j => { if (j !== standingsRaw){ standingsRaw = j; state.standings = parseStandings(j); state.standingsErr = null; keepAs('standings', state.standings.confs); invalidateSoon(); } })
     .catch(e => { if (!state.standings){ state.standingsErr = e.message; invalidate(); } });
 }
 let rankingsRaw;
 export function refreshRankings(){
-  return api.rankings().then(j => { if (j !== rankingsRaw){ rankingsRaw = j; state.rankings = parseRankings(j); invalidate(); } }).catch(() => {});
+  return api.rankings().then(j => { if (j !== rankingsRaw){ rankingsRaw = j; state.rankings = parseRankings(j); keepAs('rankings', state.rankings); invalidateSoon(); } }).catch(() => {});
 }
 export function refreshFpi(){
-  return api.powerIndex().then(j => { if (j !== fpiRaw){ fpiRaw = j; state.fpi = parseFpi(j); state.fpiErr = null; invalidate(); } })
+  return api.powerIndex().then(j => { if (j !== fpiRaw){ fpiRaw = j; state.fpi = parseFpi(j); state.fpiErr = null; keepAs('fpi', state.fpi); invalidateSoon(); } })
     .catch(e => { if (!state.fpi){ state.fpiErr = e.message; invalidate(); } });
 }
 
-/* ESPN predictor per game (FPI win prob + Matchup Quality). One small request each, fetched once per session. */
-let predBatch = 0;
+/* ESPN predictor per game (FPI win prob + Matchup Quality). One small request each, fetched once per session.
+
+   They decide each card's excitement score and which games are "Best games to watch", so how they arrive is what
+   the top of the board looks like while it loads:
+   - they're kept on this device (a week), so the next visit has them from its first frame; one older than three
+     hours is fetched again and the old number shows until the new one is in;
+   - a batch lands all at once, not a few games at a time (which reshuffled Best games four times on the way in),
+     upcoming games first; anything still out after four seconds stops holding up the rest. */
+const PRED_FRESH = 3 * 3600e3, PRED_KEEP = 7 * 864e5;
+const keptPreds = store.get('preds', {});   // game id -> [saved (ms), pHome, mq, margin]
+for (const [id, [at, pHome, mq, margin]] of Object.entries(keptPreds)){
+  if (Date.now() - at < PRED_KEEP) state.preds.set(id, { pHome, mq, margin }); else delete keptPreds[id];
+}
 const requested = new Set();
+/* True while an upcoming game on the board is still waiting for its first prediction. */
+export const predsPending = () => state.games.some(g => g.state === 'pre' && !state.preds.has(g.id));
 export async function loadPredictions(games){
-  const need = games.filter(g => !requested.has(g.id));
+  const need = games.filter(g => !requested.has(g.id) && !(Date.now() - (keptPreds[g.id]?.[0] || 0) < PRED_FRESH));
   if (!need.length) return;
   need.forEach(g => requested.add(g.id));
-  const batch = ++predBatch;
-  let sinceRender = 0;
-  await pool(need, 6, async g => {
-    try{ state.preds.set(g.id, parsePredictor(await api.predictor(g.id))); }
-    catch{ state.preds.set(g.id, null); }
-    if (++sinceRender >= 15 && batch === predBatch){ sinceRender = 0; invalidate('main'); }
-  });
-  invalidate('main', 'detail');
+  const batch = async list => {
+    if (!list.length) return;
+    const got = new Map();
+    const land = () => {
+      if (!got.size) return;
+      for (const [id, p] of got){
+        // A failed refresh keeps the number from last time.
+        if (p || !state.preds.get(id)) state.preds.set(id, p);
+        if (p) keptPreds[id] = [Date.now(), p.pHome, p.mq, p.margin];
+      }
+      got.clear(); store.set('preds', keptPreds);
+      invalidateSoon('main', 'detail');
+    };
+    const giveUp = setTimeout(land, 4000);
+    await pool(list, 16, async g => {
+      try{ got.set(g.id, parsePredictor(await api.predictor(g.id))); }
+      catch{ got.set(g.id, null); }
+    });
+    clearTimeout(giveUp); land();
+  };
+  await batch(need.filter(g => g.state === 'pre'));
+  await batch(need.filter(g => g.state !== 'pre'));
 }
+
+// Last visit's board, on screen before anything is downloaded.
+try{ restore(); }catch(e){ console.error(e); }
