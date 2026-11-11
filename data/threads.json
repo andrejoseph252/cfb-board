@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-11T11:29:38+00:00",
+ "updated": "2026-11-11T18:55:19+00:00",
  "threads": [
   {
    "kind": "post",
@@ -1517,18 +1517,10 @@
     "Delaware Valley",
     "KIN"
    ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Delaware Valley @ King's (1:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xl870t/game_thread_delaware_valley_kings_100_pm_et/",
-   "published": "2026-11-01T17:00:11+00:00",
-   "gameId": null,
-   "teams": [
-    "Delaware Valley",
-    "King's"
-   ]
   }
  ],
- "errors": []
+ "errors": [
+  "https://www.reddit.com/user/CFB_Referee/submitted/.rss: HTTP Error 404: Not Found",
+  "https://www.reddit.com/r/CFB/search.rss: HTTP Error 403: Forbidden"
+ ]
 }
