@@ -291,10 +291,16 @@ export function excitementBadge(g, { open = false } = {}){
   if (x.pending) return '<div class="xc pending"><span class="xc-sum">Hype <b>…</b></span></div>';
   const [, label, cls] = x.tier;
   return `<details class="xc" data-xc="${esc(g.id)}"${open || openXc.has(g.id) ? ' open' : ''}><summary class="xc-sum" title="Hype ${x.score} of 100: how big a game this is"><span class="xc-score ${cls}">${x.score}</span>
-      <b class="xc-label">${esc(label)}</b><span class="xc-tags">${esc(drivers(x))}</span>${CHEV}</summary>
-    <ul class="xc-parts">${x.parts.map(p => `<li><span class="xc-k">${esc(p.k)}</span>
-      <span class="xc-bar"><i style="width:${(p.pts / p.max) * 100}%"></i></span>
-      <span class="xc-pts">${p.pts.toFixed(0)}/${p.max}</span><span class="xc-why">${esc(p.why)}</span></li>`).join('')}</ul></details>`;
+      <b class="xc-label">${esc(label)}</b><span class="xc-tags">${esc(drivers(x))}</span>${CHEV}</summary>${hypeMix(x)}</details>`;
+}
+/* Opened on a card: what the score is made of, in two lines' worth of space. One bar for the whole 100 split into
+   its parts (shade = part, as in the key), then a key of the parts that scored, each with a few words of why. The
+   full sentences are in the game's Hype meter. */
+function hypeMix(x){
+  const ps = x.parts.map((p, i) => ({ ...p, i })).filter(p => p.pts >= .5);
+  return `<div class="xc-mix"><div class="xm-bar" role="img" aria-label="${esc(ps.map(p => `${p.k} ${Math.round(p.pts)} of ${p.max}`).join(', '))}">${ps.map(p =>
+      `<i class="xm-${p.i}" style="width:${p.pts}%"></i>`).join('')}</div>
+    <ul class="xm-key">${ps.map(p => `<li class="xm-${p.i}"><span class="xm-k">${esc(p.short)}</span><b>${Math.round(p.pts)}<small>/${p.max}</small></b>${p.note ? `<span class="xm-n">${esc(p.note)}</span>` : ''}</li>`).join('')}</ul></div>`;
 }
 
 /* Final cards: a quiet tag when the winner had a low chance at kickoff, e.g. "Upset 22%". */

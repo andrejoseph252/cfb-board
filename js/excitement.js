@@ -51,10 +51,12 @@ export function excitement(g){
 
   // 1. Matchup quality
   let mq = pred?.mq, mqNote;
+  let mqShort = mq != null ? `ESPN rating ${mq.toFixed(0)}` : '';
   if (mq != null) mqNote = `ESPN Matchup Quality ${mq.toFixed(0)}/100`;
-  else { mq = fpiQuality(g); mqNote = mq != null ? `Estimated from FPI ranks (ESPN rating unavailable): ${mq.toFixed(0)}/100` : null; }
-  if (mq == null){ mq = 30; mqNote = 'No FPI or ESPN rating for these teams, assumed below average'; }
-  parts.push({ k: 'Matchup quality', pts: 0.4 * mq, max: 40, why: mqNote });
+  else { mq = fpiQuality(g); mqNote = mq != null ? `Estimated from FPI ranks (ESPN rating unavailable): ${mq.toFixed(0)}/100` : null; mqShort = mq != null ? `FPI estimate ${mq.toFixed(0)}` : ''; }
+  if (mq == null){ mq = 30; mqNote = 'No FPI or ESPN rating for these teams, assumed below average'; mqShort = 'No rating yet'; }
+  // short: a few words for the card's key; why: the full sentence for the game drawer's Hype meter.
+  parts.push({ k: 'Matchup quality', short: 'Matchup', pts: 0.4 * mq, max: 40, why: mqNote, note: mqShort });
 
   // 2. Close line
   const m = primaryMarket(g);
@@ -62,31 +64,32 @@ export function excitement(g){
   if (p == null && pred?.pHome != null){ p = pred.pHome; pSrc = 'ESPN FPI projection'; }
   if (p != null){
     const fav = p >= .5 ? g.home : g.away, fp = Math.max(p, 1 - p);
-    parts.push({ k: 'Close line', pts: 20 * (1 - Math.abs(2 * p - 1)), max: 20,
-      why: `${pSrc}: ${fav.abbr} ${pct(fp)}%${fp < .6 ? ', near coin flip' : fp > .85 ? ', lopsided' : ''}` });
-  } else parts.push({ k: 'Close line', pts: 10, max: 20, why: 'No line or projection yet, scored as average' });
+    parts.push({ k: 'Close line', short: 'Close line', pts: 20 * (1 - Math.abs(2 * p - 1)), max: 20,
+      why: `${pSrc}: ${fav.abbr} ${pct(fp)}%${fp < .6 ? ', near coin flip' : fp > .85 ? ', lopsided' : ''}`, note: `${fav.abbr} ${pct(fp)}%` });
+  } else parts.push({ k: 'Close line', short: 'Close line', pts: 10, max: 20, why: 'No line or projection yet, scored as average', note: 'No line yet' });
 
   // 3. Rankings
   const rk = [g.away.rank, g.home.rank].filter(Boolean).sort((a, b) => a - b), at = r => (26 - r) / 25;
   const rkPts = rk.length ? 10 * at(rk[0]) + (rk[1] ? 5 * at(rk[1]) : 0) : 0;
-  parts.push({ k: 'Rankings', pts: rkPts, max: 15,
-    why: rk.length === 2 ? `#${g.away.rank} vs #${g.home.rank}` : rk.length ? `#${rk[0]} against an unranked team` : 'Neither team ranked' });
+  parts.push({ k: 'Rankings', short: 'Rankings', pts: rkPts, max: 15,
+    why: rk.length === 2 ? `#${g.away.rank} vs #${g.home.rank}` : rk.length ? `#${rk[0]} against an unranked team` : 'Neither team ranked',
+    note: rk.length === 2 ? `#${g.away.rank} vs #${g.home.rank}` : rk.length ? `#${rk[0]} vs unranked` : '' });
 
   // 4. Stakes
-  let st = 0; const bits = [];
+  let st = 0; const bits = [], few = [];
   if (g.confGame){
     const a = inRace(g.away), h = inRace(g.home);
-    if (a && h){ st += 8; bits.push('conference race: both near the top'); }
-    else if ((a && nearRace(g.home)) || (h && nearRace(g.away))){ st += 4; bits.push('conference race: one contender'); }
-    st += 3; bits.push('conference game');
+    if (a && h){ st += 8; bits.push('conference race: both near the top'); few.push('Conf. race'); }
+    else if ((a && nearRace(g.home)) || (h && nearRace(g.away))){ st += 4; bits.push('conference race: one contender'); few.push('Conf. contender'); }
+    st += 3; bits.push('conference game'); if (!few.length) few.push('Conf. game');
   }
   const ra = parseRecord(g.away.record), rh = parseRecord(g.home.record);
-  if (ra && rh && ra.l <= 1 && rh.l <= 1 && ra.w + rh.w > 0){ st += 4; bits.push('both teams 1 loss or fewer'); }
-  parts.push({ k: 'Stakes', pts: st, max: 15, why: bits.length ? bits.join(', ') : 'Non-conference, nothing on the line' });
+  if (ra && rh && ra.l <= 1 && rh.l <= 1 && ra.w + rh.w > 0){ st += 4; bits.push('both teams 1 loss or fewer'); few.push('≤1 loss each'); }
+  parts.push({ k: 'Stakes', short: 'Stakes', pts: st, max: 15, why: bits.length ? bits.join(', ') : 'Non-conference, nothing on the line', note: few.join(' · ') });
 
   // 5. Rivalry
   const rival = isRivalry(g);
-  parts.push({ k: 'Rivalry', pts: rival ? 10 : 0, max: 10, why: rival ? 'A traditional rivalry' : 'Not a rivalry game' });
+  parts.push({ k: 'Rivalry', short: 'Rivalry', pts: rival ? 10 : 0, max: 10, why: rival ? 'A traditional rivalry' : 'Not a rivalry game', note: rival ? 'Traditional rivalry' : '' });
 
   const score = Math.round(parts.reduce((s, x) => s + x.pts, 0));
   const r = { score, tier: tierOf(score), parts, pending: pred === undefined, rival };
