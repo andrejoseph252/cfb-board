@@ -24,7 +24,7 @@ const KX = .95, KY = .38;   // the cast shadows' lean: low sun from the top left
 const LIGHT = {
   afternoon: { sh: [[KX, KY]], a: .34 },
   noon: { sh: [[.14, .18]], a: .46, lift: 'rgba(255,248,228,.06)' },
-  night: { sh: [[.5, .42], [-.5, .42], [.5, -.42], [-.5, -.42]], a: .24, bloom: .5, rim: ['rgba(220,232,255,.5)', [[-1, -1], [1, -1]]] }
+  night: { sh: [[.5, .42], [-.5, .42], [.5, -.42], [-.5, -.42]], a: .24, rim: ['rgba(220,232,255,.5)', [[-1, -1], [1, -1]]] }
 };
 const BOLT = { sh: [[-.9, .5]], a: .55 };   // a lightning flash: one hard shadow for a blink
 /* The sky's grade, over the light's: overcast for rain and snow, a gray wash for fog; rain leaves a wet sheen on the
@@ -1049,25 +1049,6 @@ export function createRenderer(canvas){
     pops.length = 0;
   }
   const pops = [];
-  /* Bloom: the bright parts of the pixel art (lines, jerseys, lights, snow) glowing softly into the air. The buffer
-     shrunk twice with smoothing, cubed against itself so only the brights survive, and laid back over the screen.
-     The shrunken grids are pinned to the field, not the screen (shifted by where the field's origin sits, mod 12):
-     pinned to the screen, every line and jersey fell on a different texel as the camera moved, and the glow shimmered. */
-  const bl1 = A.canvas(8, 8), bl2 = A.canvas(8, 8), b1 = bl1.getContext('2d'), b2 = bl2.getContext('2d');
-  function bloom(a, ox, oy){
-    const [wx0, wy0] = toBuf(0, 0), px = ((-wx0) % 12 + 12) % 12, py = ((-wy0) % 12 + 12) % 12;   // buffer px -> grid: +px, +py
-    const w1 = Math.ceil((Wb + 12) / 4), h1 = Math.ceil((Hb + 12) / 4), w2 = Math.ceil(w1 / 3), h2 = Math.ceil(h1 / 3);
-    if (bl1.width !== w1 || bl1.height !== h1){ bl1.width = w1; bl1.height = h1; bl2.width = w2; bl2.height = h2; }
-    b1.imageSmoothingEnabled = b2.imageSmoothingEnabled = true;
-    b1.globalCompositeOperation = 'copy'; b1.drawImage(buf, 0, 0, Wb, Hb, px / 4, py / 4, Wb / 4, Hb / 4);
-    b1.globalCompositeOperation = 'multiply'; b1.drawImage(bl1, 0, 0); b1.drawImage(bl1, 0, 0);
-    b2.globalCompositeOperation = 'copy'; b2.drawImage(bl1, 0, 0, w2 * 3, h2 * 3, 0, 0, w2, h2);
-    ctx.save(); ctx.setTransform(M ? -1 : 1, 0, 0, 1, M ? cw : 0, 0); ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = 'screen';
-    const x0 = ox * k - px * bs, y0 = oy * k - py * bs;
-    ctx.globalAlpha = a * .55; ctx.drawImage(bl1, 0, 0, w1, h1, x0, y0, w1 * 4 * bs, h1 * 4 * bs);
-    ctx.globalAlpha = a; ctx.drawImage(bl2, 0, 0, w2, h2, x0, y0, w2 * 12 * bs, h2 * 12 * bs);
-    ctx.restore();
-  }
   /* Rain, snow, wind and fog in the air, the haze of the lights at night, and lightning in a storm (UI pixels, over
      the field and under the markers and labels, which stay crisp on top). */
   function sky(G, dt){
@@ -1241,17 +1222,26 @@ export function createRenderer(canvas){
   /* The haze of the light towers: each one's glow hanging in the air toward where it stands (pulled in to just off
      the screen's corner when it's farther), soft enough to read as air, not a lamp. Brighter in fog, rain and snow,
      where the air catches the light. */
+  /* The haze around each bank of lights. One soft disc, painted once and laid over four times a frame: making four
+     radial gradients the size of the screen every frame, as this used to, is slow work on a phone (with the glow that
+     used to follow it, a night frame painted the whole screen eight times to an afternoon's once). */
+  let haze = null;
+  function hazeTex(){
+    const N = 128, c = A.canvas(N, N), x = c.getContext('2d'), g = x.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
+    g.addColorStop(0, 'rgba(214,228,255,.3)'); g.addColorStop(.2, 'rgba(176,198,255,.13)'); g.addColorStop(.55, 'rgba(120,146,220,.04)'); g.addColorStop(1, 'rgba(100,120,200,0)');
+    x.fillStyle = g; x.fillRect(0, 0, N, N);
+    return c;
+  }
   function glows(s){
-    const thick = s === 'fog' ? 2.2 : s === 'rain' || s === 'snow' ? 1.25 : 1, M = Math.max(Wu, Hu), R = M * .62;
-    ctx.globalCompositeOperation = 'screen';
+    const thick = s === 'fog' ? 2.2 : s === 'rain' || s === 'snow' ? 1.25 : 1, R = Math.max(Wu, Hu) * .62;
+    haze ||= hazeTex();
+    ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.imageSmoothingEnabled = true;
     for (const [p, q] of BANKS){
       let [x, y] = toScreen(p, q); x = clamp(x, -Wu * .08, Wu * 1.08); y = clamp(y, -Hu * .12, Hu * 1.12);
-      const g = ctx.createRadialGradient(x, y, 0, x, y, R);
-      g.addColorStop(0, `rgba(214,228,255,${(.3 * thick).toFixed(3)})`); g.addColorStop(.2, `rgba(176,198,255,${(.13 * thick).toFixed(3)})`);
-      g.addColorStop(.55, `rgba(120,146,220,${(.04 * thick).toFixed(3)})`); g.addColorStop(1, 'rgba(100,120,200,0)');
-      ctx.fillStyle = g; ctx.fillRect(Math.max(0, x - R), Math.max(0, y - R), R * 2, R * 2);
+      // Thicker air (fog, rain, snow) is the same disc laid on more than once.
+      for (let a = thick; a > 0; a -= 1){ ctx.globalAlpha = Math.min(1, a); ctx.drawImage(haze, x - R, y - R, R * 2, R * 2); }
     }
-    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
   }
   /* Fog: banks of it rolling across the field in layers (dithered noise, drifting with the wind and lying on the turf
      as the camera moves), over a thin wash, thickening into the distance at the edges of the screen. */
@@ -1438,7 +1428,7 @@ export function createRenderer(canvas){
   let held = 0, odd = false;
   function draw(G, dt, view = {}){
     // Behind a menu, whose frosted glass re-blurs whatever changes under it, a heavy scene (night, or rain, snow or
-    // fog) redraws every other frame and without its glow: no one can tell under the blur, and the menu stays smooth.
+    // fog) redraws every other frame: no one can tell under the blur, and the menu stays smooth.
     const C = G.cond, heavy = C && (C.time === 'night' || C.sky === 'rain' || C.sky === 'snow' || C.sky === 'fog');
     if (view.covered && heavy){ if ((odd = !odd)){ held += dt; return; } dt += held; } held = 0;
     t += dt;
@@ -1487,7 +1477,6 @@ export function createRenderer(canvas){
     if (M) ctx.setTransform(-1, 0, 0, 1, cw, 0);
     ctx.drawImage(buf, 0, 0, Wb, Hb, ox * k, oy * k, Wb * bs, Hb * bs);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const glow = !view.covered && (lit.bloom || SKY[G.cond?.sky]?.bloom); if (glow) bloom(glow, ox, oy);
     ctx.setTransform(k, 0, 0, k, 0, 0);
     if (!G.cond || G.cond.sky === 'clear') dust(dt, G.cond?.time === 'night');
     sky(G, dt);
