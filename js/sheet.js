@@ -26,7 +26,7 @@ addEventListener('touchmove', e => {
     // Decide once: sideways (a scrolling table or chips) or upward is the content's, not ours.
     if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
     if (dy <= 0 || Math.abs(dx) > dy || !drag.onBar && drag.sc.scrollTop > 0){ drag = null; return; }
-    drag.on = true; drag.sheet.classList.remove('settle'); drag.sheet.classList.add('dragging');
+    drag.on = true; drag.sheet.classList.remove('settle'); drag.sheet.classList.add('dragging', 'held');
     if (hints < HINTS){ hints = HINTS; store.set('sheetHints', HINTS); }   // they know
   }
   if (e.cancelable) e.preventDefault();   // the sheet moves, the content doesn't scroll or bounce
@@ -43,11 +43,12 @@ function end(){
   d.sheet.classList.remove('dragging');
   const v = (d.last.dy - d.prev.dy) / Math.max(1, d.last.t - d.prev.t);   // px per ms, downward
   if (d.dy > d.sheet.offsetHeight * .22 || v > .55 && d.dy > 24){
-    // Close from right where it is.
+    // Close from right where it is. The slide-out starts only once the history step lands (a few frames), so the
+    // sheet and the dimming stay exactly where the finger left them until then; clearing them now made the sheet
+    // jump back up for those frames before sliding away.
     d.sheet.style.setProperty('--dy', `${d.dy}px`);
-    d.sheet.style.transform = ''; $('#scrim').style.opacity = '';
     closeDrawer();
-    setTimeout(() => d.sheet.style.removeProperty('--dy'), 400);
+    setTimeout(() => { d.sheet.style.removeProperty('--dy'); d.sheet.style.transform = ''; $('#scrim').style.opacity = ''; }, 400);
   } else {
     d.sheet.classList.add('settle');
     d.sheet.style.transform = ''; $('#scrim').style.opacity = '';

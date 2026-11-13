@@ -1637,6 +1637,7 @@ a.rc-card:hover{box-shadow:inset 0 0 0 1px var(--muted)}
     background:color-mix(in srgb,var(--ink) 36%,transparent);transition:width .2s,margin-left .2s,background-color .2s}
   .sheet-bar:active::before,.sheet.dragging .sheet-bar::before,.sheet.hinting .sheet-bar::before{width:54px;margin-left:-27px;background:color-mix(in srgb,var(--ink) 55%,transparent)}
   .sheet.dragging{animation:none;transition:none}
+  .sheet.held{animation:none}
   .sheet.settle{transition:transform .32s cubic-bezier(.2,.9,.25,1.05)}
   .scrim{background:rgba(0,0,0,.55);transition:opacity .2s}
   .drawer.closing .sheet{animation:sheetdown .28s cubic-bezier(.4,0,.9,.6) forwards}

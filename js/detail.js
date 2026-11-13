@@ -46,7 +46,14 @@ export function renderDetail(){
   }
   const key = r.type + ':' + r.id;
   el.classList.remove('closing');
-  if (el.hidden){ restoreFocus = document.activeElement; el.hidden = false; document.body.classList.add('drawer-open'); hint(); }
+  // A sheet that was dragged keeps its rise-up animation off ('held', sheet.js) so a short drag springs back
+  // instead of replaying it; a fresh open rises again.
+  if (el.hidden){
+    restoreFocus = document.activeElement;
+    // Reopened within moments of a drag-close: nothing left over from the drag.
+    const sh = el.querySelector('.sheet'); if (sh){ sh.classList.remove('held'); sh.style.transform = ''; sh.style.removeProperty('--dy'); }
+    $('#scrim').style.opacity = '';
+    el.hidden = false; document.body.classList.add('drawer-open'); hint(); }
   // Typing a clock time into the stream sync panel: hold refreshes until they're done, so the boxes keep what they typed.
   if (key === lastKey && document.activeElement?.matches?.('#drawerBody .syncp input')) return;
   // A bug in one view shows an error in the drawer instead of leaving it stuck on its loading skeleton.
