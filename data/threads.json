@@ -1,6 +1,28 @@
 {
- "updated": "2026-11-13T02:59:00+00:00",
+ "updated": "2026-11-13T10:29:58+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisiana Defeats ULM 42-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1xuzr7n/postgame_thread_louisiana_defeats_ulm_4221/",
+   "published": "2026-11-13T05:42:09+00:00",
+   "gameId": "401869969",
+   "teams": [
+    "Louisiana",
+    "ULM"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Memphis Defeats USF 52-41",
+   "url": "https://www.reddit.com/r/CFB/comments/1xuyuqd/postgame_thread_memphis_defeats_usf_5241/",
+   "published": "2026-11-13T04:53:08+00:00",
+   "gameId": "401862824",
+   "teams": [
+    "Memphis",
+    "USF"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Louisiana @ ULM (9:00 PM ET)",
