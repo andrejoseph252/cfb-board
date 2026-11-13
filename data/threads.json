@@ -1,6 +1,25 @@
 {
- "updated": "2026-11-13T18:11:25+00:00",
+ "updated": "2026-11-13T23:57:45+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Florida State @ Pittsburgh (7:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvmidl/game_thread_florida_state_pittsburgh_700_pm_et/",
+   "published": "2026-11-13T23:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Florida State",
+    "Pittsburgh"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Non-D1 Games \u2014 Friday, November 13",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvl2yy/game_thread_nond1_games_friday_november_13/",
+   "published": "2026-11-13T22:00:07+00:00",
+   "gameId": null,
+   "teams": null
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Louisiana Defeats ULM 42-21",
@@ -1596,25 +1615,6 @@
    "teams": [
     "Buffalo",
     "Miami (OH)"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] CFP Rankings, 2026-11-03",
-   "url": "https://www.reddit.com/r/CFB/comments/1xn80sc/game_thread_cfp_rankings_20261103/",
-   "published": "2026-11-03T23:00:11+00:00",
-   "gameId": null,
-   "teams": null
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Ohio @ Akron (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xn80s7/game_thread_ohio_akron_700_pm_et/",
-   "published": "2026-11-03T23:00:10+00:00",
-   "gameId": null,
-   "teams": [
-    "Ohio",
-    "Akron"
    ]
   }
  ],
