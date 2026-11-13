@@ -31,6 +31,9 @@ export function renderWeekPicker(){
 }
 
 function step(d){ const list = weeks(), i = list.findIndex(w => w.v === now()); if (i >= 0 && list[i + d]) go(list[i + d].v); }
+/* For the week swipe (swipe.js): whether there's a week that way, and stepping to it. */
+export function canStep(d){ const list = weeks(), i = list.findIndex(w => w.v === now()); return i >= 0 && !!list[i + d]; }
+export { step as stepWeek };
 
 export function initWeekPicker(goWeek){
   go = goWeek;

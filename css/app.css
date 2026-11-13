@@ -2225,3 +2225,142 @@ a.po-wk:hover{text-decoration:underline;text-underline-offset:2px}
   .pm-field{grid-template-columns:repeat(6,minmax(0,1fr))}
   .pm-row{grid-template-columns:1fr;gap:6px}
 }
+
+/* ---------- shine: light, depth and a little team color on top of the base look. data-shine="off" turns it all off
+   (the theme lab's switch), for comparing. Everything here is static except the live glow, so nothing moves on open. ---------- */
+:root{--sh-wash:7%;--sh-edge:rgba(255,255,255,.9);--sh-drop:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04);--sh-logo:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--sh-wash:12%;--sh-edge:rgba(255,255,255,.07);--sh-drop:0 1px 0 rgba(0,0,0,.4),0 6px 18px -8px rgba(0,0,0,.6);--sh-logo:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}}
+:root[data-theme="dark"]{--sh-wash:12%;--sh-edge:rgba(255,255,255,.07);--sh-drop:0 1px 0 rgba(0,0,0,.4),0 6px 18px -8px rgba(0,0,0,.6);--sh-logo:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}
+
+/* game cards: each matchup's colors washing in from the left edge, a lit top edge, a soft shadow below */
+:root:not([data-shine="off"]) .game:not(.ghost){position:relative;
+  background:
+    radial-gradient(70% 55% at 0% 18%,color-mix(in srgb,var(--ca,transparent) var(--sh-wash),transparent),transparent 100%),
+    radial-gradient(70% 55% at 0% 52%,color-mix(in srgb,var(--ch,transparent) var(--sh-wash),transparent),transparent 100%),
+    var(--surface);
+  box-shadow:var(--sh-drop)}
+:root:not([data-shine="off"]) .game::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 1px 0 var(--sh-edge)}
+:root:not([data-shine="off"]) .game .logo{filter:var(--sh-logo)}
+:root:not([data-shine="off"]) .game .loser .logo{filter:var(--sh-logo) grayscale(.2)}
+/* live: the red edge it already has, plus a low red glow; close-and-late games keep their orange */
+:root:not([data-shine="off"]) .game.is-live{box-shadow:inset 3px 0 0 var(--live),0 0 0 1px color-mix(in srgb,var(--live) 30%,transparent),0 8px 26px -10px color-mix(in srgb,var(--live) 60%,transparent)}
+:root:not([data-shine="off"]) .game.is-hot{box-shadow:inset 3px 0 0 var(--x-hi),0 0 0 1px var(--x-hi),0 8px 28px -8px color-mix(in srgb,var(--x-hi) 55%,transparent)}
+@media (hover:hover){:root:not([data-shine="off"]) .game:not(.is-live):not(.is-hot):hover{box-shadow:var(--sh-drop),0 12px 28px -10px rgba(0,0,0,.35)}}
+
+/* win-probability bar: clean and flat, a thin rounded line with a gap where the two teams meet */
+:root:not([data-shine="off"]) .meter{height:6px;border-radius:3px;box-shadow:none;background:transparent;gap:3px}
+:root:not([data-shine="off"]) .meter span{border-radius:3px}
+:root:not([data-shine="off"]) .meter span+span{border-left:0}
+:root:not([data-shine="off"]) .game.ghost .meter{background:var(--soft)}
+
+/* my team's bar: stadium light across the jersey, and a glow in its color */
+:root:not([data-shine="off"]) .mt{
+  background:
+    linear-gradient(115deg,rgba(255,255,255,.2),rgba(255,255,255,0) 32%,rgba(255,255,255,0) 62%,rgba(255,255,255,.07) 74%,rgba(255,255,255,0) 86%),
+    repeating-linear-gradient(90deg,transparent 0 calc(10% - 1.5px),rgba(255,255,255,.12) calc(10% - 1.5px) 10%),
+    linear-gradient(100deg,var(--mt),color-mix(in srgb,var(--mt) 72%,#000));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 0 0 1px rgba(127,127,127,.25),0 10px 26px -12px color-mix(in srgb,var(--mt) 85%,transparent)}
+:root:not([data-shine="off"]) .mt-disc{box-shadow:0 0 0 2px rgba(255,255,255,.35),0 3px 10px rgba(0,0,0,.35)}
+
+/* the tab bar's pill: a soft sheen */
+:root:not([data-shine="off"]) .btabs::before{background-image:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 60%)}
+
+/* line breaks: never split a time or date; headings wrap evenly */
+.mt-line span,.foot .status,.finfo{text-wrap:pretty}
+.mt-line span{white-space:nowrap;display:inline-block}
+/* the dot after each piece rather than before the next, so a wrapped line starts with a word */
+.mt-line span + span::before{content:none}
+.mt-line span:not(:last-child)::after{content:"·";margin:0 7px;opacity:.6}
+h1,h2,h3,.sec{text-wrap:balance}
+
+/* team page header: a compact take on the My team hero (.th): follow button in the top row, the season as one line of stats */
+.th.tm-hero{margin-bottom:14px;gap:10px;padding:11px 14px 12px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.tm-hero .th-wm{right:-30px;top:-26px;opacity:.1}
+.tm-hero .th-wm .logo{width:150px;height:150px}
+.tm-hero .th-top{font-size:10.5px}
+.tm-hero .th-id{gap:11px}
+.tm-hero .th-disc{width:46px;height:46px;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.tm-hero .th-disc .logo{width:32px;height:32px}
+.tm-hero .th-main h2{font-size:clamp(24px,6vw,30px)}
+.tm-hero .mine-btn{align-self:auto;border:1px solid color-mix(in srgb,currentColor 40%,transparent);background:rgba(0,0,0,.12);color:inherit;padding:4px 10px;font-size:11px;letter-spacing:0;text-transform:none}
+.tm-hero .mine-btn .star{color:inherit;width:11px;height:11px}
+.tm-hero .mine-btn[aria-pressed="true"]{background:rgba(255,255,255,.2);border-color:color-mix(in srgb,currentColor 70%,transparent)}
+.tm-rank{font-size:.62em;opacity:.7;margin-right:-2px;align-self:flex-start;padding-top:.08em}
+.tm-mascot{margin-top:3px;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-stats{display:flex;flex-wrap:wrap;gap:4px 14px;padding-top:9px;border-top:1px solid color-mix(in srgb,currentColor 18%,transparent);font-size:12px}
+.tm-stats span{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}
+.tm-stats b{font:800 15px/1 var(--display);font-variant-numeric:tabular-nums}
+.tm-stats small{font-size:11px;font-weight:600;opacity:.75}
+
+/* ---------- long-press peek (peek.js) ---------- */
+@media (hover:none){.game{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
+.game.pk-press{transform:scale(.965);transition:transform .32s cubic-bezier(.3,.7,.4,1),border-color .15s}
+.pk{position:fixed;inset:0;z-index:90;touch-action:none;-webkit-user-select:none;user-select:none}
+.pk-scrim{position:absolute;inset:0;background:rgba(0,0,0,.42);-webkit-backdrop-filter:blur(14px) saturate(115%);backdrop-filter:blur(14px) saturate(115%);opacity:0;transition:opacity .22s}
+.pk.on .pk-scrim{opacity:1}
+.pk-stack{--w:min(420px,calc(100vw - 32px));position:absolute;left:50%;width:var(--w);margin-left:calc(var(--w) / -2);display:grid;gap:10px;
+  transition:transform .38s cubic-bezier(.2,1.15,.35,1)}
+.pk.off .pk-scrim{opacity:0;transition-duration:.18s}
+.pk.off .pk-stack{transform:scale(.96);opacity:0;transition:transform .18s ease-in,opacity .18s}
+.pk-card{border-radius:18px;padding:16px 16px 14px;border:1px solid var(--line);
+  background:radial-gradient(80% 70% at 0% 0%,color-mix(in srgb,var(--ca) 16%,transparent),transparent),radial-gradient(80% 70% at 100% 0%,color-mix(in srgb,var(--ch) 16%,transparent),transparent),var(--surface);
+  box-shadow:0 26px 60px rgba(0,0,0,.5),inset 0 1px 0 var(--sh-edge,transparent)}
+.pk-head{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}
+.pk-team{display:grid;justify-items:center;gap:5px;text-align:center;min-width:0}
+.pk-team.lose{opacity:.5}
+.pk-disc{width:52px;height:52px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.pk-disc .logo{width:36px;height:36px}
+.pk-team b{max-width:100%;font:800 17px/1.05 var(--display);text-transform:uppercase;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-team b i{font-style:normal;color:var(--muted);font-size:.82em;margin-right:4px}
+.pk-team small{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pk-mid{display:grid;justify-items:center;gap:5px}
+.pk-score{font:800 40px/1 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pk-score span{color:var(--muted);margin:0 5px;font-weight:600}
+.pk-time{font:800 28px/1 var(--display);white-space:nowrap}
+.pk-mid small{font-size:12px;color:var(--muted);white-space:nowrap}
+.pk-wp{margin-top:16px}
+.pk-wpl{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}
+.pk-wpl b{color:var(--ink);font-variant-numeric:tabular-nums}
+.pk-sit{margin-top:12px;font-size:13px;font-weight:700}
+.pk-play{margin-top:3px;font-size:13px;line-height:1.4;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.pk-play:empty{display:none}
+.pk-info{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.4;min-width:0}
+.pk-info b{color:var(--ink);font-weight:700;white-space:nowrap}
+.pk-info span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* pick targets: Win and Cover for each team, filling with its color under the finger */
+.pk-picks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.pk-col{display:grid;gap:6px;align-content:start}
+.pk-pick{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:11px 12px;border-radius:11px;background:var(--soft);
+  box-shadow:inset 0 0 0 1px var(--line);transition:background-color .12s,box-shadow .12s,transform .12s,color .12s}
+.pk-pick b{font:800 16px/1 var(--display);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap}
+.pk-pick small{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pk-pick.mine{box-shadow:inset 0 0 0 2px var(--tc)}
+.pk-pick.hot{background:var(--tc);color:#fff;transform:scale(1.04);box-shadow:0 8px 22px -6px color-mix(in srgb,var(--tc) 70%,transparent)}
+.pk-pick.hot small{color:rgba(255,255,255,.85)}
+.pk-hint{margin-top:8px;font-size:11.5px;color:var(--muted);text-align:center}
+.pk-hint b{color:var(--ink)}
+.pk-mine{margin-top:12px;font-size:13px;color:var(--muted)}
+.pk-mine b{color:var(--ink)}
+.pk-mine em{font-style:normal;font-weight:700}
+.pk-mine em.up{color:var(--good)} .pk-mine em.down{color:var(--bad,var(--live))}
+/* tale of the tape */
+.pk-tape{display:grid;grid-template-columns:1fr auto 1fr;gap:6px 12px;align-items:baseline;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.pk-tape span{font:700 15px/1 var(--display);color:var(--muted)}
+.pk-tape span:nth-child(3n+1){text-align:right}
+.pk-tape span.win{color:var(--ink);font-weight:800}
+.pk-tape small{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:center}
+/* confirmation after a pick */
+.pk-toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);z-index:91;transform:translate(-50%,12px);opacity:0;
+  padding:10px 16px;border-radius:999px;background:var(--tc,var(--ink));color:#fff;font:800 15px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;
+  box-shadow:0 12px 30px rgba(0,0,0,.4),inset 0 0 0 1px rgba(255,255,255,.15);transition:transform .25s cubic-bezier(.2,1.2,.35,1),opacity .2s;white-space:nowrap;pointer-events:none}
+.pk-toast:not([style]){color:var(--bg)}
+.pk-toast.on{transform:translate(-50%,0);opacity:1}
+.pk-menu{justify-self:center;width:min(250px,100%);border-radius:14px;overflow:hidden;border:1px solid var(--line);
+  background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 16px 40px rgba(0,0,0,.4);
+  opacity:0;transform:translateY(-8px) scale(.97);transform-origin:50% 0;transition:opacity .22s .08s,transform .3s .08s cubic-bezier(.2,1.2,.35,1)}
+.pk.on .pk-menu{opacity:1;transform:none}
+.pk-act{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;font-size:15px;font-weight:600;transition:background-color .1s}
+.pk-act + .pk-act{border-top:1px solid var(--line)}
+.pk-act svg{width:16px;height:16px;flex:none;opacity:.8}
+.pk-act.hot{background:var(--soft)}
+@media (prefers-reduced-motion:reduce){.game.pk-press{transform:none}.pk-stack,.pk-menu,.pk-scrim{transition:none}}

@@ -58,6 +58,8 @@ addEventListener('touchstart', e => {
 
 addEventListener('touchmove', e => {
   if (!start) return;
+  // A long-press peek (peek.js) took over this touch.
+  if (document.body.classList.contains('peek-open')){ if (start.pulling){ el.classList.remove('drag'); hide(); } start = null; return; }
   const dx = e.touches[0].clientX - start.x, dy = e.touches[0].clientY - start.y;
   if (!start.pulling){
     // Decide once: a mostly-sideways drag, an upward one, or a page that has scrolled since isn't a pull.

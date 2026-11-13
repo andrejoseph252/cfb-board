@@ -5,7 +5,8 @@ import { parseSchedule } from '../models.js';
 import { loadPredictions } from '../data.js';
 import { realMarket } from '../markets.js';
 import { useData } from '../resource.js';
-import { teamLink, logo, detailHead, panel, gameHref } from './components.js';
+import { teamLink, logo, panel, gameHref } from './components.js';
+import { inkOn } from './preview.js';
 import { isMine, STAR } from '../myteam.js';
 import { ats } from '../ats.js';
 
@@ -16,6 +17,29 @@ function atsMark(g, side){
   const covered = a.result === 'push' ? null : (side === a.fav) === (a.result === 'covered');
   const label = covered == null ? 'Push' : covered ? 'Covered' : 'Did not cover';
   return `<span class="sats${covered ? ' c' : ''}" title="${label} (closing line ${mine})" aria-label="${label}, closing line ${mine}">${mine} ${covered == null ? 'P' : covered ? '✓' : '✗'}</span>`;
+}
+
+/* The header: the team in its own colors, like the My team tab's. Name and mascot, the follow button up top where it
+   can't crowd the name, and the season in a row of tiles. */
+function teamHero(t, { ap, conf, st, f, myBtn }){
+  const color = t.color && t.color !== '#8a948e' ? t.color : '#3A3A3A';
+  const mascot = t.full && t.name && t.full.startsWith(t.name) ? t.full.slice(t.name.length).trim() : '';
+  const confName = CONF[conf] || '';
+  const place = /^(\S+)\s+in\s+(.+)$/.exec(t.standing || '');
+  const tiles = [
+    t.record && [t.record, 'Overall'],
+    st?.confRec && [`${st.confRec.w}-${st.confRec.l}`, confName || 'Conf'],
+    place && [place[1], `in ${place[2]}`],
+    f?.rank && [`#${f.rank}`, 'FPI'],
+    f?.projW != null && [`${f.projW.toFixed(1)}-${f.projL.toFixed(1)}`, 'Projected'],
+    f?.playoff != null && [`${f.playoff.toFixed(0)}%`, 'Playoff']
+  ].filter(Boolean);
+  return `<header class="th tm-hero" data-title="${esc(t.full || t.name)}" style="--mt:${esc(color)};--mt-ink:${inkOn(color)}">
+    <span class="th-wm" aria-hidden="true">${logo(t.logo, 'logo lg')}</span>
+    <div class="th-top"><span>${esc(confName)}</span>${myBtn}</div>
+    <div class="th-id"><span class="th-disc">${logo(t.logo, 'logo lg on-light')}</span>
+      <div class="th-main"><h2 title="${esc(t.full || t.name)}">${ap ? `<span class="tm-rank">${ap}</span>` : ''}${esc(t.name || t.full)}</h2>${mascot ? `<div class="tm-mascot">${esc(mascot)}</div>` : ''}</div></div>
+    ${tiles.length ? `<div class="tm-stats">${tiles.map(([v, k]) => `<span><b>${esc(v)}</b><small>${esc(k)}</small></span>`).join('')}</div>` : ''}</header>`;
 }
 
 export function viewTeam(id){
@@ -29,14 +53,6 @@ export function viewTeam(id){
 
   const st = state.standings?.byTeam[t.id], f = state.fpi?.byTeam[t.id], ap = apRank(t.id);
   const conf = t.conf ?? st?.conf;
-  const facts = [
-    t.record && `<b>${esc(t.record)}</b> overall`,
-    st?.confRec && `<b>${st.confRec.w}-${st.confRec.l}</b> ${esc(CONF[conf] || 'conf')}`,
-    t.standing && esc(t.standing),
-    f?.rank && `FPI <b>#${f.rank}</b> (${f.fpi.toFixed(1)})`,
-    f?.projW != null && `Proj <b>${f.projW.toFixed(1)}-${f.projL.toFixed(1)}</b>`,
-    f?.playoff != null && `Playoff <b>${f.playoff.toFixed(0)}%</b>`
-  ].filter(Boolean).map(x => `<span>${x}</span>`).join('');
 
   let w = 0, l = 0;
   const rows = games.map(g => {
@@ -65,11 +81,10 @@ export function viewTeam(id){
       <span class="sres">${res}</span><span class="srec">${running}</span></li>`;
   }).join('');
 
-  const rankTag = ap ? `<span class="rank">${ap}</span>` : '';
   const mine = isMine(t.id);
-  const myBtn = `<button class="mine-btn" type="button" data-mine="${esc(t.id)}" data-name="${esc(t.name)}" data-color="${esc(t.color || '')}" data-logo="${esc(t.logo || '')}" aria-pressed="${mine}"
+  const myBtn = `<button class="mine-btn th-change" type="button" data-mine="${esc(t.id)}" data-name="${esc(t.name)}" data-color="${esc(t.color || '')}" data-logo="${esc(t.logo || '')}" aria-pressed="${mine}"
     title="${mine ? 'Your team. Tap to unset' : 'Follow this team: always pinned, with a ring in its color'}">${STAR}<span>${mine ? 'My team' : 'Make my team'}</span></button>`;
-  return detailHead({ title: rankTag + esc(t.full), label: t.full, sub: facts, logoSrc: t.logo, color: t.color, right: myBtn }) +
+  return teamHero(t, { ap, conf, st, f, myBtn }) +
     panel(`${e.data.season || ''} schedule`, `<div class="shead"><span>Date</span><span>Opponent</span><span>Result</span><span>Record</span></div><ol class="sched">${rows}</ol>`) +
     `<p class="note">Tap any opponent to jump to their schedule, or a result for the box score. Back returns to the previous team.</p>`;
 }

@@ -6,6 +6,8 @@ import { initSettings } from './settings.js';
 import { initWeekPicker, renderWeekPicker } from './weekpicker.js';
 import { picks, weekLabel, togglePin, setPick, setBet, removePick } from './picks.js';
 import './pull.js';
+import './swipe.js';
+import './peek.js';
 import { fire } from './live.js';
 import { renderDetail, initHistory, onHashChange, closeDrawer, back, route } from './detail.js';
 import { openXc, logoUrl, warm, warmView } from './views/components.js';
@@ -179,7 +181,14 @@ if (hold){
 
 /* ---------- events ---------- */
 function setTab(k){
-  if (k !== state.tab) entering = true;
+  // Tapping the tab you're on, like iPhone apps: glide to the top; already there on the Week tab while looking at
+  // another week, back to this week.
+  if (k === state.tab){
+    if (window.scrollY > 4) return window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    if (k === 'week' && state.pickedWeek && state.current) return goWeek(state.current);
+    return;
+  }
+  entering = true;
   state.tab = k; store.set('tab', k);
   invalidate('main'); window.scrollTo({ top: 0 });
 }
