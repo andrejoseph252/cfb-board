@@ -1,6 +1,38 @@
 {
- "updated": "2026-11-13T23:57:42+00:00",
+ "updated": "2026-11-14T04:31:43+00:00",
  "kalshi": [
+  {
+   "source": "Kalshi",
+   "title": "Mississippi St. wins",
+   "close": "2026-11-27T20:00:00Z",
+   "teams": [
+    {
+     "name": "Mississippi St.",
+     "p": 0.21
+    },
+    {
+     "name": "Ole Miss",
+     "p": 0.79
+    }
+   ],
+   "url": "https://kalshi.com/markets/kxncaafgame"
+  },
+  {
+   "source": "Kalshi",
+   "title": "Kent St. wins",
+   "close": "2026-11-25T03:00:00Z",
+   "teams": [
+    {
+     "name": "Kent St.",
+     "p": 0.34
+    },
+    {
+     "name": "Eastern Michigan",
+     "p": 0.655
+    }
+   ],
+   "url": "https://kalshi.com/markets/kxncaafgame"
+  },
   {
    "source": "Kalshi",
    "title": "Tennessee wins",
@@ -8,11 +40,11 @@
    "teams": [
     {
      "name": "Tennessee",
-     "p": 0.455
+     "p": 0.465
     },
     {
      "name": "LSU",
-     "p": 0.535
+     "p": 0.53
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -24,11 +56,11 @@
    "teams": [
     {
      "name": "Texas A&M",
-     "p": 0.32
+     "p": 0.4
     },
     {
      "name": "Oklahoma",
-     "p": 0.675
+     "p": 0.6
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -40,11 +72,11 @@
    "teams": [
     {
      "name": "Utah St.",
-     "p": 0.31
+     "p": 0.315
     },
     {
      "name": "Oregon St.",
-     "p": 0.69
+     "p": 0.655
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -76,7 +108,7 @@
     },
     {
      "name": "Notre Dame",
-     "p": 0.845
+     "p": 0.84
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -88,11 +120,11 @@
    "teams": [
     {
      "name": "Fresno St.",
-     "p": 0.775
+     "p": 0.77
     },
     {
      "name": "Colorado St.",
-     "p": 0.225
+     "p": 0.23
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -104,7 +136,7 @@
    "teams": [
     {
      "name": "UNLV",
-     "p": 0.515
+     "p": 0.51
     },
     {
      "name": "San Jose St.",
@@ -131,32 +163,16 @@
   },
   {
    "source": "Kalshi",
-   "title": "Texas Southern wins",
-   "close": "2026-11-22T00:00:00Z",
-   "teams": [
-    {
-     "name": "Texas Southern",
-     "p": 0.375
-    },
-    {
-     "name": "Arkansas-Pine Bluff",
-     "p": 0.625
-    }
-   ],
-   "url": "https://kalshi.com/markets/kxncaafgame"
-  },
-  {
-   "source": "Kalshi",
    "title": "UC Davis wins",
    "close": "2026-11-22T00:00:00Z",
    "teams": [
     {
      "name": "UC Davis",
-     "p": 0.66
+     "p": 0.7
     },
     {
      "name": "Cal Poly",
-     "p": 0.335
+     "p": 0.33
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -188,7 +204,7 @@
     },
     {
      "name": "Georgia Southern",
-     "p": 0.565
+     "p": 0.57
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -216,11 +232,11 @@
    "teams": [
     {
      "name": "Old Dominion",
-     "p": 0.225
+     "p": 0.255
     },
     {
      "name": "UConn",
-     "p": 0.77
+     "p": 0.75
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -243,32 +259,32 @@
   },
   {
    "source": "Kalshi",
-   "title": "Montana St. wins",
+   "title": "North Dakota wins",
    "close": "2026-11-21T22:00:00Z",
    "teams": [
     {
-     "name": "Montana St.",
-     "p": 0.785
+     "name": "North Dakota",
+     "p": 0.83
     },
     {
-     "name": "Montana",
-     "p": 0.225
+     "name": "Southern Illinois",
+     "p": 0.17
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
   },
   {
    "source": "Kalshi",
-   "title": "Morehead St. wins",
-   "close": "2026-11-21T21:00:00Z",
+   "title": "Montana St. wins",
+   "close": "2026-11-21T22:00:00Z",
    "teams": [
     {
-     "name": "Morehead St.",
-     "p": 0.2
+     "name": "Montana St.",
+     "p": 0.78
     },
     {
-     "name": "Butler",
-     "p": 0.8
+     "name": "Montana",
+     "p": 0.225
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -280,11 +296,11 @@
    "teams": [
     {
      "name": "Lehigh",
-     "p": 0.69
+     "p": 0.695
     },
     {
      "name": "Lafayette",
-     "p": 0.295
+     "p": 0.28
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -296,11 +312,11 @@
    "teams": [
     {
      "name": "New Mexico St.",
-     "p": 0.465
+     "p": 0.485
     },
     {
      "name": "Delaware",
-     "p": 0.535
+     "p": 0.515
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -316,7 +332,7 @@
     },
     {
      "name": "Jacksonville St.",
-     "p": 0.785
+     "p": 0.78
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -348,7 +364,7 @@
     },
     {
      "name": "Liberty",
-     "p": 0.89
+     "p": 0.885
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -396,7 +412,7 @@
     },
     {
      "name": "Appalachian St.",
-     "p": 0.78
+     "p": 0.775
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -408,11 +424,11 @@
    "teams": [
     {
      "name": "Wisconsin",
-     "p": 0.605
+     "p": 0.585
     },
     {
      "name": "Purdue",
-     "p": 0.395
+     "p": 0.365
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -440,7 +456,7 @@
    "teams": [
     {
      "name": "Ohio St.",
-     "p": 0.645
+     "p": 0.635
     },
     {
      "name": "Nebraska",
@@ -456,7 +472,7 @@
    "teams": [
     {
      "name": "Northwestern",
-     "p": 0.575
+     "p": 0.57
     },
     {
      "name": "Minnesota",
@@ -472,11 +488,11 @@
    "teams": [
     {
      "name": "UCLA",
-     "p": 0.675
+     "p": 0.615
     },
     {
      "name": "Michigan",
-     "p": 0.33
+     "p": 0.375
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -504,11 +520,11 @@
    "teams": [
     {
      "name": "Washington",
-     "p": 0.26
+     "p": 0.27
     },
     {
      "name": "Indiana",
-     "p": 0.73
+     "p": 0.74
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -520,11 +536,11 @@
    "teams": [
     {
      "name": "Iowa",
-     "p": 0.64
+     "p": 0.645
     },
     {
      "name": "Illinois",
-     "p": 0.355
+     "p": 0.365
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -536,11 +552,27 @@
    "teams": [
     {
      "name": "Virginia",
-     "p": 0.46
+     "p": 0.45
     },
     {
      "name": "North Carolina",
-     "p": 0.51
+     "p": 0.55
+    }
+   ],
+   "url": "https://kalshi.com/markets/kxncaafgame"
+  },
+  {
+   "source": "Kalshi",
+   "title": "Pittsburgh wins",
+   "close": "2026-11-21T23:00:00Z",
+   "teams": [
+    {
+     "name": "Pittsburgh",
+     "p": 0.29
+    },
+    {
+     "name": "Louisville",
+     "p": 0.69
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -568,11 +600,11 @@
    "teams": [
     {
      "name": "NC St.",
-     "p": 0.255
+     "p": 0.265
     },
     {
      "name": "Florida St.",
-     "p": 0.74
+     "p": 0.735
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -588,7 +620,23 @@
     },
     {
      "name": "Boston College",
-     "p": 0.375
+     "p": 0.385
+    }
+   ],
+   "url": "https://kalshi.com/markets/kxncaafgame"
+  },
+  {
+   "source": "Kalshi",
+   "title": "Kansas St. wins",
+   "close": "2026-11-21T23:00:00Z",
+   "teams": [
+    {
+     "name": "Kansas St.",
+     "p": 0.235
+    },
+    {
+     "name": "Arizona",
+     "p": 0.765
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -611,32 +659,16 @@
   },
   {
    "source": "Kalshi",
-   "title": "West Virginia wins",
-   "close": "2026-11-21T23:00:00Z",
-   "teams": [
-    {
-     "name": "West Virginia",
-     "p": 0.305
-    },
-    {
-     "name": "Houston",
-     "p": 0.695
-    }
-   ],
-   "url": "https://kalshi.com/markets/kxncaafgame"
-  },
-  {
-   "source": "Kalshi",
    "title": "Kansas wins",
    "close": "2026-11-21T23:00:00Z",
    "teams": [
     {
      "name": "Kansas",
-     "p": 0.3
+     "p": 0.285
     },
     {
      "name": "BYU",
-     "p": 0.675
+     "p": 0.695
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -648,7 +680,7 @@
    "teams": [
     {
      "name": "Utah",
-     "p": 0.7
+     "p": 0.695
     },
     {
      "name": "TCU",
@@ -680,11 +712,11 @@
    "teams": [
     {
      "name": "Oklahoma St.",
-     "p": 0.66
+     "p": 0.7
     },
     {
      "name": "Arizona St.",
-     "p": 0.33
+     "p": 0.315
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -728,11 +760,11 @@
    "teams": [
     {
      "name": "Kentucky",
-     "p": 0.345
+     "p": 0.35
     },
     {
      "name": "Missouri",
-     "p": 0.645
+     "p": 0.635
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -744,11 +776,11 @@
    "teams": [
     {
      "name": "Vanderbilt",
-     "p": 0.235
+     "p": 0.225
     },
     {
      "name": "Florida",
-     "p": 0.77
+     "p": 0.775
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -760,11 +792,11 @@
    "teams": [
     {
      "name": "North Texas",
-     "p": 0.755
+     "p": 0.745
     },
     {
      "name": "Tulane",
-     "p": 0.245
+     "p": 0.24
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -776,11 +808,11 @@
    "teams": [
     {
      "name": "South Florida",
-     "p": 0.4
+     "p": 0.41
     },
     {
      "name": "Florida Atlantic",
-     "p": 0.585
+     "p": 0.57
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -792,7 +824,7 @@
    "teams": [
     {
      "name": "Tulsa",
-     "p": 0.875
+     "p": 0.87
     },
     {
      "name": "Charlotte",
@@ -808,11 +840,11 @@
    "teams": [
     {
      "name": "Stony Brook",
-     "p": 0.78
+     "p": 0.825
     },
     {
      "name": "Hampton",
-     "p": 0.245
+     "p": 0.2
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -824,11 +856,11 @@
    "teams": [
     {
      "name": "VMI",
-     "p": 0.22
+     "p": 0.225
     },
     {
      "name": "Furman",
-     "p": 0.78
+     "p": 0.775
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -840,11 +872,27 @@
    "teams": [
     {
      "name": "Norfolk St.",
-     "p": 0.565
+     "p": 0.58
     },
     {
      "name": "Howard",
-     "p": 0.4
+     "p": 0.395
+    }
+   ],
+   "url": "https://kalshi.com/markets/kxncaafgame"
+  },
+  {
+   "source": "Kalshi",
+   "title": "Navy wins",
+   "close": "2026-11-21T20:00:00Z",
+   "teams": [
+    {
+     "name": "Navy",
+     "p": 0.405
+    },
+    {
+     "name": "Memphis",
+     "p": 0.615
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -856,11 +904,11 @@
    "teams": [
     {
      "name": "East Carolina",
-     "p": 0.41
+     "p": 0.385
     },
     {
      "name": "Army",
-     "p": 0.575
+     "p": 0.615
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -888,11 +936,11 @@
    "teams": [
     {
      "name": "Wyoming",
-     "p": 0.23
+     "p": 0.225
     },
     {
      "name": "New Mexico",
-     "p": 0.765
+     "p": 0.755
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -904,11 +952,11 @@
    "teams": [
     {
      "name": "Oregon",
-     "p": 0.835
+     "p": 0.83
     },
     {
      "name": "Michigan St.",
-     "p": 0.16
+     "p": 0.17
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -920,11 +968,11 @@
    "teams": [
     {
      "name": "UTEP",
-     "p": 0.11
+     "p": 0.115
     },
     {
      "name": "Air Force",
-     "p": 0.87
+     "p": 0.865
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -936,11 +984,11 @@
    "teams": [
     {
      "name": "Toledo",
-     "p": 0.795
+     "p": 0.805
     },
     {
      "name": "Bowling Green",
-     "p": 0.2
+     "p": 0.18
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -952,7 +1000,7 @@
    "teams": [
     {
      "name": "Duke",
-     "p": 0.61
+     "p": 0.615
     },
     {
      "name": "Clemson",
@@ -968,11 +1016,11 @@
    "teams": [
     {
      "name": "UCF",
-     "p": 0.525
+     "p": 0.555
     },
     {
      "name": "Iowa St.",
-     "p": 0.46
+     "p": 0.455
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -988,7 +1036,7 @@
     },
     {
      "name": "Northwestern St.",
-     "p": 0.025
+     "p": 0.015
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1000,7 +1048,7 @@
    "teams": [
     {
      "name": "Central Michigan",
-     "p": 0.435
+     "p": 0.43
     },
     {
      "name": "Buffalo",
@@ -1016,11 +1064,11 @@
    "teams": [
     {
      "name": "UMass",
-     "p": 0.54
+     "p": 0.565
     },
     {
      "name": "Akron",
-     "p": 0.45
+     "p": 0.445
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1036,7 +1084,7 @@
     },
     {
      "name": "Kent St.",
-     "p": 0.245
+     "p": 0.24
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1048,11 +1096,11 @@
    "teams": [
     {
      "name": "Western Michigan",
-     "p": 0.815
+     "p": 0.82
     },
     {
      "name": "Eastern Michigan",
-     "p": 0.17
+     "p": 0.165
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1080,7 +1128,7 @@
    "teams": [
     {
      "name": "VMI",
-     "p": 0.125
+     "p": 0.12
     },
     {
      "name": "The Citadel",
@@ -1096,11 +1144,11 @@
    "teams": [
     {
      "name": "LIU",
-     "p": 0.23
+     "p": 0.235
     },
     {
      "name": "Central Connecticut St.",
-     "p": 0.765
+     "p": 0.76
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1192,11 +1240,11 @@
    "teams": [
     {
      "name": "Texas A&M",
-     "p": 0.465
+     "p": 0.485
     },
     {
      "name": "Tennessee",
-     "p": 0.535
+     "p": 0.515
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1208,11 +1256,11 @@
    "teams": [
     {
      "name": "Oklahoma",
-     "p": 0.555
+     "p": 0.565
     },
     {
      "name": "Ole Miss",
-     "p": 0.445
+     "p": 0.435
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1224,7 +1272,7 @@
    "teams": [
     {
      "name": "Texas",
-     "p": 0.385
+     "p": 0.365
     },
     {
      "name": "LSU",
@@ -1244,7 +1292,7 @@
     },
     {
      "name": "Idaho St.",
-     "p": 0.265
+     "p": 0.275
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1324,7 +1372,7 @@
     },
     {
      "name": "Stephen F. Austin",
-     "p": 0.835
+     "p": 0.84
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1336,11 +1384,11 @@
    "teams": [
     {
      "name": "New Mexico",
-     "p": 0.855
+     "p": 0.865
     },
     {
      "name": "UNLV",
-     "p": 0.145
+     "p": 0.135
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1352,11 +1400,11 @@
    "teams": [
     {
      "name": "San Jose St.",
-     "p": 0.19
+     "p": 0.185
     },
     {
      "name": "Air Force",
-     "p": 0.81
+     "p": 0.815
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1368,11 +1416,11 @@
    "teams": [
     {
      "name": "Oregon St.",
-     "p": 0.155
+     "p": 0.15
     },
     {
      "name": "Boise St.",
-     "p": 0.845
+     "p": 0.85
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1388,7 +1436,7 @@
     },
     {
      "name": "East Texas A&M",
-     "p": 0.085
+     "p": 0.08
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1400,11 +1448,11 @@
    "teams": [
     {
      "name": "Weber St.",
-     "p": 0.3
+     "p": 0.29
     },
     {
      "name": "Northern Arizona",
-     "p": 0.7
+     "p": 0.71
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1416,7 +1464,7 @@
    "teams": [
     {
      "name": "Utah Tech",
-     "p": 0.345
+     "p": 0.34
     },
     {
      "name": "Eastern Washington",
@@ -1436,7 +1484,7 @@
     },
     {
      "name": "Idaho",
-     "p": 0.75
+     "p": 0.745
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1452,7 +1500,7 @@
     },
     {
      "name": "Samford",
-     "p": 0.425
+     "p": 0.42
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1468,7 +1516,7 @@
     },
     {
      "name": "Eastern Illinois",
-     "p": 0.665
+     "p": 0.67
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1496,11 +1544,11 @@
    "teams": [
     {
      "name": "West Florida",
-     "p": 0.14
+     "p": 0.145
     },
     {
      "name": "Tarleton St.",
-     "p": 0.87
+     "p": 0.855
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1564,7 +1612,7 @@
     },
     {
      "name": "Incarnate Word",
-     "p": 0.93
+     "p": 0.925
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1576,7 +1624,7 @@
    "teams": [
     {
      "name": "Tennessee-Martin",
-     "p": 0.475
+     "p": 0.485
     },
     {
      "name": "Lindenwood",
@@ -1592,7 +1640,7 @@
    "teams": [
     {
      "name": "Prairie View A&M",
-     "p": 0.525
+     "p": 0.535
     },
     {
      "name": "Arkansas-Pine Bluff",
@@ -1692,7 +1740,7 @@
     },
     {
      "name": "Delaware",
-     "p": 0.625
+     "p": 0.63
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1752,7 +1800,7 @@
    "teams": [
     {
      "name": "Marshall",
-     "p": 0.48
+     "p": 0.485
     },
     {
      "name": "Appalachian St.",
@@ -1772,7 +1820,7 @@
     },
     {
      "name": "Georgia Southern",
-     "p": 0.67
+     "p": 0.675
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1804,7 +1852,7 @@
     },
     {
      "name": "UTEP",
-     "p": 0.255
+     "p": 0.265
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1848,11 +1896,11 @@
    "teams": [
     {
      "name": "Penn St.",
-     "p": 0.775
+     "p": 0.795
     },
     {
      "name": "Minnesota",
-     "p": 0.225
+     "p": 0.205
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1864,11 +1912,11 @@
    "teams": [
     {
      "name": "Washington",
-     "p": 0.575
+     "p": 0.565
     },
     {
      "name": "Michigan St.",
-     "p": 0.415
+     "p": 0.435
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1912,7 +1960,7 @@
    "teams": [
     {
      "name": "Virginia Tech",
-     "p": 0.87
+     "p": 0.865
     },
     {
      "name": "Stanford",
@@ -1928,11 +1976,11 @@
    "teams": [
     {
      "name": "Wake Forest",
-     "p": 0.495
+     "p": 0.49
     },
     {
      "name": "SMU",
-     "p": 0.515
+     "p": 0.505
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1980,7 +2028,7 @@
     },
     {
      "name": "Clemson",
-     "p": 0.845
+     "p": 0.855
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -1992,11 +2040,11 @@
    "teams": [
     {
      "name": "Virginia",
-     "p": 0.785
+     "p": 0.795
     },
     {
      "name": "California",
-     "p": 0.215
+     "p": 0.205
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2008,11 +2056,11 @@
    "teams": [
     {
      "name": "TCU",
-     "p": 0.805
+     "p": 0.815
     },
     {
      "name": "Kansas St.",
-     "p": 0.195
+     "p": 0.185
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2024,11 +2072,11 @@
    "teams": [
     {
      "name": "Utah",
-     "p": 0.555
+     "p": 0.525
     },
     {
      "name": "Arizona",
-     "p": 0.445
+     "p": 0.475
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2040,7 +2088,7 @@
    "teams": [
     {
      "name": "UCF",
-     "p": 0.585
+     "p": 0.595
     },
     {
      "name": "Arizona St.",
@@ -2088,11 +2136,11 @@
    "teams": [
     {
      "name": "BYU",
-     "p": 0.725
+     "p": 0.735
     },
     {
      "name": "Baylor",
-     "p": 0.275
+     "p": 0.255
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2152,11 +2200,11 @@
    "teams": [
     {
      "name": "Georgia",
-     "p": 0.875
+     "p": 0.865
     },
     {
      "name": "Missouri",
-     "p": 0.125
+     "p": 0.135
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2200,11 +2248,11 @@
    "teams": [
     {
      "name": "Tulane",
-     "p": 0.425
+     "p": 0.405
     },
     {
      "name": "Rice",
-     "p": 0.575
+     "p": 0.585
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2220,7 +2268,7 @@
     },
     {
      "name": "North Texas",
-     "p": 0.545
+     "p": 0.555
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2264,11 +2312,11 @@
    "teams": [
     {
      "name": "West Georgia",
-     "p": 0.165
+     "p": 0.16
     },
     {
      "name": "North Alabama",
-     "p": 0.84
+     "p": 0.845
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2280,11 +2328,11 @@
    "teams": [
     {
      "name": "Richmond",
-     "p": 0.17
+     "p": 0.175
     },
     {
      "name": "Lehigh",
-     "p": 0.825
+     "p": 0.83
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2312,7 +2360,7 @@
    "teams": [
     {
      "name": "Eastern Kentucky",
-     "p": 0.5
+     "p": 0.505
     },
     {
      "name": "Central Arkansas",
@@ -2332,7 +2380,7 @@
     },
     {
      "name": "Charleston Southern",
-     "p": 0.41
+     "p": 0.415
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2360,11 +2408,11 @@
    "teams": [
     {
      "name": "Western Illinois",
-     "p": 0.675
+     "p": 0.67
     },
     {
      "name": "Gardner-Webb",
-     "p": 0.315
+     "p": 0.325
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2408,7 +2456,7 @@
    "teams": [
     {
      "name": "Southern Illinois",
-     "p": 0.145
+     "p": 0.14
     },
     {
      "name": "South Dakota St.",
@@ -2424,11 +2472,11 @@
    "teams": [
     {
      "name": "Northern Iowa",
-     "p": 0.19
+     "p": 0.185
     },
     {
      "name": "South Dakota",
-     "p": 0.81
+     "p": 0.815
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2440,7 +2488,7 @@
    "teams": [
     {
      "name": "Northern Colorado",
-     "p": 0.07
+     "p": 0.065
     },
     {
      "name": "Montana St.",
@@ -2472,11 +2520,11 @@
    "teams": [
     {
      "name": "Wofford",
-     "p": 0.345
+     "p": 0.35
     },
     {
      "name": "East Tennessee St.",
-     "p": 0.65
+     "p": 0.645
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2520,11 +2568,11 @@
    "teams": [
     {
      "name": "Valparaiso",
-     "p": 0.795
+     "p": 0.785
     },
     {
      "name": "Stetson",
-     "p": 0.205
+     "p": 0.21
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2556,7 +2604,7 @@
     },
     {
      "name": "Bucknell",
-     "p": 0.325
+     "p": 0.315
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2568,11 +2616,11 @@
    "teams": [
     {
      "name": "New Hampshire",
-     "p": 0.345
+     "p": 0.335
     },
     {
      "name": "Stony Brook",
-     "p": 0.655
+     "p": 0.65
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2600,11 +2648,11 @@
    "teams": [
     {
      "name": "Dartmouth",
-     "p": 0.525
+     "p": 0.515
     },
     {
      "name": "Cornell",
-     "p": 0.475
+     "p": 0.485
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2616,11 +2664,11 @@
    "teams": [
     {
      "name": "Penn",
-     "p": 0.175
+     "p": 0.17
     },
     {
      "name": "Harvard",
-     "p": 0.835
+     "p": 0.83
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2680,11 +2728,11 @@
    "teams": [
     {
      "name": "Dayton",
-     "p": 0.925
+     "p": 0.935
     },
     {
      "name": "Davidson",
-     "p": 0.075
+     "p": 0.065
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2696,11 +2744,11 @@
    "teams": [
     {
      "name": "Marist",
-     "p": 0.255
+     "p": 0.305
     },
     {
      "name": "Butler",
-     "p": 0.735
+     "p": 0.69
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2744,7 +2792,7 @@
    "teams": [
     {
      "name": "Wagner",
-     "p": 0.475
+     "p": 0.47
     },
     {
      "name": "New Haven",
@@ -2796,7 +2844,7 @@
     },
     {
      "name": "Towson",
-     "p": 0.415
+     "p": 0.42
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2812,7 +2860,7 @@
     },
     {
      "name": "Monmouth",
-     "p": 0.87
+     "p": 0.865
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2824,7 +2872,7 @@
    "teams": [
     {
      "name": "Georgetown",
-     "p": 0.475
+     "p": 0.48
     },
     {
      "name": "Fordham",
@@ -2872,11 +2920,11 @@
    "teams": [
     {
      "name": "Maine",
-     "p": 0.155
+     "p": 0.16
     },
     {
      "name": "University at Albany",
-     "p": 0.845
+     "p": 0.84
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2888,11 +2936,11 @@
    "teams": [
     {
      "name": "Presbyterian",
-     "p": 0.57
+     "p": 0.565
     },
     {
      "name": "Morehead St.",
-     "p": 0.44
+     "p": 0.435
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2904,7 +2952,7 @@
    "teams": [
     {
      "name": "Youngstown St.",
-     "p": 0.815
+     "p": 0.82
     },
     {
      "name": "Illinois St.",
@@ -2952,11 +3000,11 @@
    "teams": [
     {
      "name": "Southern Utah",
-     "p": 0.775
+     "p": 0.835
     },
     {
      "name": "Portland St.",
-     "p": 0.225
+     "p": 0.165
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2968,11 +3016,11 @@
    "teams": [
     {
      "name": "Houston",
-     "p": 0.735
+     "p": 0.915
     },
     {
      "name": "Colorado",
-     "p": 0.255
+     "p": 0.085
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"
@@ -2984,27 +3032,11 @@
    "teams": [
     {
      "name": "UCLA",
-     "p": 0.795
+     "p": 0.865
     },
     {
      "name": "Illinois",
-     "p": 0.205
-    }
-   ],
-   "url": "https://kalshi.com/markets/kxncaafgame"
-  },
-  {
-   "source": "Kalshi",
-   "title": "Pittsburgh wins",
-   "close": "2026-11-14T03:00:00Z",
-   "teams": [
-    {
-     "name": "Pittsburgh",
-     "p": 0.585
-    },
-    {
-     "name": "Florida St.",
-     "p": 0.415
+     "p": 0.135
     }
    ],
    "url": "https://kalshi.com/markets/kxncaafgame"

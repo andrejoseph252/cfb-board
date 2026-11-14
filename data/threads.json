@@ -1,6 +1,50 @@
 {
- "updated": "2026-11-13T23:57:45+00:00",
+ "updated": "2026-11-14T04:31:46+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Florida State Defeats Pittsburgh 16-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvs55l/postgame_thread_florida_state_defeats_pittsburgh/",
+   "published": "2026-11-14T03:31:10+00:00",
+   "gameId": "401858293",
+   "teams": [
+    "Florida State",
+    "Pittsburgh"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Houston @ Colorado (10:15 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvqn99/game_thread_houston_colorado_1015_pm_et/",
+   "published": "2026-11-14T02:15:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Houston",
+    "Colorado"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Southern Utah @ Portland State (10:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvqclv/game_thread_southern_utah_portland_state_1000_pm/",
+   "published": "2026-11-14T02:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Southern Utah",
+    "Portland State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Illinois @ UCLA (9:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvp5e3/game_thread_illinois_ucla_900_pm_et/",
+   "published": "2026-11-14T01:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Illinois",
+    "UCLA"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] Florida State @ Pittsburgh (7:00 PM ET)",
@@ -1590,28 +1634,6 @@
    "url": "https://www.reddit.com/r/CFB/comments/1xnfdp3/postgame_thread_buffalo_defeats_miami_oh_3431/",
    "published": "2026-11-04T04:53:17+00:00",
    "gameId": "401866454",
-   "teams": [
-    "Buffalo",
-    "Miami (OH)"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Ohio Defeats Akron 28-20",
-   "url": "https://www.reddit.com/r/CFB/comments/1xnefqn/postgame_thread_ohio_defeats_akron_2820/",
-   "published": "2026-11-04T04:03:48+00:00",
-   "gameId": "401866453",
-   "teams": [
-    "Ohio",
-    "Akron"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Buffalo @ Miami (OH) (8:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xn9dw3/game_thread_buffalo_miami_oh_800_pm_et/",
-   "published": "2026-11-04T00:00:09+00:00",
-   "gameId": null,
    "teams": [
     "Buffalo",
     "Miami (OH)"
