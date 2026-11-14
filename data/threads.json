@@ -1,6 +1,39 @@
 {
- "updated": "2026-11-14T04:31:46+00:00",
+ "updated": "2026-11-14T11:48:55+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Colorado Defeats Houston 42-32",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvvpyh/postgame_thread_colorado_defeats_houston_4232/",
+   "published": "2026-11-14T06:50:12+00:00",
+   "gameId": "401856860",
+   "teams": [
+    "Colorado",
+    "Houston"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Southern Utah Defeats Portland State 23-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvv2cs/postgame_thread_southern_utah_defeats_portland/",
+   "published": "2026-11-14T06:12:09+00:00",
+   "gameId": "401868157",
+   "teams": [
+    "Southern Utah",
+    "Portland State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UCLA Defeats Illinois 22-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xvuhec/postgame_thread_ucla_defeats_illinois_2214/",
+   "published": "2026-11-14T05:39:10+00:00",
+   "gameId": "401858526",
+   "teams": [
+    "UCLA",
+    "Illinois"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Florida State Defeats Pittsburgh 16-10",
@@ -1626,17 +1659,6 @@
    "teams": [
     "Ball State",
     "UMass"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Buffalo Defeats Miami (OH) 34-31",
-   "url": "https://www.reddit.com/r/CFB/comments/1xnfdp3/postgame_thread_buffalo_defeats_miami_oh_3431/",
-   "published": "2026-11-04T04:53:17+00:00",
-   "gameId": "401866454",
-   "teams": [
-    "Buffalo",
-    "Miami (OH)"
    ]
   }
  ],
