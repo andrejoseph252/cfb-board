@@ -1,6 +1,28 @@
 {
- "updated": "2026-11-14T17:22:33+00:00",
+ "updated": "2026-11-14T18:55:08+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Kansas State @ TCU (2:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xw8ts2/game_thread_kansas_state_tcu_200_pm_et/",
+   "published": "2026-11-14T18:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Kansas State",
+    "TCU"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Kennesaw State @ Sam Houston (2:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xw8trg/game_thread_kennesaw_state_sam_houston_200_pm_et/",
+   "published": "2026-11-14T18:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Kennesaw State",
+    "Sam Houston"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] UAB @ Temple (1:00 PM ET)",
