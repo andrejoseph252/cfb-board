@@ -1,6 +1,61 @@
 {
- "updated": "2026-11-14T21:43:03+00:00",
+ "updated": "2026-11-14T22:50:18+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Kennesaw State Defeats Sam Houston 26-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwevgn/postgame_thread_kennesaw_state_defeats_sam/",
+   "published": "2026-11-14T22:16:09+00:00",
+   "gameId": "401870769",
+   "teams": [
+    "Kennesaw State",
+    "Sam Houston"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Florida @ Kentucky (6:15 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xweul7/game_thread_florida_kentucky_615_pm_et/",
+   "published": "2026-11-14T22:15:04+00:00",
+   "gameId": null,
+   "teams": [
+    "Florida",
+    "Kentucky"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] TCU Defeats Kansas State 20-10",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwenh6/postgame_thread_tcu_defeats_kansas_state_2010/",
+   "published": "2026-11-14T22:06:10+00:00",
+   "gameId": "401856862",
+   "teams": [
+    "TCU",
+    "Kansas State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Appalachian State @ Marshall (6:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xweih6/game_thread_appalachian_state_marshall_600_pm_et/",
+   "published": "2026-11-14T22:00:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Appalachian State",
+    "Marshall"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Oregon State @ Boise State (6:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xweigh/game_thread_oregon_state_boise_state_600_pm_et/",
+   "published": "2026-11-14T22:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "Oregon State",
+    "Boise State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] ECU Defeats Charlotte 17-16",
