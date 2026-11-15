@@ -549,6 +549,18 @@ export function step(G, dt, inp){
     const s = Math.min(1, ball.t / ball.T);
     ball.x = ball.fx + (ball.tx - ball.fx) * s; ball.y = ball.fy + (ball.ty - ball.fy) * s;
     ball.z = 1.8 + (1.2 - 1.8) * s + 4 * ball.h * s * (1 - s);
+    // A fired ball is flat: a defender sitting in the throwing lane (a linebacker under a dig) can get a hand on it.
+    // Each man gets one chance, better the closer he is to the line of the ball.
+    if (ball.bullet && s > .15 && s < .85){
+      for (const d of P.def){
+        if (d.laneTry || d.down || d.stun > 0 || d.eng || d.role === 'DL' && !d.free) continue;
+        const dd = Math.hypot(d.x - ball.x, d.y - ball.y); if (dd > 1.1) continue;
+        d.laneTry = true;
+        const q = 1 - dd / 1.1, u = Math.random();
+        if (u < (.12 + .3 * q) * .35 * G.diff.intMul) return end(G, { type: 'int', x: d.x, y: d.y, by: d });
+        if (u < .12 + .3 * q){ pop(P, d.x, d.y, 'TIPPED!', '#ff5a4e'); return end(G, { type: 'inc', why: 'Tipped in the lane', by: d }); }
+      }
+    }
     if (s >= 1) return resolvePass(G);
   }
 
@@ -606,8 +618,11 @@ function runCarrier(G, dt, inp){
      two yards away is the sweet spot) and only him; everyone else keeps coming. */
   if (inp.juke && c.jukeCD <= 0 && c.dive <= 0){
     const m = near.find(x => x.dd < 4.2 && (x.d.x - c.x) * dir.x + (x.d.y - c.y) * dir.y > -.5);
-    const away = m ? Math.sign(c.y - m.d.y) || (inp.juke > 0 ? 1 : -1) : Math.sign(inp.juke) || 1;
-    c.juke = .3; c.jukeCD = 1.1; c.jukeDir = away;
+    // A swipe cuts the way you swiped; the button (and the computer) cuts away from the man coming.
+    const away = inp.jukeSwipe ? Math.sign(inp.juke) || 1 : m ? Math.sign(c.y - m.d.y) || (inp.juke > 0 ? 1 : -1) : Math.sign(inp.juke) || 1;
+    // The heading he comes back to once the cut is done (never backward: a juke is a move to get upfield).
+    const fx = Math.max(.35, dir.x), fn = Math.hypot(fx, dir.y);
+    c.juke = .3; c.jukeCD = 1.1; c.jukeDir = away; c.jukeHead = { x: fx / fn, y: dir.y / fn };
     emit(G, 'sfx', { name: 'juke' });
     if (m){
       const timing = clamp(1 - Math.abs(m.dd - 2.1) / 1.6, 0, 1);
@@ -627,9 +642,18 @@ function runCarrier(G, dt, inp){
      he's going. Momentum (accelToward) makes a hard cut cost speed. */
   let tvx, tvy;
   const st = inp.carStick, m = st ? Math.hypot(st.x, st.y) : 0;
-  if (c.juke > 0){ c.juke -= dt; tvx = dir.x * base * .55; tvy = c.jukeDir * base * 1.05; }
-  else if (m > .05){ const push = Math.min(1, m); tvx = st.x / m * base * slow * push; tvy = st.y / m * base * slow * push; }
+  // The cut: a burst to the side while he keeps most of his speed upfield (it used to stall him to half speed).
+  // The side step pops hard, then winds down inside the move itself, so when it ends he's already back to running
+  // mostly upfield and the usual momentum takes over from there.
+  if (c.juke > 0){
+    c.juke -= dt;
+    const t = clamp(1 - c.juke / .3, 0, 1), side = t < .55 ? 1.35 : 1.35 - (t - .55) / .45 * 1.1;
+    tvx = (c.jukeHead?.x ?? dir.x) * base * (.8 + .15 * t); tvy = c.jukeDir * base * side;
+  }
+  else if (m > .05){ c.jukeHead = null; const push = Math.min(1, m); tvx = st.x / m * base * slow * push; tvy = st.y / m * base * slow * push; }
   else if (P.runPath && P.t - P.carryT < .8){ tvx = P.runPath.x * base * slow; tvy = P.runPath.y * base * slow; }   // the called run's path
+  // No stick: after a juke he straightens back to the line he was on (not off sideways); otherwise he keeps going.
+  else if (c.jukeHead){ tvx = c.jukeHead.x * base * slow; tvy = c.jukeHead.y * base * slow; }
   else { tvx = (sp > 2 ? dir.x : 1) * base * slow; tvy = (sp > 2 ? dir.y : 0) * base * slow; }
   if (c.juke > 0){ c.vx += (tvx - c.vx) * Math.min(1, 14 * dt); c.vy += (tvy - c.vy) * Math.min(1, 14 * dt); }   // the cut itself is explosive
   else accelToward(c, tvx, tvy, dt, 10);
@@ -834,10 +858,14 @@ export const canHandoff = G => { const P = G.play; return canThrow(G) && !P.hand
    a bullet (flat and quick) up to 22 yards, a touch throw (over the linebackers, under the safeties) to 36, and a
    deep ball (real air under it) beyond. Each picks up where the one before leaves off, so a slightly longer pull is
    only ever a slightly longer flight. Shared with the aim arc so what you see is what's thrown. */
-export const TOUCH_AT = 22, DEEP_AT = 36;
+export const TOUCH_AT = 22, DEEP_AT = 36, FIRE_MAX = 40;
 const bullet = d => ({ T: .22 + d / 28, h: Math.max(.4, d * .085) });
-export function trajectory(G, tx, ty){
+/* A fired ball (you flicked it): flatter and about a quarter quicker on short throws, a third on intermediate ones.
+   Past FIRE_MAX yards there's no driving it: it's a deep ball whatever you do. */
+const fired = d => ({ T: .18 + d / 40, h: Math.max(.25, d * .045) });
+export function trajectory(G, tx, ty, fire = false){
   const qb = G.play.qb, d = Math.hypot(tx - qb.x, ty - qb.y) || 1;
+  if (fire && d <= FIRE_MAX) return { ...fired(d), tier: 'fired', loft: false };
   if (d <= TOUCH_AT) return { ...bullet(d), tier: 'bullet', loft: false };
   const b = bullet(TOUCH_AT);
   if (d <= DEEP_AT) return { T: b.T + (d - TOUCH_AT) / 19, h: b.h + (d - TOUCH_AT) * .23, tier: 'touch', loft: true };
@@ -860,20 +888,21 @@ export function throwSpread(G, tx, ty){
 }
 const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
 /* Your slingshot throw: lands near where you aimed, by the spread above. */
-export function userThrow(G, tx, ty){
-  let s = throwSpread(G, tx, ty);
+export function userThrow(G, tx, ty, fire = false){
+  let s = throwSpread(G, tx, ty) * (fire ? 1.1 : 1);   // a fastball is a touch less accurate
   // On time: the ball out to the read he's on, where that receiver is going, is a rhythm throw (tighter).
   const P = G.play, cur = currentRead(P);
   if (cur){
-    const T = trajectory(G, tx, ty).T;
+    const T = trajectory(G, tx, ty, fire).T;
     if (Math.hypot(cur.x + cur.vx * T - tx, cur.y + cur.vy * T - ty) < 3.5){ s *= .7; P.onTime = true; pop(P, cur.x, cur.y, 'ON TIME', '#ffd84a'); }
   }
-  return throwTo(G, tx + gauss() * s, ty + gauss() * s);
+  return throwTo(G, tx + gauss() * s, ty + gauss() * s, fire);
 }
-export function throwTo(G, tx, ty){
+export function throwTo(G, tx, ty, fire = false){
   const P = G.play, qb = P.qb, ball = P.ball, D = G.diff;
-  const fl = trajectory(G, tx, ty);
-  Object.assign(ball, { state: 'air', fx: qb.x + .3, fy: qb.y, tx, ty, t: 0, T: fl.T, h: fl.h });
+  const fl = trajectory(G, tx, ty, fire);
+  Object.assign(ball, { state: 'air', fx: qb.x + .3, fy: qb.y, tx, ty, t: 0, T: fl.T, h: fl.h, bullet: fl.tier === 'fired' });
+  if (ball.bullet){ pop(P, qb.x, qb.y, 'BULLET!', '#7df9ff'); emit(G, 'shake', { a: 1.5 }); emit(G, 'sfx', { name: 'juke' }); }   // the streak and the ring: drawhd.js
   P.airYds = tx - P.los;
   P.thrown = true; G.stats.att++;
   emit(G, 'sfx', { name: 'throw' });
@@ -940,14 +969,14 @@ export function gradeThrow(P, land, T, aimedAt, strict){
   return { score, timing: Math.round(timing), accuracy: Math.round(accuracy), release: Math.round(rel), word, who: r.role, inStride: timing >= 85 && accuracy >= 70 };
 }
 /* Throwing to a numbered receiver (keyboard): leads him by his current velocity, with some error by difficulty. */
-export function throwToReceiver(G, num){
+export function throwToReceiver(G, num, fire = false){
   const P = G.play, r = P.rec.find(p => p.num === num); if (!r || !canThrow(G)) return false;
   const qb = P.qb; let T = .5;
-  for (let i = 0; i < 4; i++){ T = trajectory(G, r.x + r.vx * T, r.y + r.vy * T).T; }
+  for (let i = 0; i < 4; i++){ T = trajectory(G, r.x + r.vx * T, r.y + r.vy * T, fire).T; }
   const g = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;
   const e = G.diff.keyErr * (.6 + Math.hypot(r.x - qb.x, r.y - qb.y) / 30);
   P.aimedAt = r;
-  throwTo(G, r.x + r.vx * T + g() * e, r.y + r.vy * T + g() * e);
+  throwTo(G, r.x + r.vx * T + g() * e * (fire ? 1.1 : 1), r.y + r.vy * T + g() * e * (fire ? 1.1 : 1), fire);
   return true;
 }
 /* Starts a called run at the snap: the handoff (with that run's blocking), or sets up a QB draw or a read option. */
@@ -1003,7 +1032,8 @@ function resolvePass(G){
     const one = df => { const dd2 = dist(df, land); if (dd2 >= CR) return 0; const f = front(df); return (CR - dd2) / CR * (f > .4 ? 1.3 : f < -.4 ? .5 : 1) * (eyes(df) ? 1 : .3); };
     const c1 = d ? one(d) : 0, c2 = defs[1] ? one(defs[1]) : 0;
     const contest = Math.min(1, 1 - (1 - c1) * (1 - c2 * .5));
-    const pCatch = clamp(.96 - rd * .07 - air * .004 - contest * .6 * (.6 + .4 * D.intMul) + rate(G.me.off) / 400, .1, .98);
+    // A fastball is harder to hang on to, more so with a man on him.
+    const pCatch = clamp(.96 - rd * .07 - air * .004 - contest * .6 * (.6 + .4 * D.intMul) + rate(G.me.off) / 400 - (b.bullet ? .03 + contest * .1 : 0), .1, .98);
     // Even a blanketed throw is mostly broken up, not picked (about 1 in 7 at most, at Legend).
     const pInt = contest && dd < rd && front(d) > -.3 && eyes(d) ? .17 * D.intMul * contest : 0;
     if (u < pCatch){
@@ -1013,6 +1043,7 @@ function resolvePass(G){
       const keep = contest > .2 ? .2 : .35; r.vx *= keep; r.vy *= keep;
       const who = G.me.names?.[r.role];
       emit(G, 'sfx', { name: 'catch' }); pop(P, r.x, r.y, contest > .3 ? 'GREAT CATCH!' : who ? who.toUpperCase() : 'CAUGHT', contest > .3 ? '#ffd84a' : '#fff');
+      if (b.bullet){ burst(P, r.x, r.y, ['#ffffff', '#fff3b0', '#7df9ff'], 14, .6); emit(G, 'shake', { a: 1.5 }); }   // the pop of a fastball into his hands
       if (r.x >= 100) return end(G, { type: 'td', x: r.x, y: r.y, pass: true, rec: r });
       becomeCarrier(P, r); P.catchX = r.x;
       return;

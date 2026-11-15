@@ -424,6 +424,9 @@ export const CSS = `
 
 /* ---------- the play-call sheet ---------- */
 .pb.hd .pb-calls{max-width:620px;gap:12px;padding:24px 16px 16px}
+/* Upright, the sheet stops well short of the pause and sound buttons and scrolls inside itself (swipe it down to close). */
+.pb.hd .pb-modal[data-kind="call"] > .pb-calls{max-height:min(70dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 220px));
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;grid-auto-rows:max-content;align-content:start;will-change:transform}
 .pb.hd .pb-forms{gap:6px;margin:0 -16px;padding:0 16px;scrollbar-width:none}
 .pb.hd .pb-forms button{height:34px;padding:0 14px;border:0;border-radius:17px;background:var(--hd-chip);box-shadow:none;font:600 13px/34px var(--hd-body);color:rgba(255,255,255,.8);white-space:nowrap}
 .pb.hd .pb-forms button[aria-pressed="true"]{background:var(--hd-pill);color:var(--hd-pill-ink);box-shadow:none}

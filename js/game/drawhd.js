@@ -676,11 +676,22 @@ export function createRenderer(canvas){
     }
     for (const c of clods){ c.t += dt; c.x += c.vx * dt; c.y += c.vy * dt; c.vz -= 14 * dt; c.z = Math.max(0, c.z + c.vz * dt); if (!c.z){ c.vx *= .6; c.vy *= .6; } }
     for (let i = clods.length - 1; i >= 0; i--) if (clods[i].t > clods[i].life) clods.splice(i, 1);
+    // A fired ball: a shock ring off the quarterback's hand, and another where it smacks into the receiver's hands.
+    const B = G.play?.ball;
+    if (B?.bullet && !B.ringOut){ B.ringOut = true; rings.push({ x: B.fx, y: B.fy, z: 1.8, t: 0, shock: true }); }
+    if (B?.bullet && B.ringOut && !B.ringIn && B.state !== 'air' && G.play.carrier && !R_){ B.ringIn = true; rings.push({ x: G.play.carrier.x, y: G.play.carrier.y, z: 1.2, t: 0, shock: true }); }
     for (const r of rings) r.t += dt;
     rings = rings.filter(r => r.t < .45);
   }
   function drawImpacts(){
-    for (const r of rings){   // a dust ring spreading on the turf
+    for (const r of rings){   // a dust ring spreading on the turf (or a fired ball's shock ring, in the air)
+      if (r.shock){
+        const k = Math.min(1, r.t / .3), [x, y] = toBuf(r.x, r.y, r.z), rx = Math.round(4 + k * 20), ry = Math.round(rx * .55);
+        if (k >= 1) continue;
+        bx.fillStyle = `rgba(200,250,255,${((1 - k) * .9).toFixed(3)})`;
+        for (let a = 0; a < 36; a++){ const th = a / 36 * Math.PI * 2; bx.fillRect(Math.round(x + Math.cos(th) * rx), Math.round(y + Math.sin(th) * ry), 2, 2); }
+        continue;
+      }
       const k = r.t / .45, [x, y] = toBuf(r.x, r.y), rx = Math.round((r.big ? 10 : 7) + k * (r.big ? 26 : 18)), ry = Math.round(rx * .4);
       bx.fillStyle = `rgba(214,196,160,${(1 - k) * .55})`;
       for (let a = 0; a < 40; a++){ const th = a / 40 * Math.PI * 2; bx.fillRect(Math.round(x + Math.cos(th) * rx), Math.round(y + Math.sin(th) * ry), 2, 2); }
@@ -698,7 +709,32 @@ export function createRenderer(canvas){
       return drawBall(lx + (P.qb.x - lx) * k, P.b + (P.qb.y - P.b) * k, .3 + Math.sin(k * Math.PI) * .7);
     }
     if (b.state === 'held' && b.holder && !b.holder.down) return;
+    if (b.state === 'air' && b.bullet) bulletTrail(b);
     drawBall(b.x, b.y, b.z || 0);
+  }
+  /* A fired ball (you flicked it) leaves a streak: a hot white core fading to cyan for the last few yards of its
+     flight, with speed lines flickering alongside. */
+  function bulletTrail(b){
+    const len = Math.hypot(b.tx - b.fx, b.ty - b.fy) || 1, s = Math.min(1, b.t / b.T), ds = 8 / len, N = 16;
+    const at = u => toBuf(b.fx + (b.tx - b.fx) * u, b.fy + (b.ty - b.fy) * u, 1.8 - .6 * u + 4 * b.h * u * (1 - u));
+    const pts = []; for (let i = 0; i <= N; i++){ const u = s - ds * i / N; if (u < 0) break; pts.push(at(u)); }
+    if (pts.length < 2) return;
+    const [hx, hy] = pts[0], [ex, ey] = pts[pts.length - 1], L = Math.hypot(hx - ex, hy - ey) || 1, nx = -(hy - ey) / L, ny = (hx - ex) / L;
+    bx.lineCap = 'round';
+    for (let i = 1; i < pts.length; i++){
+      const f = 1 - i / N;
+      bx.strokeStyle = `rgba(125,249,255,${(.7 * f).toFixed(3)})`; bx.lineWidth = 2 + 6 * f;
+      bx.beginPath(); bx.moveTo(pts[i - 1][0], pts[i - 1][1]); bx.lineTo(pts[i][0], pts[i][1]); bx.stroke();
+      bx.strokeStyle = `rgba(255,255,255,${f.toFixed(3)})`; bx.lineWidth = 1 + 2.5 * f;
+      bx.beginPath(); bx.moveTo(pts[i - 1][0], pts[i - 1][1]); bx.lineTo(pts[i][0], pts[i][1]); bx.stroke();
+    }
+    // Speed lines, either side of the streak, flickering.
+    bx.lineWidth = 1;
+    for (const side of [-1, 1]){
+      const o = side * (7 + (Math.floor(t * 30 + side) % 2) * 2), a = pts[Math.min(2, pts.length - 1)], z = pts[Math.max(3, pts.length - 4)] || pts[pts.length - 1];
+      bx.strokeStyle = 'rgba(255,255,255,.6)';
+      bx.beginPath(); bx.moveTo(a[0] + nx * o, a[1] + ny * o); bx.lineTo(z[0] + nx * o * .6, z[1] + ny * o * .6); bx.stroke();
+    }
   }
   function drawBall(x, y, z){
     const [gx, gy] = toBuf(x, y), air = z > .25;

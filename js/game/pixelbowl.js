@@ -22,7 +22,7 @@ import * as W from './weather.js';
 
 const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
-const saved = { diff: 'pro', len: 'standard', sound: true, atmos: 1, routes: true, time: 'random', sky: 'random', dir: 'left', ...store.get('pixelbowl', {}) };
+const saved = { diff: 'pro', len: 'quick', sound: true, atmos: 1, routes: true, time: 'random', sky: 'random', dir: 'left', ...store.get('pixelbowl', {}) };
 delete saved.record; delete saved.hd; saved.results ||= {};   // (hd: the old HD switch; HD is the only look now)
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
@@ -34,8 +34,8 @@ delete saved.lastPractice;
 /* Your own plays (My Playbook): kept for good, unlike the per-visit settings. */
 saved.plays = Array.isArray(saved.plays) ? saved.plays : [];
 const findPlay = id => saved.plays.find(p => p.id === id);
-// Your difficulty is kept from last time (Rookie the very first time); quarters and practice start fresh.
-const freshSettings = () => { if (!S.DIFFS[saved.diff]) saved.diff = 'rookie'; saved.len = 'quick'; saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; };
+// Your difficulty and quarter length are kept from last time (Rookie and Quick the very first time); practice starts fresh.
+const freshSettings = () => { if (!S.DIFFS[saved.diff]) saved.diff = 'rookie'; if (!S.LENGTHS[saved.len]) saved.len = 'quick'; saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; };
 freshSettings();
 const save = () => store.set('pixelbowl', saved);
 setAtmosphere(saved.atmos ?? 1);   // the saved Crowd & music level, ready before the audio starts
@@ -288,7 +288,7 @@ function update(dt){
     if (!G.ot && !G.practice && !G.youDefend) S.useClock(G, dt);
     if (G.youDefend) defLive(dt);
     S.step(G, dt, coaching() ? S.coachInput(G) : input);
-    input.juke = 0; input.dive = false; input.jump = false; input.truck = false;
+    input.juke = 0; input.jukeSwipe = false; input.dive = false; input.jump = false; input.truck = false;
     if (!G.youDefend && !G.practice) recordFrame();
     if (G.youDefend && G.defDrill.kind === 'rush' && G.play.thrown && !G.play.result) S.stopPlay(G, { type: 'released' });
     if (aim && !S.canThrow(G)) aim = null;
@@ -969,7 +969,7 @@ function defHud(){
   if (keyCtx){
     const key = ['K', hint, phase].join('|'); if (key === lastHud) return; lastHud = key;
     $('.pb-bug').innerHTML = `<div class="pb-tm" style="--c:${esc(G.opp.color)};--k:${inkOn(G.opp.color)}"><b>${G.defDrill.kind === 'cover' ? 'COVER HIM' : 'KEY 3RD DOWN'}</b></div><div class="pb-mid"><span>DOWN</span><b>${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}</b></div>`;
-    $('.pb-dd').innerHTML = `<span>${esc(G.me.name.toUpperCase())} AT YOUR ${Math.round(100 - G.los)}</span>`; $('.pb-bar').innerHTML = ''; $('.pb-hint').textContent = hint; return;
+    $('.pb-dd').innerHTML = `<span>${esc(G.me.name.toUpperCase())} AT YOUR ${Math.round(100 - G.los)}</span>`; setBar(''); $('.pb-hint').textContent = hint; return;
   }
   const ds = G.ds, avg = ds.reps ? Math.round(ds.scoreSum / ds.reps) : null, rush = ds.kind === 'rush';
   const btns = '';
@@ -979,7 +979,7 @@ function defHud(){
       : `<div class="pb-mid"><span>STOPS</span><b>${ds.stops}/${ds.reps}</b></div><div class="pb-mid"><span>PICKS</span><b>${ds.ints}</b></div>`}
     <div class="pb-mid"><span>GRADE</span><b style="color:${avg == null ? '#fff' : gradeColor(avg)}">${avg == null ? '--' : letter(avg)}</b></div>`;
   $('.pb-dd').innerHTML = `<span>REP ${Math.min(ds.reps + 1, ds.n)}/${ds.n}</span>${ds.reps ? `<span>STREAK ${ds.streak}</span>` : ''}`;
-  $('.pb-bar').innerHTML = btns; $('.pb-hint').textContent = hint;
+  setBar(btns); $('.pb-hint').textContent = hint;
 }
 function defHint(){
   const touch = coarse(), Rz = G.rush, P = G.play;
@@ -1182,8 +1182,42 @@ function playSheet(){
     ${runs || custom ? '' : '<p class="pb-sub">Numbers are the reads: gold 1 is who the play is for. After the snap the gold ring moves through them; hit the ringed man on time for a tighter ball.</p>'}
     <p class="pb-sub">Your call is for this play only. The formation stays until you change it (trips plays line you up in trips).</p></div>`, true, 'call');
   $('.pb-hot')?.addEventListener('toggle', e => { hotOpen = e.target.open; });
+  sheetDrag($('.pb-calls'), () => { sheetFam = null; closeModal(); });
   const row = $('.pb-callrow'), on = row.querySelector('[aria-pressed="true"]');
   if (on) row.scrollLeft += on.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - on.offsetWidth) / 2;
+}
+
+/* Swipe a sheet down to close it (phones upright: on its side the play call is a panel with its own close). The pull
+   starts only from the sheet's top, so it never fights scrolling; a short or slow pull springs back. */
+function sheetDrag(card, close){
+  if (!card || matchMedia('(orientation: landscape) and (max-height: 520px)').matches) return;
+  let x0, y0, t0, dy = 0, mode = null;   // mode: null (deciding), 'pull', 'off' (a scroll or a sideways swipe)
+  const back = () => { card.style.transition = 'transform .28s cubic-bezier(.2,.9,.25,1)'; card.style.transform = ''; };
+  card.addEventListener('touchstart', e => {
+    if (e.touches.length > 1){ mode = 'off'; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dy = 0; mode = null;
+  }, { passive: true });
+  card.addEventListener('touchmove', e => {
+    if (mode === 'off' || e.touches.length > 1) return;
+    const dx = e.touches[0].clientX - x0, d = e.touches[0].clientY - y0;
+    if (mode === null){
+      if (Math.hypot(dx, d) < 6) return;
+      if (d <= 0 || Math.abs(dx) > d || card.scrollTop > 0){ mode = 'off'; return; }
+      mode = 'pull'; t0 = performance.now(); y0 += d; card.style.animation = 'none'; card.style.transition = 'none';
+    }
+    e.preventDefault();
+    dy = Math.max(0, e.touches[0].clientY - y0); card.style.transform = `translateY(${dy}px)`;
+  }, { passive: false });
+  const end = () => {
+    if (mode !== 'pull'){ mode = null; return; }
+    mode = null;
+    const v = dy / Math.max(1, performance.now() - t0);   // px per ms
+    if (dy > 110 || dy > 30 && v > .5){
+      card.style.transition = 'transform .2s cubic-bezier(.4,0,1,1)'; card.style.transform = 'translateY(110%)';
+      setTimeout(() => { if (card.isConnected) close(); }, 190);
+    } else back();
+  };
+  card.addEventListener('touchend', end); card.addEventListener('touchcancel', () => { if (mode === 'pull') back(); mode = null; });
 }
 
 /* Route chips, one row per receiver (practice's Pick routes and the play designer). The back can also stay in to block. */
@@ -1506,7 +1540,7 @@ function practiceHud(){
     <div class="pb-mid"><span>CMP</span><b>${ps.comp}/${ps.att}</b></div><div class="pb-mid"><span>YDS</span><b>${ps.yds}</b></div>
     <div class="pb-mid"><span>GRADE</span><b style="color:${avg == null ? '#fff' : gradeColor(avg)}">${avg == null ? '--' : letter(avg)}</b></div>`;
   $('.pb-dd').innerHTML = `<span>THROW ${Math.min(ps.graded + 1, ps.n)}/${ps.n}</span>${ps.graded ? `<span>STREAK ${ps.streak}</span>` : ''}${ps.att ? `<span>${pct}%</span>` : ''}`;
-  $('.pb-bar').innerHTML = btns;
+  setBar(btns);
   $('.pb-hint').textContent = hint;
 }
 
@@ -1569,7 +1603,10 @@ function insets(){
   const top = canvas.getBoundingClientRect().top, hud = [$('.pb-bugw'), $('.pb-dd')].map(el => el?.offsetHeight ? el.getBoundingClientRect().bottom : 0);
   R.setInsets(Math.max(0, Math.max(...hud) - top), LAND_BOT);
 }
-function showHud(on){ $('.pb-hud').hidden = !on; const wx = $('.pb-wxhud'); if (wx){ wx.innerHTML = ''; wx.dataset.hk = ''; } $('.pb-tools').hidden = !on; root.classList.toggle('pb-tools-on', on); if (!on){ $('.pb-bar').innerHTML = ''; $('.pb-hint').textContent = ''; } lastHud = ''; }
+/* The button bar is rebuilt only when its buttons change: the HUD redraws on every clock tick (9 a second during the
+   runoff), and a button swapped out between finger-down and finger-up swallows the tap. */
+function setBar(html){ const b = $('.pb-bar'); if (b && b._html !== html){ b.innerHTML = html; b._html = html; } }
+function showHud(on){ $('.pb-hud').hidden = !on; const wx = $('.pb-wxhud'); if (wx){ wx.innerHTML = ''; wx.dataset.hk = ''; } $('.pb-tools').hidden = !on; root.classList.toggle('pb-tools-on', on); if (!on){ setBar(''); $('.pb-hint').textContent = ''; } lastHud = ''; }
 function hud(){
   if (!root || !G || $('.pb-hud').hidden) return;
   if (G.practice) return practiceHud();
@@ -1617,7 +1654,7 @@ function hudHD(H, dd, poss, tell, btns, hint){
     dk = H.dd({ text: dd, goal: !G.twoPt && G.toGo >= 100 - G.los, spot: x === 50 ? 'MIDFIELD' : x < 50 ? `${G.me.abbr} ${x}` : `${G.opp.abbr} ${100 - x}`, side: x === 50 ? '#fff' : x < 50 ? P.me.c : P.opp.c, tell });
   }
   if (dk !== ddEl.dataset.hk || (dk ? !ddEl.querySelector('.hb-dd') : ddEl.innerHTML)){ ddEl.innerHTML = dk; ddEl.dataset.hk = dk; }
-  $('.pb-bar').innerHTML = btns;
+  setBar(btns);
   $('.pb-hint').textContent = hint;
   // The conditions tab, hanging under the clock (hidden by CSS while a film tell makes the down & distance tab long).
   const wk = G.cond ? `${W.describe(G.cond)}|${R.portrait}` : '';
@@ -1643,7 +1680,7 @@ function hintText(){
   if (phase === 'presnap') return S.RUN_CALLS[G.call] ? (touch ? 'Tap to snap and run' : 'Click or press Space to snap and run') : touch ? 'Press and pull back to throw · tap the glowing back to run' : 'Press and pull back to throw · click the glowing back (or H) to run · Space snaps';
   if (phase === 'live'){
     if (G.play.carrier) return touch ? 'Drag to steer · JUKE as he closes in · TRUCK through him' : 'Arrows to steer · Space juke (time it as he closes) · X truck, or dive with no one in front';
-    if (S.canThrow(G)) return touch ? 'Pull back to throw · MOVE pad slides the quarterback (past the line, he runs) · tap the glowing back to hand off' : 'Pull back and release to throw · 1–5 throw to a receiver · arrows (or the MOVE pad) move the quarterback · H hand off';
+    if (S.canThrow(G)) return touch ? 'Pull back to throw, flick forward to fire it · MOVE pad slides the quarterback (past the line, he runs) · tap the glowing back to hand off' : 'Pull back and release to throw (flick forward to fire it) · 1–5 throw (Shift fires it) to a receiver · arrows (or the MOVE pad) move the quarterback · H hand off';
   }
   return '';
 }
@@ -1704,7 +1741,11 @@ function onClick(e){
       const cur = Object.fromEntries(G.play.rec.map(r => [r.role, r.routeName]));
       cur[b.dataset.role] = b.dataset.v || undefined;
       Object.assign(G, { call: 'custom', callId: null, callName: 'Hot routes', callRoutes: cur });
-      if (phase === 'presnap') S.setupPlay(G); return playSheet();
+      if (phase === 'presnap') S.setupPlay(G);
+      // Updated in place, not redrawn: rebuilding the sheet under your finger left it refusing to scroll for a few swipes.
+      for (const c of b.closest('.pb-rchips').querySelectorAll('button')) c.setAttribute('aria-pressed', String(c === b));
+      for (const c of document.querySelectorAll('.pb-callrow [aria-pressed="true"]')) c.setAttribute('aria-pressed', 'false');
+      return;
     }
     case 'playbook': return playbookScreen();
     case 'pbnew': return editPlay(null, 'playbook');
@@ -1817,6 +1858,7 @@ function down(e){
   if (ptr && ptr.id !== e.pointerId && ptr.mode === 'dstick') return;   // covering: one steering finger at a time
   try{ canvas.setPointerCapture(e.pointerId); }catch{}
   const p = local(e), w = R.toWorld(p.x, p.y), now = performance.now();
+  if (carrierLive() && ptr?.mode === 'cstick' && ptr.id !== e.pointerId){ flick = { id: e.pointerId, x: p.x, y: p.y, t: now }; return; }   // a second finger: a flick, the first keeps steering
   // Coach mode: touching the field takes this snap yourself.
   if (coaching() && (phase === 'presnap' || phase === 'live')){ G.play.userCtl = true; if (phase === 'live') banner('YOU HAVE IT', '', '#7df9ff', 700); }
   ptr = { id: e.pointerId, x0: p.x, y0: p.y, mode: 'none', samples: [{ ...p, t: now }] };
@@ -1838,7 +1880,7 @@ function down(e){
   }
   if (phase !== 'live') return;
   const P = G.play;
-  if (P.carrier){ ptr.mode = 'cstick'; steerStick(p, 'carStick'); return; }
+  if (P.carrier){ ptr.mode = 'cstick'; ptr.tDown = now; steerStick(p, 'carStick'); return; }
   // Generous targets for fingers: the back (hand off) or the quarterback (scramble), whichever is nearer.
   const dRb = hypot(w, P.rb), dQb = hypot(w, P.qb);
   if (S.canHandoff(G) && dRb < 3.2 && dRb < dQb){ S.handoff(G); return; }
@@ -1857,6 +1899,7 @@ function down(e){
   }
 }
 function move(e){
+  if (flick?.id === e.pointerId) return;
   if (!ptr || ptr.id !== e.pointerId || !G?.play) return;
   const p = local(e), w = R.toWorld(p.x, p.y), now = performance.now();
   ptr.samples.push({ ...p, t: now }); while (ptr.samples.length > 2 && now - ptr.samples[0].t > 160) ptr.samples.shift();
@@ -1865,20 +1908,62 @@ function move(e){
     aim.active = len > .9;
     const qb = G.play.qb, d = Math.min(62, len * k), n = len || 1;
     aim.target = { x: Math.min(112, qb.x + pull.x / n * d), y: qb.y + pull.y / n * d };
+    // Where the aim was, moment to moment, so a flick at the release can be measured (and not move the throw).
+    (ptr.aimHist ||= []).push({ t: now, x: p.x, y: p.y, target: aim.active ? { ...aim.target } : null });
+    while (ptr.aimHist.length > 2 && now - ptr.aimHist[0].t > 300) ptr.aimHist.shift();
   } else if (ptr.mode === 'qb') input.qbMove = w;
   else if (ptr.mode === 'dstick') steerStick(p);
   else if (ptr.mode === 'cstick') steerStick(p, 'carStick');
   // A finger already down when the ball changes hands (a handoff tap, a catch) becomes the stick from here.
   else if (carrierLive() && (ptr.mode === 'none' || ptr.mode === 'aim')){ ptr.mode = 'cstick'; ptr.x0 = p.x; ptr.y0 = p.y; aim = null; steerStick(p, 'carStick'); }
 }
+/* With the ball, a juke is its own quick gesture: a finger down, a flick to either side and off the glass inside a
+   quarter second (or a second finger doing that while the first steers). Holding and dragging, at any speed or
+   angle, is always just steering. After the flick he straightens back upfield (see the juke in sim.js). */
+let flick = null;   // a second finger's flick while the first one steers
+function flickJuke(x0, y0, t0, p, now){
+  if (now - t0 > 260 || !carrierLive()) return;
+  const sx = p.x - x0, sy = p.y - y0, r = Math.max(10, Math.round(Math.min(R.W, R.H) * .09)), v = R.dragToWorld(sx, sy);
+  if (Math.hypot(sx, sy) < Math.max(22, r * .7) || Math.abs(v.y) < Math.abs(v.x) * 1.2) return;
+  input.juke = Math.sign(v.y); input.jukeSwipe = true;
+}
+/* The bullet: pulled back to aim, then flicked forward toward the receiver as the thumb lifts. Measured over the last
+   moments before the release: a run of movement toward the target, fast (inside about a fifth of a second) and long
+   enough to be on purpose. The throw goes where the aim was when the flick began, so the flick never moves it.
+   Adjusting the aim is slow, or doesn't end in a lift, so it never fires one. */
+function fireFlick(p, now){
+  const h = ptr.aimHist; if (!h?.length) return null;
+  const pts = [...h, { t: now, x: p.x, y: p.y }];
+  let i = pts.length - 1;
+  while (i > 0){
+    const a = pts[i - 1], b = pts[i], fx = ptr.x0 - a.x, fy = ptr.y0 - a.y, fl = Math.hypot(fx, fy) || 1, step = Math.hypot(b.x - a.x, b.y - a.y);
+    if (now - a.t > 200) break;
+    // (a step that didn't move, like the lift landing on the last spot, neither ends the run nor counts)
+    if (step > .5 && ((b.x - a.x) * fx + (b.y - a.y) * fy) / fl < step * .5) break;   // stopped moving toward the target
+    i--;
+  }
+  const start = pts[i]; if (!start.target || now - start.t > 200) return null;
+  const fx = ptr.x0 - start.x, fy = ptr.y0 - start.y, fl = Math.hypot(fx, fy) || 1, mx = p.x - start.x, my = p.y - start.y;
+  const fwd = (mx * fx + my * fy) / fl;
+  if (fwd < Math.min(R.W, R.H) * .06 || fwd < Math.hypot(mx, my) * .75) return null;
+  return start.target;
+}
 function up(e){
+  if (flick?.id === e.pointerId){ flickJuke(flick.x, flick.y, flick.t, local(e), performance.now()); flick = null; return; }
   if (!ptr || ptr.id !== e.pointerId) return;
-  if (ptr.mode === 'aim' && aim?.active && S.canThrow(G)) S.userThrow(G, aim.target.x, aim.target.y);
-  else if (ptr.mode === 'aim' && ptr.tapRec && performance.now() - ptr.t0 < 400 && S.canThrow(G)) S.throwToReceiver(G, ptr.tapRec);
+  if (ptr.mode === 'cstick' && ptr.tDown) flickJuke(ptr.x0, ptr.y0, ptr.tDown, local(e), performance.now());
+  const fl = ptr.mode === 'aim' && S.canThrow(G) ? fireFlick(local(e), performance.now()) : null;
+  if (fl) S.userThrow(G, fl.x, fl.y, true);
+  else if (ptr.mode === 'aim' && aim?.active && S.canThrow(G)) S.userThrow(G, aim.target.x, aim.target.y);
+  else if (ptr.mode === 'aim' && ptr.tapRec && S.canThrow(G)){
+    // A quick tap on a receiver throws him a touch pass; pressing and holding on him (no pull) fires it in.
+    const held = performance.now() - ptr.t0;
+    if (held < 400) S.throwToReceiver(G, ptr.tapRec); else if (held < 1500) S.throwToReceiver(G, ptr.tapRec, true);
+  }
   aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; if (!pad) input.carStick = null; ptr = null;
 }
-function cancel(){ aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; if (!pad) input.carStick = null; ptr = null; }
-function resetInput(){ Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, truck: false, qbMove: null, qbKeys: null, qbPad: null, defStick: null, carStick: null }); ptr = null; aim = null; if (pad) padOff(); }
+function cancel(e){ if (flick?.id === e?.pointerId){ flick = null; return; } flick = null; aim = null; input.qbMove = null; input.targetY = null; input.defStick = null; if (!pad) input.carStick = null; ptr = null; }
+function resetInput(){ flick = null; Object.assign(input, { targetY: null, steer: 0, juke: 0, dive: false, truck: false, qbMove: null, qbKeys: null, qbPad: null, defStick: null, carStick: null }); ptr = null; aim = null; if (pad) padOff(); }
 
 /* With the ball (yours, not on defense): the JUKE and TRUCK buttons. JUKE glows gold when a defender is in the
    sweet spot for one (about two yards out); TRUCK reads DIVE when nobody's in front to run through. */
@@ -1980,7 +2065,8 @@ function keydown(e){
   if (k === 'c' && phase === 'presnap' && !G.practice){ e.preventDefault(); return $('.pb-modal').dataset.kind === 'call' ? closeModal() : playSheet(); }
   if (k === 'h' && phase === 'presnap' && !$('.pb-modal').classList.contains('on')){ e.preventDefault(); doSnap(); S.handoff(G); return; }
   if (phase !== 'live' || G.youDefend) return;   // offense keys (throws, handoff, dive) do nothing on defense
-  if (/^[1-5]$/.test(k)){ e.preventDefault(); S.throwToReceiver(G, Number(k)); return; }
+  const num = /^Digit[1-5]$/.test(e.code) ? Number(e.code.slice(5)) : /^[1-5]$/.test(k) ? Number(k) : 0;
+  if (num){ e.preventDefault(); S.throwToReceiver(G, num, e.shiftKey); return; }   // Shift fires it in
   if (k === 'h'){ e.preventDefault(); S.handoff(G); return; }
   if (k === 'x'){ e.preventDefault(); if (G.play.carrier) input.truck = true; }
 }
@@ -1999,8 +2085,9 @@ function readKeys(){
 /* ---------- copy and styles ---------- */
 const HOW = `<ul>
   <li><b>Pass:</b> press anywhere and drag <i>back</i> like a slingshot: the press snaps the ball, release throws. The arc shows where it lands; lead your receiver. The longer the pull, the longer the throw: white is a quick bullet, blue a touch throw over the linebackers, gold a deep ball. Colored tags show who's open (green), tight (yellow) or covered (red). Keys 1–5 throw to that receiver.</li>
+  <li><b>Bullet:</b> to fire it in, flick your thumb forward toward the receiver as you let go (or press and hold on a receiver; Shift + 1–5 on a keyboard). It gets there about a third quicker, but it's flat (a linebacker in the lane can tip it), a bit harder to catch in traffic, and past 40 yards it's a deep ball anyway.</li>
   <li><b>Run:</b> tap the glowing running back (H on a keyboard) to snap and hand off in one go. A plain tap just snaps; press on the QB and drag to scramble.</li>
-  <li><b>With the ball:</b> drag anywhere to steer (like a joystick: you can cut, stop and cut back). JUKE beats the man closing in if you time it as he arrives; the button glows when it's time. TRUCK lowers your shoulder into him, or dives for the extra yard when no one's in front. Keys: arrows or WASD, Space to juke, X to truck.</li>
+  <li><b>With the ball:</b> drag anywhere to steer (like a joystick: you can cut, stop and cut back). JUKE (the button, or a quick flick to the side and off the screen) beats the man closing in if you time it as he arrives; the button glows when it's time. TRUCK lowers your shoulder into him, or dives for the extra yard when no one's in front. Keys: arrows or WASD, Space to juke, X to truck.</li>
   <li><b>Kicks:</b> tap to lock the aim, tap again for power. Mind the wind.</li>
   <li><b>Take over:</b> replay real late-game moments from this week's close games: the real score, clock, spot and teams. Win the game to beat the challenge.</li>
   <li><b>Defense:</b> every opponent drive has a pass play at your man (you're the gold-ringed corner): drag anywhere to steer, and when the ball's up get in the yellow ring and hit JUMP (Space). Key third downs make you the edge rusher: tap at the snap, then tap in the green.</li>
