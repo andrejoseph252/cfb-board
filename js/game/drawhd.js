@@ -7,6 +7,7 @@
    game's original resolution), so everything the page measures feels the same at any zoom: R.W / R.H, toScreen, toWorld and dragToWorld all work in
    UI pixels, and a drag is worth as many yards as it always was. */
 import { FW, MID, GOAL_HALF, BAR, NET_X, NET_HALF, canThrow, clamp, trajectory, throwSpread, kickPreview, currentRead } from './sim.js';
+import { aimAt, aimLimit } from './special.js';
 import * as A from './hdart.js';
 import * as FO from './flyover.js';
 import { sfx } from './sfx.js';
@@ -15,7 +16,7 @@ const { S } = A;
 const UI = 290;   // UI pixels on the screen's short side: the game's original resolution
 const OLD = 5;    // UI pixels per yard for drags (the original scale, so a throw's pull feels as it always has)
 /* Yards across the screen's short side. */
-const CLOSE = 32, CARRY = 36, THROW = 48, COVER = 46, WIDE = 58;
+const CLOSE = 32, CARRY = 36, THROW = 48, COVER = 46, WIDE = 58, KO_AIM = 66;
 const SIDE = 11.5;   // how far past a sideline the camera may look: the team box, the wall, the first rows of the stands
 const KX = .95, KY = .38;   // the cast shadows' lean: low sun from the top left
 /* The light by kickoff time (weather.js): the cast shadows' leans and strength, and a grade over the pixel art
@@ -126,6 +127,9 @@ export function createRenderer(canvas){
     const P = G.play;
     if (spearOn()) return CLOSE;
     if (G.kick) return THROW;
+    if (P?.ret) return P.carrier ? CARRY : THROW;
+    // Aiming a kickoff: pulled out far enough to see the tee and everywhere the kick can land.
+    if (P?.punt) return P.punt.ko && P.punt.stage === 'aim' ? clamp(P.punt.reach + 2, THROW, KO_AIM) : P.punt.runner ? CARRY : THROW;   // a punt return: wide while it's up, in close once he has it
     if (G.youDefend) return G.defDrill?.kind === 'rush' ? CLOSE : COVER;
     if (fitting(G, P)) return fit(P).span;
     if (!P || !P.live && !P.result) return CLOSE;
@@ -710,7 +714,81 @@ export function createRenderer(canvas){
     }
     if (b.state === 'held' && b.holder && !b.holder.down) return;
     if (b.state === 'air' && b.bullet) bulletTrail(b);
-    drawBall(b.x, b.y, b.z || 0);
+    drawBall(b.x, b.y, b.z || 0, (P.ret || P.punt) && b.spin === 'end' && b.state !== 'held' && b.state !== 'punter');
+  }
+  /* While you aim a punt or a kickoff: everywhere this kick can land, lightly shaded on the turf (gold, a soft fill,
+     a dotted edge, and a faint line through the middle of its range), from the same math as the aim itself. */
+  function aimArea(G){
+    const A = aimLimit(G), n = 18, far = [], near = [], mid = [];
+    for (let i = 0; i <= n; i++){
+      const a = -A + 2 * A * i / n, f = aimAt(G, 1, a), c = aimAt(G, 0, a), m = aimAt(G, .5, a);
+      far.push(toBuf(f.x, f.y)); near.push(toBuf(c.x, c.y)); mid.push(toBuf(m.x, m.y));
+    }
+    const ring = [...far, ...near.reverse()];
+    bx.beginPath(); ring.forEach(([x, y], i) => i ? bx.lineTo(x, y) : bx.moveTo(x, y)); bx.closePath();
+    bx.fillStyle = 'rgba(255,216,74,.2)'; bx.fill();
+    bx.fillStyle = 'rgba(255,224,110,.85)';
+    const dots = (pts, every) => { for (let i = 0; i < pts.length - 1; i++){ const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], d = Math.hypot(x1 - x0, y1 - y0); for (let u = 0; u < d; u += every) bx.fillRect(Math.round(x0 + (x1 - x0) * u / d) - 1, Math.round(y0 + (y1 - y0) * u / d) - 1, 2, 2); } };
+    dots([...ring, ring[0]], 4);
+    bx.fillStyle = 'rgba(255,216,74,.45)'; dots(mid, 6);
+  }
+  /* Aiming your punt: a gold arc from the punter to where it lands, the spot ringed, and its hang and distance. */
+  function puntArc(G, A){
+    const R = G.play.punt, p = R.ko ? { x: R.los, y: MID } : R.punter, h = Math.min(9, A.T * A.T * 1.3 * .35), pts = [];
+    for (let i = 0; i <= 28; i++){ const s = i / 28; pts.push(toScreen(p.x + (A.x - p.x) * s, p.y + (A.y - p.y) * s, 1.2 + 4 * h * s * (1 - s))); }
+    dotted(ctx, pts, 'rgb(255,216,74)', 2, 1);
+    const [tx, ty] = toScreen(A.x, A.y);
+    ctx.fillStyle = 'rgba(255,216,74,.9)';
+    for (let a = 0; a < 28; a++){ const th = a / 28 * Math.PI * 2, [x, y] = toScreen(A.x + Math.cos(th) * 2, A.y + Math.sin(th) * 2); ctx.fillRect(x, y, 1, 1); }
+    // (A deep kick lands off the screen: the label stays on it, pinned to the nearest edge below the score bug.)
+    const W = cw / k, Hh = ch / k;
+    say(`${Math.round(A.dist)} YDS · ${A.T.toFixed(1)}s HANG`, clamp(tx, 70, W - 70), clamp(ty - 11, 120, Hh - 120), 10, '#ffd84a');
+  }
+  /* Where a punt comes down, broadcast style. On the turf (under the players): a soft glow. Over it (catchRing, in
+     the overlay with the other HUD marks): a crisp ring on a dark edge with four target ticks. White while your
+     returner is outside it; the HUD's green, glowing, the ticks snapped in and a ripple, once he's under it. */
+  const inCatch = (P, r) => { const w = P.ret?.returner || P.punt?.hands, b = P.ball; return !!w && Math.hypot(w.x - b.tx, w.y - b.ty) <= r; };
+  function catchZone(G, r){
+    const P = G.play, b = P.ball, inside = inCatch(P, r), [cx, cy] = toBuf(b.tx, b.ty), [ex, ey] = toBuf(b.tx + r, b.ty + r);
+    const R = Math.max(Math.abs(ex - cx), Math.abs(ey - cy)) * 1.15, g = bx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    const rgb = inside ? '61,220,132' : '255,255,255';
+    g.addColorStop(0, `rgba(${rgb},${inside ? .34 : .16})`); g.addColorStop(.7, `rgba(${rgb},${inside ? .16 : .07})`); g.addColorStop(1, `rgba(${rgb},0)`);
+    bx.beginPath();
+    for (let a = 0; a <= 36; a++){ const th = a / 36 * Math.PI * 2, [x, y] = toBuf(b.tx + Math.cos(th) * r * 1.15, b.ty + Math.sin(th) * r * 1.15); a ? bx.lineTo(x, y) : bx.moveTo(x, y); }
+    bx.fillStyle = g; bx.fill();
+  }
+  function catchRing(G, r){
+    const P = G.play, b = P.ball, inside = inCatch(P, r), col = inside ? GO : '#fff';
+    const pt = (th, k = 1) => toScreen(b.tx + Math.cos(th) * r * k, b.ty + Math.sin(th) * r * k);
+    const loop = k => { ctx.beginPath(); for (let a = 0; a <= 40; a++){ const [x, y] = pt(a / 40 * Math.PI * 2, k); a ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } };
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // The ring, on a dark edge so it reads over chalk, paint and jerseys.
+    loop(1); ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(11,13,16,.55)'; ctx.stroke();
+    if (inside){ ctx.shadowColor = 'rgba(61,220,132,.9)'; ctx.shadowBlur = 8; }
+    ctx.lineWidth = inside ? 2 : 1.4; ctx.strokeStyle = col; ctx.stroke(); ctx.shadowBlur = 0;
+    // Four target ticks: turning slowly outside, snapped in (pointing at him) once he's there.
+    const spin = inside ? Math.PI / 4 : t * .6, k0 = inside ? .78 : 1.18, k1 = inside ? .98 : 1.42;
+    for (let i = 0; i < 4; i++){
+      const th = spin + i * Math.PI / 2, [x0, y0] = pt(th, k0), [x1, y1] = pt(th, k1);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+      ctx.lineWidth = 3.4; ctx.strokeStyle = 'rgba(11,13,16,.55)'; ctx.stroke();
+      ctx.lineWidth = 1.6; ctx.strokeStyle = col; ctx.stroke();
+    }
+    // Under it: a ripple going out every beat.
+    if (inside){ const k = (t * 1.4) % 1; loop(1 + k * .55); ctx.lineWidth = 1.2; ctx.strokeStyle = `rgba(61,220,132,${(.75 * (1 - k)).toFixed(3)})`; ctx.stroke(); }
+    ctx.restore();
+  }
+  /* A punt return's lane: gold chevrons up the field where the wall is forming (fading in as it sets up). */
+  function retLane(L){
+    const a = .34 + (Math.sin(t * 5) + 1) * .1;
+    bx.fillStyle = `rgba(255,216,74,${a.toFixed(3)})`;
+    const mid = (L.y0 + L.y1) / 2, hw = (L.y1 - L.y0) / 2;
+    for (let x = L.x0 + ((t * 6) % 4); x < L.x1; x += 4){
+      for (let i = -6; i <= 6; i++){
+        const yy = mid + hw * i / 6, xx = x - Math.abs(i) / 6 * 1.6;
+        const [px, py] = toBuf(xx, yy); bx.fillRect(px - 1, py - 1, 3, 3);
+      }
+    }
   }
   /* A fired ball (you flicked it) leaves a streak: a hot white core fading to cyan for the last few yards of its
      flight, with speed lines flickering alongside. */
@@ -736,10 +814,16 @@ export function createRenderer(canvas){
       bx.beginPath(); bx.moveTo(a[0] + nx * o, a[1] + ny * o); bx.lineTo(z[0] + nx * o * .6, z[1] + ny * o * .6); bx.stroke();
     }
   }
-  function drawBall(x, y, z){
+  function drawBall(x, y, z, tumble = false){
     const [gx, gy] = toBuf(x, y), air = z > .25;
     if (air){ bx.fillStyle = 'rgba(6,10,20,.38)'; bx.fillRect(gx - 3, gy - 1, 7, 3); bx.fillRect(gx - 2, gy - 2, 5, 5); }
-    const [bx_, by_] = toBuf(x, y, z), spr = A.ballSprite(portrait, air, air ? [0, 1, 0, 2][Math.floor(t * 16) % 4] : 0);
+    const [bx_, by_] = toBuf(x, y, z), spr = A.ballSprite(portrait, air || tumble, air ? [0, 1, 0, 2][Math.floor(t * 16) % 4] : 0);
+    if (tumble){
+      // End over end: the ball flips nose over tail (it squashes and stretches as it turns), the tell that it'll roll.
+      const h = Math.max(2, Math.round(spr.height * Math.abs(Math.cos(t * 13)))), w = spr.width;
+      bx.drawImage(spr, bx_ - (w >> 1), by_ - (h >> 1) - (air ? 0 : 2), w, h);
+      return;
+    }
     bx.drawImage(spr, bx_ - (spr.width >> 1), by_ - (spr.height >> 1) - (air ? 0 : 2));
   }
   /* A line `cols.length` pixels thick, one color per pixel across it. */
@@ -1437,7 +1521,7 @@ export function createRenderer(canvas){
       // On defense the camera stays with you while the ball is up, framing you and where it will come down.
       const air = b.state === 'air' && (you ? { x: (you.x + b.tx) / 2, y: (you.y + b.ty) / 2 } : { x: b.x, y: b.y });
       const pair = you && G.defDrill?.kind === 'cover' && b.state === 'held' ? { x: (you.x + P.qb.x) / 2, y: (you.y + P.qb.y) / 2 } : null;
-      const foc = P.carrier || air || pair || you || P.qb;
+      const foc = P.carrier || P.cam || air || pair || you || P.qb;
       fx = foc.x; fy = foc.y; ahead = P.carrier ? long * .14 : canThrow(G) ? long * .24 : long * .1;
       if (aim){ fx = (P.qb.x + aim.x) / 2; fy = (P.qb.y + aim.y) / 2; ahead = long * .05; }
     }
@@ -1489,12 +1573,14 @@ export function createRenderer(canvas){
     const P = G.play, mine = P && !G.kick && P.def.find(d => d.user || d.rusher);
     if (G.kick) kickPlayers(G);
     else if (P){
-      lines(G);
+      if (!P.ret) lines(G);
+      if (view.aimArea && P.punt) aimArea(G);
+      if (P.ret && !P.carrier && !P.result){ if (P.ret.lane) retLane(P.ret.lane); ring(P.ret.returner, '255,210,63'); }   // your returner, ringed in gold
       if (view.handoff && !P.carrier) ring(P.rb, '111,227,255');
       if (P.target && !P.thrown && !P.carrier) ring(P.target, '255,210,63');   // the target drill's man to hit
       if (view.readKey) ring(view.readKey, '255,210,63');   // the read option's key: the end left unblocked
       if (mine && !P.result) ring(mine, '255,210,63');   // you, on defense
-      if (view.landing && P.ball.state === 'air') landing(G, view.landing);
+      if (view.landing && P.ball.state === 'air') (P.ret || P.punt ? catchZone : landing)(G, view.landing);
       drawPlayers(G, P.all);
       // The route preview goes over the players: a corner lined up over a receiver would hide a short route.
       if (!P.live && !P.result && view.routes) routes(G);
@@ -1522,7 +1608,12 @@ export function createRenderer(canvas){
       if (P.live && canThrow(G) && !view.aim && !G.youDefend) labels(G);
       if (!P.live && !P.result && P.readers?.length && !G.youDefend && !G.practice) readBadges(G);
       stunned(G);
+      if (view.landing && P.ball.state === 'air' && (P.ret || P.punt)) catchRing(G, view.landing);
       if (P.carrier && !P.carrier.down) mark(P.carrier, YEL);
+      else if (P.ret && !P.result) mark(P.ret.returner, YEL);
+      else if (P.punt && !P.result && ['aim', 'snap', 'steps', 'drop'].includes(P.punt.stage)) mark(P.punt.punter, YEL);
+      else if (P.punt?.hands && !P.result && !P.punt.runner) mark(P.punt.hands, YEL);   // your man on an onside
+      if (view.puntAim) puntArc(G, view.puntAim);
       if (view.handoff && !P.carrier) mark(P.rb, '#6fe3ff');
       if (P.target && !P.thrown && !P.carrier) mark(P.target, YEL);
       if (mine && !P.result) mark(mine, YEL);

@@ -1337,3 +1337,6 @@ export const clockLeftInHalf = G => G.clock + (G.quarter === 1 || G.quarter === 
 
 /* Overtime from the third period on: a single two-point try each. */
 export const simTwoPoint = G => Math.random() < clamp(.38 + (G.diff.opp - .35) * .6, .25, .6);
+
+/* The engine's own pieces, for special teams (special.js): they build their own plays and hand the runner back to step(). */
+export const internals = { mk, moveToward, accelToward, integrate, becomeCarrier, end, pop, burst, dist, rnd, SPEED, wx: G => wx(G), gust };

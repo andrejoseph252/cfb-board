@@ -363,6 +363,9 @@ export const CSS = `
 .pb.hd .pb-sg b{font:800 84px/.82 var(--hd-display);text-shadow:none}
 .pb.hd .pb-sg span{font:800 32px/1 var(--hd-display)}
 .pb.hd .pb-sg small{font:600 13px var(--hd-body);color:rgba(255,255,255,.5)}
+.pb.hd .pb-stsg{display:grid;justify-items:center;gap:6px}
+.pb.hd .pb-stsg b{font:800 64px/.85 var(--hd-display);color:var(--hd-yellow);white-space:nowrap;letter-spacing:.01em}
+.pb.hd .pb-stsg small{font:700 11px/1 var(--hd-body);letter-spacing:.14em;color:rgba(255,255,255,.55)}
 .pb.hd .pb-pb{justify-self:center;padding:5px 12px;border-radius:999px;background:var(--hd-yellow);color:#1b1400 !important;font:800 13px/1 var(--hd-body) !important;letter-spacing:.08em;animation:none}
 .pb.hd .pb-ss{gap:6px}
 .pb.hd .pb-ss div{gap:5px;padding:10px 4px;border:0;border-radius:16px;background:var(--hd-chip2)}
@@ -379,7 +382,7 @@ export const CSS = `
 
 /* ---------- practice, the playbook and the play designer ---------- */
 .pb.hd .pb-practice{gap:12px}
-.pb.hd .pb-side button{font:800 17px/1 var(--hd-display);letter-spacing:.06em;height:40px}
+.pb.hd .pb-side button{flex:1 1 auto;padding:0 10px;font:800 16px/1 var(--hd-display);letter-spacing:.03em;height:40px;white-space:nowrap}
 .pb.hd .pb-form{border:0;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .pb.hd .pb-form p{padding:8px 12px;border:0;border-top:1px solid rgba(255,255,255,.07);font:500 12.5px/1.35 var(--hd-body);color:rgba(255,255,255,.7)}
 .pb.hd :is(.pb-form,.pb-concepts,.pb-callrow,.pb-pbc) .q{font:700 8px var(--hd-body)}
@@ -447,6 +450,31 @@ export const CSS = `
 .pb.hd .pb-hot summary{padding:12px 0;font:700 12px/1 var(--hd-body);letter-spacing:.1em;color:var(--hd-yellow)}
 .pb.hd .pb-hot[open]{padding-bottom:12px;display:grid;gap:10px}
 .pb.hd .pb-calls > .pb-sub{text-align:center;font-size:12px}
+
+/* ---------- the punt return call: four cards like the play sheet's, each a little field ---------- */
+.pb.hd .pb-retcard{gap:12px;padding-top:26px}
+.pb.hd .pb-retcard h2{margin:0;font:800 40px/.9 var(--hd-display);letter-spacing:.01em}
+.pb.hd .pb-retsub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font:500 14px/1.3 var(--hd-body);color:rgba(255,255,255,.66)}
+.pb.hd .pb-retsub b{font-weight:700;color:#fff}
+.pb.hd .pb-retdisc{flex:none;width:24px;height:24px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.45)}
+.pb.hd .pb-retdisc img{width:18px;height:18px;object-fit:contain}
+.pb.hd .pb-retwx{margin-left:auto;padding:5px 9px;border-radius:999px;background:var(--hd-chip);font:700 10.5px/1 var(--hd-body);letter-spacing:.1em;color:#fff;white-space:nowrap}
+.pb.hd .pb-retwx.gusty{background:rgba(111,227,255,.16);color:#9feaff}
+.pb.hd .pb-rcalls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pb.hd .pb-rcalls button{display:grid;align-content:start;gap:0;min-width:0;padding:6px 6px 11px;border:0;border-radius:20px;background:var(--hd-chip2);box-shadow:none;color:#fff;text-align:left;
+  font:inherit;letter-spacing:normal;transition:transform .08s,background .15s}
+.pb.hd .pb-rcalls button:active{transform:scale(.97);background:rgba(255,255,255,.12)}
+.pb.hd .pb-rcalls svg{display:block;width:100%;height:auto;border-radius:14px;background:rgba(70,110,60,.32)}
+.pb.hd .pb-rcalls b{margin:8px 6px 3px;font:800 18px/1 var(--hd-display);letter-spacing:.02em;color:#fff}
+.pb.hd .pb-rcalls small{margin:0 6px;font:400 12px/1.3 var(--hd-body);color:rgba(255,255,255,.58)}
+.pb.hd .pb-rcalls .safe b{color:rgba(255,255,255,.85)}
+.pb.hd .pb-retfoot{margin:0;text-align:center;font-size:12px}
+.pb.hd .pb-rcalls button{position:relative}
+.pb.hd .pb-rcalls button.pb-adv{background:rgba(61,220,132,.1);box-shadow:inset 0 0 0 2px var(--hd-green)}
+.pb.hd .pb-rcalls button.pb-adv::after{content:"SIDELINE'S CALL";position:absolute;top:-8px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:4px 8px;border-radius:999px;
+  background:var(--hd-green);color:#06210f;font:800 9.5px/1 var(--hd-body);letter-spacing:.08em;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.pb.hd .pb-retsub .pb-warn{font-style:normal;font-weight:700;color:var(--hd-amber)}
+.pb.hd .pb-kocard .pb-rcalls{row-gap:14px}
 
 /* ---------- take over: challenges ---------- */
 .pb.hd .pb-chlist{gap:10px}
@@ -658,6 +686,11 @@ export const CSS = `
   .pb.hd .pb-calls .pb-callrow button b{margin:6px 4px 2px;font-size:13.5px}
   .pb.hd .pb-calls .pb-callrow button small{margin:0 4px;font-size:11px}
   .pb.hd .pb-calls .pb-sub{font-size:11px}
+  .pb.hd .pb-retcard{max-width:640px;gap:9px;padding-top:18px}
+  .pb.hd .pb-retcard h2{font-size:30px}
+  .pb.hd .pb-rcalls{grid-template-columns:repeat(4,1fr)}
+  .pb.hd .pb-rcalls b{font-size:16px;margin-top:6px}
+  .pb.hd .pb-rcalls small{font-size:11px}
 }
 @keyframes hdSide{from{transform:translateX(48px);opacity:0}}
 @media (prefers-reduced-motion:reduce){.pb.hd .pb-modal[data-kind="call"] > .pb-calls{animation:none}}

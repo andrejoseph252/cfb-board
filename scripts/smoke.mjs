@@ -170,11 +170,12 @@ const game = await run(async () => {
     if (['modal', 'wait'].includes(P.phase)) await w(25); else if (steps % 40 === 0) await w(0);
     P.tick(.1);
     let clicked = false;
-    for (const a of ['toss', 'drive', 'half', 'ot', 'otnext', 'pat', 'fg', 'goforit', 'keyrush', 'keycover', 'penacc']){ const el = vis(`.pb-modal [data-pb="${a}"]`); if (el){ el.click(); clicked = true; break; } }
+    for (const a of ['toss', 'drive', 'half', 'ot', 'otnext', 'pat', 'fg', 'goforit', 'keyrush', 'keycover', 'penacc', 'retcall', 'kocall']){ const el = vis(`.pb-modal [data-pb="${a}"]`); if (el){ el.click(); clicked = true; break; } }
     if (clicked){ await w(20); continue; }
     if (P.G.youDefend){ if (P.phase === 'live' && P.G.play.t > .1) key(' '); continue; }   // a key third down: rush, or jump in coverage
     if (P.phase === 'presnap' && !$('.pb-modal.on')) key(' ');
     else if (P.phase === 'kick'){ const K = P.G.kick; if (K.stage === 'aim' && Math.abs(K.aim - K.center) < .02 || K.stage === 'power' && K.power > .8) key(' '); }
+    else if (P.phase === 'punt'){ const K = P.G.play.punt; if (K.stage === 'aim' || K.stage === 'drop' && K.dropT > .4) key(' '); }   // a kickoff (or punt): snap, then strike
     else if (P.phase === 'live' && !P.G.play.carrier && P.G.play.t > 1.4) key(String(1 + Math.floor(Math.random() * 5)));
   }
   out.final = vis('[data-pb="rematch"]') ? `final ${P.G.score.join('-')}${P.G.ot ? ` (${P.G.ot}OT)` : ''}, ${P.G.stats.plays} plays` : null;
@@ -215,11 +216,12 @@ const game = await run(async () => {
   for (let n = 0; n < 4000 && P.G.stats.plays < 8 && !vis('[data-pb="rematch"]'); n++){
     if (['modal', 'wait'].includes(P.phase)) await w(10);
     P.tick(.1);
-    const el = ['toss', 'drive', 'half', 'ot', 'otnext', 'pat', 'fg', 'goforit', 'keyrush', 'keycover', 'penacc'].map(a => vis(`.pb-modal [data-pb="${a}"]`)).find(Boolean);
+    const el = ['toss', 'drive', 'half', 'ot', 'otnext', 'pat', 'fg', 'goforit', 'keyrush', 'keycover', 'penacc', 'retcall', 'kocall'].map(a => vis(`.pb-modal [data-pb="${a}"]`)).find(Boolean);
     if (el){ el.click(); await w(10); continue; }
     if (P.G.youDefend){ if (P.phase === 'live' && P.G.play.t > .1) key(' '); }
     else if (P.phase === 'presnap' && !$('.pb-modal.on')) key(' ');
     else if (P.phase === 'kick'){ const K = P.G.kick; if (K.stage === 'aim' && Math.abs(K.aim - K.center) < .02 || K.stage === 'power' && K.power > .8) key(' '); }
+    else if (P.phase === 'punt'){ const K = P.G.play.punt; if (K.stage === 'aim' || K.stage === 'drop' && K.dropT > .4) key(' '); }   // a kickoff (or punt): snap, then strike
     else if (P.phase === 'live' && !P.G.play.carrier && P.G.play.t > 1.4) key(String(1 + Math.floor(Math.random() * 5)));
     P.R.draw(P.G, 1 / 30, { routes: P.phase === 'presnap', handoff: P.phase === 'presnap' }); frames++;
   }

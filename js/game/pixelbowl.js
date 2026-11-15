@@ -11,6 +11,7 @@ import { logoUrl as boardLogo } from '../views/components.js';
 const logoUrl = (src, px) => boardLogo(src, px, 'light');
 import { inkOn } from '../views/preview.js';
 import * as S from './sim.js';
+import * as Sp from './special.js';
 import { attachNames } from './names.js';
 import { weekChallenges, challengeById } from '../challenges.js';
 import { createRenderer } from './drawhd.js';
@@ -55,6 +56,8 @@ const newGame = (...a) => Object.assign(S.newGame(...a), { cond: conditions() })
 const coarse = () => matchMedia('(pointer: coarse)').matches;
 const ord = n => ['1ST', '2ND', '3RD', '4TH'][n - 1] || `${n}TH`;
 const mmss = s => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+/* A spot in words, from your side: "your 24", "midfield", "their 30". */
+const ourSpot = x => { x = Math.round(x); return x === 50 ? 'midfield' : x < 50 ? `your ${x}` : `their ${100 - x}`; };
 const yardLine = x => { x = Math.round(x); return x === 50 ? 'MIDFIELD' : x < 50 ? `OWN ${x}` : `OPP ${100 - x}`; };
 const hypot = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -179,6 +182,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <button class="pb-jump" type="button" hidden aria-label="Jump the route">JUMP</button>
     <button class="pb-rp" type="button" hidden aria-label="Watch the replay">▶ REPLAY</button><div class="pb-rlabel" aria-hidden="true">REPLAY</div>
     <div class="pb-pad" hidden aria-label="Move the quarterback"><i></i><span>MOVE</span></div>
+    <div class="pb-gauge" hidden aria-hidden="true"></div>
     <div class="pb-moves" hidden><button class="pb-mv" type="button" data-mv="juke" aria-label="Juke">JUKE</button><button class="pb-mv" type="button" data-mv="truck" aria-label="Truck">TRUCK</button></div>
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
@@ -248,11 +252,15 @@ export const isOpen = () => !!root;
 /* Local testing only: lets a script advance the game without animation frames (which background tabs don't get). */
 if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__pb = {
   get G(){ return G; }, get R(){ return R; }, get phase(){ return phase; }, get paused(){ return paused; }, input, kick: kind => startKick(kind),
-  tick(sec){ for (let i = 0; i < sec * 60; i++){ if (!paused && G){ update(STEP); drain(); } } hud(); }
+  tick(sec){ for (let i = 0; i < sec * 60; i++){ if (!paused && G){ update(STEP); drain(); } } hud(); },
+  puntReturn(los, call){ retFrom = los; startReturn(call); },
+  myPunt(los){ G.los = los; G.y = S.MID; startMyPunt(); }, get puntAim(){ return puntAimV; },
+  hold(sec){ freeze = sec; },
+  myKick(type){ startMyKickoff(type); }, koReturn(call){ retFrom = 65; retKO = true; startReturn(call); }, kickCard(){ myKickoffCard(); }, koCard(){ theirKickoffCard(); }   // stops the game logic (the screen still draws), for screenshots
 };
 
 function onResize(){ R?.resize(); }
-function onHide(){ if (document.hidden && G && !paused && ['presnap', 'live', 'dead', 'kick'].includes(phase)) pause(); }
+function onHide(){ if (document.hidden && G && !paused && ['presnap', 'live', 'dead', 'kick', 'ret', 'punt'].includes(phase)) pause(); }
 
 /* ---------- main loop ---------- */
 let waitingData = true, freeze = 0;
@@ -270,11 +278,12 @@ function loop(ts){
   if (G && !paused && phase !== 'setup') crowd(crowdLevel()); else crowd(0);
   const cover = G?.youDefend && G.defDrill?.kind === 'cover';
   if (G) R.draw(G, paused ? 0 : dt, { fly: phase === 'setup' || phase === 'fly', covered: !!modalEl?.classList.contains('on') && !modalEl.classList.contains('light'), aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
-    stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : 0,
+    stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : phase === 'ret' && !G.play?.carrier || phase === 'punt' && !G.play?.punt?.runner ? Sp.CATCH_R : 0, puntAim: phase === 'punt' && G.play?.punt?.stage === 'aim' ? puntAimV : null, aimArea: phase === 'punt' && G.play?.punt?.stage === 'aim',
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick && !G.play?.noHandoff || phase === 'live' && S.canHandoff(G)),
     readKey: phase === 'live' && G.play?.option && !G.play.carrier ? G.play.option.key : null });
   if (G) drain();
-  hud(); syncJump(); syncMoves(); syncPad(); syncReplay();
+  hud(); syncJump(); syncMoves(); syncPad(); syncReplay(); syncGauge();
+  root.classList.toggle('pb-hint-top', phase === 'ret');   // on a return the hint sits up top, out of the way of the landing spot
 }
 
 function update(dt){
@@ -293,6 +302,18 @@ function update(dt){
     if (G.youDefend && G.defDrill.kind === 'rush' && G.play.thrown && !G.play.result) S.stopPlay(G, { type: 'released' });
     if (aim && !S.canThrow(G)) aim = null;
     if (G.play.result) playOver();
+  } else if (phase === 'punt'){
+    if (G.play.punt.stage !== 'aim' && !G.ot && !G.stDrill) S.useClock(G, dt);
+    Sp.stepMyPunt(G, dt, input);
+    input.dive = false;
+    recordFrame();
+    if (G.play.result) puntOver();
+  } else if (phase === 'ret'){
+    if (!G.ot && !G.stDrill) S.useClock(G, dt);
+    Sp.stepReturn(G, dt, input);
+    input.juke = 0; input.jukeSwipe = false; input.dive = false; input.truck = false; input.fair = false; input.kneel = false;
+    recordFrame();
+    if (G.play.result) retOver();
   } else if (phase === 'replay'){
     replayStep(dt);
   } else if (phase === 'dead'){
@@ -465,10 +486,10 @@ function pixelCoin(face, cls){
 }
 function afterToss(){
   closeModal(); sfx('kickoff');
-  if (G.firstHalfReceiver === 'me') kickoffToMe(); else oppDrive(kickoffYtg());
+  if (G.firstHalfReceiver === 'me') kickoffToMe(); else myKickoffCard();
 }
 const kickoffYtg = () => Math.random() < .8 ? 75 : Math.round(60 + Math.random() * 20);
-function kickoffToMe(){ startMyDrive(Math.random() < .8 ? 25 : Math.round(18 + Math.random() * 22)); }
+function kickoffToMe(){ if (G.ot) return startMyDrive(25); theirKickoffCard(); }
 
 function startMyDrive(x){
   S.startDrive(G, x); newDrive(); R.snapCamera(G); presnap();
@@ -536,6 +557,8 @@ function playOver(){
 }
 
 function afterPlay(){
+  if (G.play?.ret) return retAfter();
+  if (G.play?.punt) return puntAfter();
   phase = 'wait';
   if (G.practice) return practiceAfter();
   if (G.youDefend) return defAfter();
@@ -653,7 +676,7 @@ function extraPoint(){
     <div class="pb-btns"><button class="pb-go" type="button" data-pb="pat">KICK PAT</button><button class="pb-go alt" type="button" data-pb="two">GO FOR 2</button></div></div>`);
 }
 function goForTwo(){ closeModal(); S.startDrive(G, 97); G.toGo = 3; G.twoPt = true; G.y = S.MID; presnap(); }
-function afterMyScore(){ endMyPossession(kickoffYtg()); }
+function afterMyScore(){ myKickoffCard(); }
 
 function endMyPossession(oppX){
   if (G.ot) return otOpp();
@@ -681,7 +704,210 @@ function fourthDown(){
     ${G.ot ? '' : `<button class="pb-go alt${adv[0] === 'PUNT' ? ' pb-adv' : ''}" type="button" data-pb="punt">PUNT</button>`}
     ${fg ? `<button class="pb-go alt${adv[0] === 'FIELD GOAL' ? ' pb-adv' : ''}" type="button" data-pb="fg">FIELD GOAL · ${dist} YDS</button>` : ''}</div></div>`, true);
 }
+/* ---------- kickoffs (the plays themselves: special.js) ---------- */
+/* Yours: four kicks drawn like the play sheet's cards (the tee, your coverage, their return team, where it goes), the
+   sideline's call marked (onside when you're behind late). */
+function myKickoffCard(){
+  if (G.ot) return otOpp();
+  if (G.clock <= 0 && !G.stDrill) return clockOut();
+  phase = 'modal';
+  const behind = G.score[1] - G.score[0], adv = !G.stDrill && G.quarter >= 4 && G.clock < 240 && behind > 0 && behind <= 16 ? 'onside' : 'deep';
+  const P = hdUI.kit.teamPaint(G.me, G.opp), w = Math.abs(Math.round(G.cond?.wind || 0));
+  modal(`<div class="pb-card pb-retcard pb-kocard">
+    <h2>KICKOFF</h2>
+    <div class="pb-retsub">${G.me.logo ? `<span class="pb-retdisc"><img src="${esc(logoUrl(G.me.logo, 48))}" alt=""></span>` : ''}<span><b>${esc(G.me.abbr || G.me.name)}</b> kicking from your 35</span>
+      <span class="pb-retwx${w >= 12 ? ' gusty' : ''}">${w ? `WIND ${w} MPH` : 'CALM'}</span></div>
+    <div class="pb-rcalls">${Object.entries(Sp.KICKS).map(([k, c]) => `<button type="button" data-pb="kocall" data-v="${k}" class="${k === adv && !G.stDrill ? 'pb-adv' : ''}">
+      ${koDiagram(k, P.me.c)}<b>${c.name}</b><small>${c.short}</small></button>`).join('')}</div>
+    <p class="pb-sub pb-retfoot">Pull back to aim · let go to start his run-up · strike it in the green</p></div>`);
+}
+function koDiagram(k, me){
+  const dot = (x, y, c, r = 3.4) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="#fff" stroke-width="1.3"/>`;
+  const ex = (x, y) => `<path d="M${x - 3} ${y - 3}L${x + 3} ${y + 3}M${x + 3} ${y - 3}L${x - 3} ${y + 3}" stroke="rgba(255,255,255,.85)" stroke-width="1.8" stroke-linecap="round"/>`;
+  const line = [14, 32, 50, 70, 88, 106].map(x => dot(x, 60, me, 3)).join('');
+  const them = [24, 48, 72, 96].map(x => ex(x, 40)).join('') + ex(46, 12) + ex(74, 12);
+  const gold = 'stroke="#ffd23f" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  const tee = `<path d="M57 70 L58.5 65 H61.5 L63 70Z" fill="#ff7a1a"/><ellipse cx="60" cy="62" rx="2.6" ry="3.6" fill="#8e461f" stroke="#fff" stroke-width=".9"/>`;
+  const path = {
+    deep: `<rect x="0" y="0" width="120" height="9" fill="rgba(255,255,255,.08)"/><path d="M60 58 Q60 30 64 6" ${gold} stroke-dasharray="1 5"/><circle cx="64" cy="6" r="4" ${gold}/>`,
+    sky: `<path d="M60 58 Q40 30 58 22" ${gold} stroke-dasharray="1 5"/><circle cx="58" cy="22" r="6" ${gold} opacity=".9"/><circle cx="58" cy="22" r="2" fill="#ffd23f"/>`,
+    squib: `<path d="M60 58 L66 48 L60 40 L68 32 L63 24" ${gold}/>`,
+    onside: `<path d="M60 58 Q72 50 78 50 Q84 44 90 49 Q95 45 98 48" ${gold}/>${dot(92, 56, me, 3.6)}<circle cx="98" cy="48" r="3" ${gold}/>`
+  }[k];
+  return `<svg viewBox="0 0 120 72" aria-hidden="true"><path d="M0 24H120M0 48H120" stroke="rgba(255,255,255,.14)" stroke-width="1"/>${them}${line}${path}${tee}</svg>`;
+}
+let koType = 'deep';
+function startMyKickoff(type){
+  closeModal(); resetInput(); puntAimV = null; koType = type;
+  Sp.setupMyKick(G, type);
+  phase = 'punt'; frames = []; R.snapCamera(G); showHud(true);
+}
+/* Theirs: the return card, kickoff edition (your call; what they kick you find out when it's up). */
+let retKO = false;
+function theirKickoffCard(){
+  if (G.clock <= 0 && !G.stDrill) return clockOut();
+  puntReturnCard({ endAt: 65 }, true);
+}
+
+/* ---------- returning their punt (the play itself: special.js) ---------- */
+let retFrom = 0;
+function puntReturnCard(r, ko = false){
+  phase = 'modal'; retFrom = r.endAt; retKO = ko;
+  const late = ko && G.quarter >= 4 && G.clock < 240 && G.score[1] < G.score[0];
+  const x = Math.round(retFrom), spot = x === 50 ? 'midfield' : x > 50 ? `their ${100 - x}` : `your ${x}`, w = Math.abs(Math.round(G.cond?.wind || 0));
+  const opp = G.opp, P = hdUI.kit.teamPaint(G.me, G.opp);
+  modal(`<div class="pb-card pb-retcard">
+    <h2>${ko ? 'KICKOFF RETURN' : 'PUNT RETURN'}</h2>
+    <div class="pb-retsub">${opp.logo ? `<span class="pb-retdisc"><img src="${esc(logoUrl(opp.logo, 48))}" alt=""></span>` : ''}<span><b>${esc(opp.abbr || opp.name)}</b> ${ko ? `kicking off${late ? ' · <em class="pb-warn">watch the onside</em>' : ''}` : `punting from ${spot}`}</span>
+      <span class="pb-retwx${w >= 12 ? ' gusty' : ''}">${w ? `WIND ${w} MPH` : 'CALM'}</span></div>
+    <div class="pb-rcalls">${Object.entries(ko ? Sp.KO_CALLS : Sp.RET_CALLS).map(([k, c]) => `<button type="button" data-pb="retcall" data-v="${k}" class="${k === 'safe' ? 'safe' : ''}">
+      ${retDiagram(k, P.me.c, P.opp.c)}<b>${c.name}</b><small>${c.short}</small></button>`).join('')}</div>
+    <p class="pb-sub pb-retfoot">${ko ? 'Drag under the landing spot (it turns green) · in the end zone, KNEEL for the 25' : 'Drag under the landing spot (it turns green) · FAIR CATCH any time it\'s up'}</p></div>`);
+}
+/* The return calls drawn like the play sheet's cards: their coverage coming down, your wall, your returner and his lane. */
+function retDiagram(k, me, opp){
+  // Playbook marks: their coverage as X's, your blockers as circles in your color, the returner in gold.
+  const dot = (x, y, c, r = 3.6) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="#fff" stroke-width="1.3"/>`;
+  const ex = (x, y) => `<path d="M${x - 3} ${y - 3}L${x + 3} ${y + 3}M${x + 3} ${y - 3}L${x - 3} ${y + 3}" stroke="rgba(255,255,255,.85)" stroke-width="1.8" stroke-linecap="round"/>`;
+  const cov = [18, 40, 60, 80, 102].map((x, i) => ex(x, 12 + (i % 2) * 5)).join('');
+  let wall = '', lane = '';
+  if (k === 'left' || k === 'right'){
+    const s = k === 'left' ? 1 : -1, wx = 60 - s * 22;
+    wall = [52, 42, 32, 22].map((y, i) => dot(wx - s * i * .6, y, me)).join('');
+    const lx = 60 - s * 46;
+    lane = `<path d="M60 62 C${60 - s * 20} 60 ${lx} 52 ${lx} 36 L${lx} 10" fill="none" stroke="#ffd23f" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="1 5"/><path d="M${lx - 4} 14 L${lx} 7 L${lx + 4} 14" fill="none" stroke="#ffd23f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else if (k === 'middle'){
+    wall = [50, 40, 30].map(y => dot(48, y, me) + dot(72, y, me)).join('');
+    lane = `<path d="M60 58 L60 10" stroke="#ffd23f" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="1 5"/><path d="M56 14 L60 7 L64 14" fill="none" stroke="#ffd23f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else {
+    wall = [24, 44, 76, 96].map(x => dot(x, 34, me)).join('');
+    lane = `<path d="M60 56 V46" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="60" cy="43.5" r="2.6" fill="#fff"/>`;
+  }
+  return `<svg viewBox="0 0 120 72" aria-hidden="true"><path d="M0 24H120M0 48H120" stroke="rgba(255,255,255,.14)" stroke-width="1"/>${cov}${wall}${lane}<circle cx="60" cy="62" r="4.4" fill="#ffd23f" stroke="#0b0d10" stroke-width="1.2"/></svg>`;
+}
+function startReturn(call){
+  closeModal(); resetInput();
+  if (retKO) Sp.setupKickReturn(G, call); else Sp.setupPuntReturn(G, retFrom, call);
+  G.retCount = (G.retCount || 0) + 1;
+  phase = 'ret'; frames = []; R.snapCamera(G); showHud(true);
+}
+function retOver(){
+  const P = G.play, r = P.result;
+  phase = 'dead'; deadT = 0; aim = null; deadWait = 1.4;
+  const gain = P.carrier ? r.x - P.catchX : 0;
+  G.replay = frames.length > 20 && (r.type === 'td' || gain >= 20 || r.type === 'muff') ? frames.slice() : null; frames = [];
+  if (G.replay) deadWait = 3.2;
+  const ko = P.ret.ko;
+  if (r.type === 'td'){ banner('TOUCHDOWN!', `${ko ? 'KICKOFF' : 'PUNT'} RETURN · ${G.me.name.toUpperCase()}`, G.me.color, 2600); sfx('td'); sfx('band'); G.cheer = 3; deadWait = Math.max(deadWait, 2.6); }
+  else if (r.type === 'muff'){ banner('MUFFED PUNT', `${G.opp.name.toUpperCase()} BALL`, '#ff5a4e', 1800); sfx('turnover'); }
+  else if (r.type === 'kickrec'){ banner(P.ret.kind === 'onside' ? 'ONSIDE RECOVERED' : 'THEY RECOVERED IT', `${G.opp.name.toUpperCase()} BALL`, '#ff5a4e', 1800); sfx('turnover'); }
+  else if (ko && P.carrier && P.ret.kind === 'onside' && r.type !== 'fumble'){ banner('WE GOT IT', 'ONSIDE KICK RECOVERED', '#4cff7a', 1500); sfx('good'); }
+  else if (r.type === 'fumble'){ banner('FUMBLE!', '', '#ff5a4e', 1800); sfx('turnover'); }
+  else if (gain >= 20){ banner('BIG RETURN', `${Math.round(gain)} YARDS`, '#ffd84a', 1500); sfx('charge'); }
+}
+function retAfter(){
+  phase = 'wait';
+  const P = G.play, r = P.result, who = P.carrier ? (G.me.names?.[P.carrier.role] || 'Returner') : '';
+  const yds = n => `${n} yard${Math.abs(n) === 1 ? '' : 's'}`;
+  const ko = P.ret.ko, tb = ko ? 25 : 20, kind = ko ? 'kickoff' : 'punt';
+  // A kickoff that went out of bounds untouched: your ball at your 35.
+  if (ko && r.type === 'oob' && r.kick && r.untouched) Object.assign(r, { type: 'koob', x: Math.max(35, Math.round(r.x)) });
+  if (G.stDrill){
+    const x = Math.round(S.clamp(r.x, 1, 99)), ret = P.carrier ? Math.round(r.x - P.catchX) : null;
+    if (r.type === 'kickrec') return stRepDone(P.ret.kind === 'onside' ? 'Onside kick: they recovered' : 'They recovered it', null, { type: 'kickrec' });
+    if (r.type === 'koob') return stRepDone(`Kickoff out of bounds: ball at ${ourSpot(r.x)}`, null, { type: 'koob', start: r.x });
+    const line = r.type === 'td' ? `Touchdown! ${Math.round(100 - P.catchX)}-yard return` : r.type === 'muff' ? 'Muffed, their ball' : r.type === 'fumble' ? `Fumbled after ${ret} yards` :
+      r.type === 'touchback' || P.carrier && r.x <= 0 ? 'Touchback' : r.type === 'fair' ? `Fair catch at ${ourSpot(x)}` : r.type === 'downed' ? `Downed at ${ourSpot(x)}` :
+      r.type === 'oob' && r.kick ? `Out of bounds at ${ourSpot(x)}` : `Returned ${yds(ret)} to ${ourSpot(x)}`;
+    const type = P.carrier && r.x <= 0 && r.type !== 'td' ? 'touchback' : r.type;
+    return stRepDone(line, P.carrier && type !== 'touchback' ? ret : null, { type, start: type === 'td' ? 100 : ['muff', 'fumble', 'safety'].includes(type) ? null : type === 'touchback' ? tb : x });
+  }
+  if (r.type === 'td'){
+    G.score[0] += 6; G.y = S.MID; G.los = Math.round(P.catchX); newDrive();
+    const line = `${who}, ${Math.round(100 - P.catchX)}-yard ${kind} return touchdown`;
+    pbp(line); driveLog(line); endDrive('PUNT RETURN TD', 100);
+    return extraPoint();
+  }
+  if (r.type === 'kickrec'){ pbp(P.ret.kind === 'onside' ? `Onside kick recovered by ${G.opp.abbr || G.opp.name}` : `Kickoff recovered by ${G.opp.abbr || G.opp.name}`); return later(() => endMyPossession(Math.round(S.clamp(r.x, 1, 99))), 400); }
+  if (r.type === 'muff' || r.type === 'fumble'){ pbp(r.type === 'muff' ? 'Muffed punt, recovered by the kicking team' : `${who} fumbles the return`); return later(() => endMyPossession(Math.round(S.clamp(r.x, 1, 99))), 400); }
+  if (r.type === 'safety' || P.carrier && r.x <= 0 && P.catchX > 0){
+    G.score[1] += 2; banner('SAFETY', '', '#ff5a4e', 1500); sfx('boo'); pbp('Safety on the return');
+    return later(() => endMyPossession(60), 1300);
+  }
+  let x = Math.round(S.clamp(r.x, 1, 99)), line;
+  if (r.type === 'touchback' || P.carrier && r.x <= 0){ x = tb; line = ko ? 'Kickoff, touchback' : 'Touchback'; banner('TOUCHBACK', ko ? 'BALL AT THE 25' : '', '#c9d1d9', 1000); }
+  else if (r.type === 'koob'){ x = r.x; line = `Kickoff out of bounds: ball at ${ourSpot(x)}`; banner('OUT OF BOUNDS', `BALL AT ${ourSpot(x).toUpperCase()}`, '#c9d1d9', 1200); }
+  else if (r.type === 'fair') line = ko && x === 25 ? 'Fair catch, ball at the 25' : `Fair catch at ${ourSpot(x)}`;
+  else if (r.type === 'downed') line = `Punt downed at ${ourSpot(x)}`;
+  else if (r.type === 'oob' && r.kick) line = `${ko ? 'Kickoff' : 'Punt'} out of bounds at ${ourSpot(x)}`;
+  else line = `${who} returns the ${kind} ${yds(Math.round(r.x - P.catchX))}`;
+  pbp(line);
+  return later(() => { startMyDrive(x); driveLog(line); }, 500);
+}
+/* ---------- your punt (the play itself: special.js) ---------- */
+let puntAimV = null;
+function startMyPunt(){
+  closeModal(); resetInput(); puntAimV = null;
+  Sp.setupMyPunt(G);
+  phase = 'punt'; frames = []; R.snapCamera(G); showHud(true);
+}
+function puntOver(){
+  const P = G.play, r = P.result;
+  phase = 'dead'; deadT = 0; aim = null; deadWait = 1.5;
+  const ret = P.punt.runner ? P.punt.catchX - r.x : 0;
+  G.replay = frames.length > 20 && (['rettd', 'blocked', 'recovered'].includes(r.type) || ret >= 20) ? frames.slice() : null; frames = [];
+  if (G.replay) deadWait = 3.2;
+  const ko = P.punt.ko;
+  if (r.type === 'rettd'){ banner('RETURN TOUCHDOWN', G.opp.name.toUpperCase(), G.opp.color, 2400); sfx('boo'); }
+  else if (r.type === 'blocked'){ banner('BLOCKED PUNT', '', '#ff5a4e', 1800); sfx('turnover'); }
+  else if (r.type === 'recovered'){ banner(ko && P.punt.type === 'onside' ? 'ONSIDE KICK!' : ko ? 'RECOVERED!' : 'MUFFED! YOUR BALL', ko ? 'YOUR BALL' : '', '#4cff7a', 2000); sfx('good'); G.cheer = 3; }
+  else if (ko && r.type === 'touchback'){ banner('TOUCHBACK', 'THEIR BALL AT THE 25', '#c9d1d9', 1200); }
+  else if (ko && r.type === 'tackle' && r.x >= 75){ banner('PINNED', `TACKLED AT THE ${Math.max(1, Math.round(100 - r.x))}`, '#ffd84a', 1500); sfx('good'); }
+  else if (r.type === 'downed' && r.x >= 90){ banner('PINNED', `DOWNED AT THE ${Math.max(1, Math.round(100 - r.x))}`, '#ffd84a', 1600); sfx('good'); }
+}
+function puntAfter(){
+  phase = 'wait';
+  const P = G.play, r = P.result, R = P.punt;
+  // Kickoff out of bounds untouched: their ball at their 35. Tackled in their own end zone: a touchback.
+  if (R.ko && r.type === 'oob' && r.kick && r.untouched) Object.assign(r, { type: 'koob', x: Math.min(65, Math.round(r.x)) });
+  if (R.runner && r.x >= 100 && r.type !== 'rettd' && R.catchX >= 100) Object.assign(r, { type: 'touchback', x: R.tb || 80 });
+  const x = Math.round(S.clamp(r.x, 1, 99)), net = Math.round((r.type === 'touchback' ? (R.tb || 80) : r.x) - R.los);
+  const ret = R.runner ? Math.round(R.catchX - r.x) : 0, them = `${G.opp.abbr || G.opp.name} ${Math.max(1, 100 - x)}`;
+  let line;
+  if (R.ko) switch (r.type){
+    case 'touchback': line = 'Kickoff, touchback'; break;
+    case 'koob': line = `Kickoff out of bounds: their ball at the ${them}`; break;
+    case 'fair': line = `Kickoff, fair catch at the ${them}`; break;
+    case 'oob': line = `Kickoff returned ${ret} yards, out at the ${them}`; break;
+    case 'tackle': line = `Kickoff returned ${ret} yards to the ${them}`; break;
+    case 'recovered': line = R.type === 'onside' ? `Onside kick recovered at the ${them}!` : `Kickoff recovered at the ${them}!`; break;
+    case 'rettd': line = 'Kickoff returned for a touchdown'; break;
+  }
+  else switch (r.type){
+    case 'touchback': line = `Punt into the end zone, touchback (net ${net})`; break;
+    case 'fair': line = `Punt, fair catch at the ${them} (net ${net})`; break;
+    case 'downed': line = `Punt downed at the ${them} (net ${net})`; break;
+    case 'oob': line = R.runner ? `Punt returned ${ret} yards, out at the ${them}` : `Punt out of bounds at the ${them} (net ${net})`; break;
+    case 'tackle': line = `Punt returned ${ret} yards to the ${them} (net ${net})`; break;
+    case 'recovered': line = `Muffed punt! Recovered at the ${them}`; break;
+    case 'blocked': line = 'Punt blocked'; break;
+    case 'rettd': line = 'Punt returned for a touchdown'; break;
+  }
+  pbp(line); if (!R.ko) driveLog(line);
+  if (G.stDrill) return stRepDone(line, R.ko ? (['rettd', 'recovered'].includes(r.type) ? null : (r.type === 'touchback' ? 75 : x)) : ['blocked', 'rettd', 'recovered'].includes(r.type) ? null : net, { type: r.type, q: R.q, x: r.x, ko: R.ko, kick: R.type });
+  if (R.ko){
+    if (r.type === 'recovered') return later(() => startMyDrive(x), 600);
+    if (r.type === 'rettd'){ G.score[1] += 7; return later(() => kickoffToMe(), 900); }
+    return later(() => endMyPossession(r.type === 'touchback' ? 75 : x), 500);
+  }
+  if (r.type === 'recovered'){ endDrive('PUNT'); return later(() => startMyDrive(x), 500); }
+  endDrive(r.type === 'blocked' ? 'BLOCKED PUNT' : 'PUNT');
+  if (r.type === 'rettd'){ G.score[1] += 7; return later(() => kickoffToMe(), 900); }
+  if (r.type === 'touchback') return later(() => endMyPossession(80), 500);
+  return later(() => endMyPossession(x), 500);
+}
 function doPunt(){
+  if (!G.ot) return startMyPunt();
   closeModal(); phase = 'modal';
   const p = S.punt(G);
   sfx('kick'); banner(`PUNT · ${p.net} YDS`, p.touchback ? 'Touchback' : '', '#fff', 1400);
@@ -723,7 +949,7 @@ function halftime(){
 function secondHalf(){
   closeModal();
   Object.assign(G, { quarter: 3, clock: G.qLen, timeouts: 3, runoff: 0 });
-  if (G.firstHalfReceiver === 'opp') kickoffToMe(); else oppDrive(kickoffYtg());
+  if (G.firstHalfReceiver === 'opp') kickoffToMe(); else myKickoffCard();
 }
 
 /* The other team's drive: a little animated summary while the ball moves down a strip of field. */
@@ -801,6 +1027,8 @@ function finishOppDrive(r, then){
     clearInterval(tick); closeModal();
     if (then) return then(r);
     if (r.half || G.clock <= 0) return clockOut();
+    if (r.kind === 'punt') return puntReturnCard(r);   // their punt: you return it (special.js)
+    if ((r.kind === 'td' || r.kind === 'fg') && !G.ot) return kickoffToMe();   // they scored: their kickoff, live
     startMyDrive(r.myX);
   };
 }
@@ -838,6 +1066,62 @@ function defSetupHTML(){
     ${historyHTML('defense')}`;
 }
 
+/* ---------- special teams practice: punt returns, rep after rep ---------- */
+const ST_DRILLS = { ret: { name: 'Punt return', tip: 'They punt, you field it: get under the ring, fair catch or let it go, then find the lane.' },
+  kick: { name: 'Kickoff', tip: 'Pick deep, sky, squib or onside, aim it, strike it in the green, then watch your coverage (or chase down your onside).' },
+  koret: { name: 'Kickoff return', tip: 'They kick off, you take it: get under it, kneel it in the end zone, or bring it out behind your wall.' },
+  punt: { name: 'Punting', tip: 'Pull back to aim, let go to snap, then tap when the falling ball on the gauge is in the green. Then watch your coverage.' } };
+function stSetupHTML(){
+  const P = saved.practice, seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k] ?? '') === String(v)}">${l}</button>`).join('')}</div>`;
+  P.stdrill ||= 'ret'; P.stcall ||= 'ask';
+  return `<div class="pb-opt"><span>Drill</span><div class="pb-ddrills">${Object.entries(ST_DRILLS).map(([k, d]) => `<button type="button" data-pb="pset" data-k="stdrill" data-v="${k}" aria-pressed="${P.stdrill === k}"><b>${d.name.toUpperCase()}</b><small>${esc(d.tip)}</small></button>`).join('')}</div></div>
+    ${P.stdrill === 'punt' || P.stdrill === 'kick' ? '' : `<div class="pb-opt"><span>Return call</span>${seg('stcall', [['ask', 'Ask'], ['left', 'Left'], ['middle', 'Middle'], ['right', 'Right'], ['safe', 'Fair']])}</div>`}
+    <div class="pb-opt"><span>Session</span>${seg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.name} · ${x.n}`]))}</div>
+    <button class="pb-go" type="button" data-pb="pstart">START ${SESSIONS[P.session].name.toUpperCase()} SESSION</button>`;
+}
+function startSTDrill(){
+  initAudio(saved.sound);
+  closeModal();
+  G = newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len);
+  G.stDrill = { kind: saved.practice.stdrill || 'ret', n: SESSIONS[saved.practice.session]?.n || 5, reps: 0, log: [], yds: 0, returns: 0 };
+  snaps = 0; showHud(true); stRep();
+}
+function stRep(){
+  const D = G.stDrill, call = saved.practice.stcall || 'ask';
+  if (D.kind === 'punt'){ G.los = Math.round(15 + Math.random() * 45); G.y = S.MID; G.down = 4; G.toGo = 6; return startMyPunt(); }
+  if (D.kind === 'kick') return myKickoffCard();
+  if (D.kind === 'koret'){ if (call === 'ask') return puntReturnCard({ endAt: 65 }, true); retFrom = 65; retKO = true; return startReturn(call); }
+  const r = { endAt: Math.round(55 + Math.random() * 33) };   // their line: from their 12 out to their 45
+  if (call === 'ask') return puntReturnCard(r);
+  retFrom = r.endAt; retKO = false; startReturn(call);
+}
+/* One rep done: log it, then the next (or the session card). */
+function stRepDone(line, val, tag = {}){
+  const D = G.stDrill; D.reps++; D.log.push(line);
+  if (val != null){ D.yds += val; D.returns++; D.long = Math.max(D.long ?? -99, val); }
+  const c = D.count ||= {}; c[tag.type] = (c[tag.type] || 0) + 1; if (tag.q) c[tag.q] = (c[tag.q] || 0) + 1;
+  if (tag.start != null){ D.startSum = (D.startSum || 0) + tag.start; D.starts = (D.starts || 0) + 1; }
+  if (D.kind === 'punt' && tag.type !== 'touchback' && tag.x >= 80 && !['blocked', 'rettd', 'recovered'].includes(tag.type)) c.in20 = (c.in20 || 0) + 1;
+  if (D.reps < D.n){ pbp(line); return later(stRep, 1100); }
+  $('.pb-pbp')?.classList.remove('on');   // the card's coming: the ticker would sit over its title
+  phase = 'modal';
+  // The session card, laid out like the offense and defense ones: the headline number, four stats, every rep.
+  const punt = D.kind === 'punt', kick = D.kind === 'kick', avg = D.returns ? D.yds / D.returns : 0;
+  const st = D.starts ? Math.round(D.startSum / D.starts) : null, theirs = Math.round(100 - avg);
+  const head = punt ? [D.returns ? avg.toFixed(1) : '–', 'NET AVERAGE'] : kick ? [D.returns ? (theirs === 50 ? '50' : theirs < 50 ? `OWN ${theirs}` : `OPP ${100 - theirs}`) : '–', 'THEIR AVERAGE START']
+    : [st == null ? '–' : st === 50 ? '50' : st < 50 ? `OWN ${st}` : `OPP ${100 - st}`, 'AVERAGE START'];
+  const cells = punt
+    ? [[c.perfect || 0, 'Perfect drops'], [c.in20 || 0, 'Inside the 20'], [c.touchback || 0, 'Touchbacks'], [(c.blocked || 0) + (c.rettd || 0), 'Blocked / TDs']]
+    : kick ? [[c.perfect || 0, 'Perfect strikes'], [c.touchback || 0, 'Touchbacks'], [c.recovered || 0, 'Recovered'], [c.rettd || 0, 'Return TDs']]
+    : [[D.returns ? avg.toFixed(1) : '–', 'Yds a return'], [c.fair || 0, 'Fair catches'], [(c.muff || 0) + (c.fumble || 0) + (c.kickrec || 0), 'Lost it'], [D.returns ? `${D.long}` : '–', 'Longest']];
+  later(() => modal(`<div class="pb-card pb-sess">
+    <span class="pb-sk">${esc(SESSIONS[saved.practice.session]?.name || '')} ${{ punt: 'punting', kick: 'kickoff', koret: 'kickoff return', ret: 'punt return' }[D.kind]} session complete</span>
+    <div class="pb-sg pb-stsg"><b>${head[0]}</b><small>${head[1]}</small></div>
+    <div class="pb-ss">${cells.map(([v, k]) => `<div><b>${v}</b><span>${k}</span></div>`).join('')}</div>
+    <div class="pb-recap"><div class="pb-rh"><b>EVERY REP</b><span>${D.n} ${punt ? 'punts' : kick ? 'kickoffs' : 'returns'}</span></div><ol class="pb-rlist">${D.log.map(l => `<li>${esc(l)}</li>`).join('')}</ol></div>
+    <div class="pb-btns"><button class="pb-go" type="button" data-pb="stagain">GO AGAIN</button><button class="pb-go alt" type="button" data-pb="psetup">PRACTICE MENU</button></div>
+    <div class="pb-btns"><button class="pb-go alt sm" type="button" data-pb="menu">MAIN MENU</button></div></div>`), 900);
+}
 function startDefDrill(){
   initAudio(saved.sound);
   const you = withImage(teamInfo(pick.me)), them = withImage(teamInfo(pick.opp)), kind = saved.practice.ddrill;
@@ -1385,13 +1669,24 @@ function drillPreview(roles, routes, color){
   return h + '</svg>';
 }
 
-const sideSwitch = () => `<div class="pb-seg pb-side"><button type="button" data-pb="pside" data-v="offense" aria-pressed="${saved.practice.side !== 'defense'}">OFFENSE</button><button type="button" data-pb="pside" data-v="defense" aria-pressed="${saved.practice.side === 'defense'}">DEFENSE</button></div>`;
+const sideSwitch = () => `<div class="pb-seg pb-side">${[['offense', 'OFFENSE'], ['defense', 'DEFENSE'], ['special', 'SPECIAL TEAMS']].map(([v, l]) =>
+  `<button type="button" data-pb="pside" data-v="${v}" aria-pressed="${(saved.practice.side || 'offense') === v}">${l}</button>`).join('')}</div>`;
 function practiceSetup(keepScroll){
   const prevScroll = keepScroll ? $('.pb-setup')?.scrollTop : 0;
   phase = 'setup'; paused = false; behind = null;
   if (!G || G.practice || G.youDefend){ G = newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); }
   showHud(false);
   const P = saved.practice, roles = practiceRoles(), routes = practiceRoutes();
+  if (P.side === 'special'){
+    modal(`<div class="pb-setup pb-practice">
+      <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
+      ${sideSwitch()}
+      <p class="pb-sub">Special teams against ${esc(G.opp.name)}: rep after rep, from a different spot each time, in this game's weather.</p>
+      ${stSetupHTML()}
+    </div>`);
+    if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
+    return;
+  }
   if (P.side === 'defense'){
     modal(`<div class="pb-setup pb-practice">
       <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
@@ -1612,12 +1907,16 @@ function hud(){
   if (G.practice) return practiceHud();
   if (G.youDefend) return defHud();
   const q = G.ot ? (G.ot === 1 ? 'OT' : `${G.ot}OT`) : `Q${G.quarter}`;
-  const dd = G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
+  const ret = phase === 'ret' && G.play?.ret, myPunt = phase === 'punt' && G.play?.punt;
+  const dd = ret ? (ret.ko ? 'KICKOFF RETURN' : 'PUNT RETURN') : myPunt ? (myPunt.ko ? 'KICKOFF' : 'PUNT') : G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
   const late = S.lateInHalf(G), live = phase === 'presnap';
   const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || (S.CONCEPTS[G.autoCall] ? 'Coach: ' + S.CONCEPTS[G.autoCall].name : 'Random'))) + (G.pa ? ' · PA' : '') + (G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation]}` : '');
   const sheetUp = $('.pb-modal').classList.contains('on');
   const H = hdUI.hud;   // the broadcast bug and glass buttons (hdui-hud.js)
-  const btns = !live || paused ? '' : [
+  const btns = myPunt ? (paused || G.play.result ? '' : ['snap', 'steps', 'drop'].includes(myPunt.stage) ? H.chip('kick', 'KICK', '', 'go') : myPunt.hands && !myPunt.runner && myPunt.stage === 'air' ? H.chip('dive', 'DIVE', '', 'go') : '')
+    : ret ? (paused || G.play.result ? '' : G.play.carrier ? (G.play.carrier.x <= 0 && G.play.carrier === ret.returner ? H.chip('kneel', 'KNEEL', 'TOUCHBACK', 'go') : '')
+      : !ret.fair && ['snap', 'punter', 'air', 'tee'].includes(G.play.ball.state) ? H.chip('fair', ret.ko && ret.returner.x <= 0 ? 'KNEEL' : 'FAIR CATCH') : '')
+    : !live || paused ? '' : [
     sheetUp ? '' : H.callBtn(callName.toUpperCase()),
     G.coach && !sheetUp ? H.chip('snap', 'SNAP ▶', '', 'go') : '',
     G.runoff > 0 && G.timeouts > 0 && !G.ot ? H.chip('timeout', 'TIMEOUT', `${G.timeouts} LEFT`) : '',
@@ -1627,7 +1926,7 @@ function hud(){
   ].join('');
   const hint = hintText();
   // Who has the ball (yours on your snaps and kicks, theirs while their drive plays out).
-  const poss = ['presnap', 'live', 'dead', 'kick', 'replay'].includes(phase) ? 'me' : $('.pb-modal .pb-drive') ? 'opp' : '';
+  const poss = ['presnap', 'live', 'dead', 'kick', 'replay', 'ret', 'punt'].includes(phase) ? 'me' : $('.pb-modal .pb-drive') ? 'opp' : '';
   const key = [G.score, q, Math.ceil(G.clock), dd, G.los, G.timeouts, btns, hint, G.runoff > 0, live && G.tellOn ? filmTell() : '', poss, phase].join('|');
   if (key === lastHud) return; lastHud = key;
   hudHD(H, dd, poss, live && G.tellOn && G.play ? filmTell() : '', btns, hint);
@@ -1670,6 +1969,27 @@ function hintText(){
     if (st === 'aim') return `${touch ? 'Tap' : 'Click or press Space'} to lock the aim · wind ${Math.abs(G.kick.wind)} mph ${G.kick.wind > 0 ? (R.portrait ? '→' : '↓') : G.kick.wind < 0 ? (R.portrait ? '←' : '↑') : ''}`;
     if (st === 'power') return `${touch ? 'Tap' : 'Click or press Space'} in the green · short below it, a hook above it`;
     return '';
+  }
+  if (phase === 'punt' && G.play?.punt?.ko){
+    const R = G.play.punt, st = R.stage;
+    if (st === 'aim') return touch ? 'Pull back to aim the kick · let go to start his run-up · tap for his usual' : 'Drag back to aim the kick · let go to start his run-up · Space for his usual';
+    if (st === 'drop') return 'Strike it in the green!';
+    if (R.hands && !R.runner) return touch ? 'Drag to steer your man to the ball · DIVE to get on it (it has to go 10 yards)' : 'Arrows steer your man · Space dives (it has to go 10 yards)';
+    return '';
+  }
+  if (phase === 'punt' && G.play?.punt){
+    const st = G.play.punt.stage;
+    if (st === 'aim') return touch ? 'Pull back to aim (shorter hangs higher) · let go to snap · tap for a standard punt' : 'Drag back to aim · let go to snap · Space for a standard punt';
+    if (st === 'snap' || st === 'steps') return 'Watch the gauge on the left: tap when the ball is in the green';
+    if (st === 'drop') return 'KICK in the green!';
+    return '';
+  }
+  if (phase === 'ret' && G.play?.ret && (G.retCount || 0) <= 3){
+    const st = G.play.ball.state;
+    if (G.play.carrier) return '';
+    if (st === 'snap' || st === 'punter' || st === 'tee') return touch ? 'Drag anywhere to move your returner' : 'Arrows move your returner';
+    if (st === 'air') return 'Get under the spot: it turns green when you\'re there';
+    return 'Loose ball! End over end it rolls; a spiral dies';
   }
   if (snaps > 8 && saved.diff !== 'rookie' && !G.coach) return '';
   if (G.practice && G.play?.target && (phase === 'presnap' || phase === 'live' && S.canThrow(G))) return `Hit the gold target: the ${(S.ROLE_NAMES[G.play.target.role] || '').toLowerCase()} · press and pull back`;
@@ -1761,7 +2081,8 @@ function onClick(e){
     case 'callclose': sheetFam = null; return closeModal();
     case 'pset': { const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save(); return practiceSetup(true); }
     case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return pickInPlace(b, practiceRoles(), practiceRoutes()); }
-    case 'pstart': return saved.practice.side === 'defense' ? startDefDrill() : startPractice();
+    case 'pstart': return saved.practice.side === 'defense' ? startDefDrill() : saved.practice.side === 'special' ? startSTDrill() : startPractice();
+    case 'stagain': return startSTDrill();
     case 'dagain': return startDefDrill();
     case 'keyrush': case 'keycover': return startKeyDef();
     case 'psetup': return practiceSetup();
@@ -1804,6 +2125,12 @@ function onClick(e){
     case 'rematch': { const me = G.me, opp = G.opp; closeModal(); G = newGame(me, opp, saved.diff, saved.len); return startGame(); }
     case 'menu': paused = false; behind = null; keyCtx = null; closeModal(); return setup();
     case 'snap': return doSnap();
+    case 'retcall': return startReturn(b.dataset.v);
+    case 'fair': input.fair = true; return;
+    case 'kick': Sp.kickTap(G); return;
+    case 'kocall': return startMyKickoff(b.dataset.v);
+    case 'dive': input.dive = true; return;
+    case 'kneel': input.kneel = true; return;
     case 'dcall': return pickDriveCall(b.dataset.v);
     case 'keyskip': { const kp = keyPending; keyPending = null; closeModal(); return kp && finishOppDrive(kp.r, kp.then); }
     case 'sdrill': { const d = G.seasonDrill; return d && SV.drillDone(d.area, d.score); }
@@ -1811,7 +2138,7 @@ function onClick(e){
     case 'penacc': { closeModal(); const p = pendingPen; pendingPen = null; return takePenalty(p); }
     case 'pendec': { closeModal(); pendingPen = null; banner('DECLINED', 'Keep the play', '#c9d1d9', 900); return applyPlay(); }
     case 'endsess': { paused = false; behind = null; closeModal(); const d = G.seasonDrill; return d ? SV.drillDone(d.area, d.score) : practiceSetup(); }
-    case 'restart': { paused = false; behind = null; closeModal(); if (keyCtx){ G = keyCtx.main; keyCtx = null; } return G.challenge ? startChallenge(G.challenge) : G.season ? startGame(G.seasonCfg) : startGame(); }
+    case 'restart': { paused = false; behind = null; closeModal(); if (keyCtx){ G = keyCtx.main; keyCtx = null; } return G.stDrill ? startSTDrill() : G.challenge ? startChallenge(G.challenge) : G.season ? startGame(G.seasonCfg) : startGame(); }
     case 'challenges': return challengesScreen();
     case 'chalgo': { const c = challengeById(b.dataset.id); return c && startChallenge(c); }
     case 'chalplay': closeModal(); return presnap();
@@ -1863,6 +2190,14 @@ function down(e){
   if (coaching() && (phase === 'presnap' || phase === 'live')){ G.play.userCtl = true; if (phase === 'live') banner('YOU HAVE IT', '', '#7df9ff', 700); }
   ptr = { id: e.pointerId, x0: p.x, y0: p.y, mode: 'none', samples: [{ ...p, t: now }] };
   if (phase === 'kick'){ S.kickTap(G); return; }
+  if (phase === 'punt'){
+    const st = G.play.punt.stage;
+    if (G.play.punt.hands && st === 'air'){ ptr.mode = 'cstick'; steerStick(p, 'carStick'); return; }   // an onside: steer your hands man
+    if (st === 'aim'){ ptr.mode = 'paim'; puntAimV = null; }
+    else { Sp.kickTap(G); ptr.mode = 'none'; }   // KICK: a tap anywhere while the ball's in the green on the gauge
+    return;
+  }
+  if (phase === 'ret'){ ptr.mode = 'cstick'; ptr.tDown = now; steerStick(p, 'carStick'); return; }   // your returner, before and after the catch
   if (G.youDefend){   // on defense: rush taps, or steer your defender (the JUMP button goes for the ball)
     if (G.defDrill.kind === 'rush') return rushTap();
     // Steering is a stick, not "go where my finger is": the camera moves during the play, so a spot on the screen
@@ -1902,6 +2237,12 @@ function move(e){
   if (flick?.id === e.pointerId) return;
   if (!ptr || ptr.id !== e.pointerId || !G?.play) return;
   const p = local(e), w = R.toWorld(p.x, p.y), now = performance.now();
+  if (ptr.mode === 'paim'){
+    // The whole range over a long pull (about 40% of the screen's short side), so a small slip is a small change.
+    const dx = ptr.x0 - p.x, dy = ptr.y0 - p.y, px = Math.hypot(dx, dy), pull = R.dragToWorld(dx, dy);
+    puntAimV = px > 10 ? Sp.puntAim(G, pull, (px - 10) / (Math.min(R.W, R.H) * .42)) : null;
+    return;
+  }
   ptr.samples.push({ ...p, t: now }); while (ptr.samples.length > 2 && now - ptr.samples[0].t > 160) ptr.samples.shift();
   if (ptr.mode === 'aim' && aim && S.canThrow(G)){
     const pull = R.dragToWorld(ptr.x0 - p.x, ptr.y0 - p.y), len = Math.hypot(pull.x, pull.y), k = 2.6;
@@ -1949,6 +2290,7 @@ function fireFlick(p, now){
   return start.target;
 }
 function up(e){
+  if (ptr?.id === e.pointerId && ptr.mode === 'paim'){ Sp.snapPunt(G, puntAimV); puntAimV = null; ptr = null; return; }
   if (flick?.id === e.pointerId){ flickJuke(flick.x, flick.y, flick.t, local(e), performance.now()); flick = null; return; }
   if (!ptr || ptr.id !== e.pointerId) return;
   if (ptr.mode === 'cstick' && ptr.tDown) flickJuke(ptr.x0, ptr.y0, ptr.tDown, local(e), performance.now());
@@ -1969,7 +2311,7 @@ function resetInput(){ flick = null; Object.assign(input, { targetY: null, steer
    sweet spot for one (about two yards out); TRUCK reads DIVE when nobody's in front to run through. */
 /* Coach mode: your players run the snap unless you've touched the field to take it. */
 const coaching = () => G?.coach && !G.youDefend && !G.practice && G.play && !G.play.userCtl;
-const carrierLive = () => G?.play?.carrier && !G.youDefend && phase === 'live' && !G.play.result && !coaching();
+const carrierLive = () => G?.play?.carrier && !G.youDefend && (phase === 'live' || phase === 'ret') && !G.play.result && !coaching();
 /* The movement pad (bottom left on pass plays): slide the quarterback in the pocket, and once he's past the line
    it keeps steering him as a runner until the thumb lifts. Shown from the snap until the ball is gone (before the
    snap that corner is the play-call bar's). */
@@ -1994,6 +2336,40 @@ function syncPad(){
   else if (pad && phase === 'live' && G.play.carrier !== G.play.qb && !S.canThrow(G)) padOff();
   if (st === padState) return; padState = st;
   el.hidden = st === 'off';
+}
+/* The punt's drop gauge (left edge): up from the snap, the ball falling down it during the drop, then a glow in the
+   band you hit before it fades. The bands come from special.js, so the picture is exactly the timing. */
+let gaugeFor = null, gaugeH = 0, gaugeLast = 0;
+function syncGauge(){
+  const el = $('.pb-gauge'); if (!el) return;
+  const R = phase === 'punt' || phase === 'dead' ? G?.play?.punt : null;
+  const show = R && !paused && R.stage !== 'aim';   // up from the snap until the play's over
+  if (!show){ if (!el.hidden){ el.hidden = true; el.className = 'pb-gauge'; gaugeFor = null; } return; }
+  if (gaugeFor !== G.play){
+    // Built once per punt: the frame, then the tube sized to the rail (the bands straight from special.js's timing).
+    gaugeFor = G.play; el.className = 'pb-gauge'; el.hidden = false;
+    el.innerHTML = hdUI.hud.gauge(G.me, R.ko); el.classList.toggle('ko', !!R.ko);
+    const rail = el.querySelector('.hg-rail'); gaugeH = rail.clientHeight || 220;
+    const [b1, b2, b3] = Sp.dropBands(G), T = Sp.PUNT_TIMING.PERFECT, at = t => Sp.dropPos(t);
+    const zones = [{ c: 'r', a: 0, b: at(T - b3) }, { c: 'a', a: at(T - b3), b: at(T - b2) }, { c: 'y', a: at(T - b2), b: at(T - b1) }, { c: 'g', a: at(T - b1), b: at(T + b1) },
+      { c: 'y', a: at(T + b1), b: at(T + b2) }, { c: 'a', a: at(T + b2), b: 1 }].filter(z => z.b > z.a);
+    rail.innerHTML = hdUI.hud.gaugeRail(zones, gaugeH, R.ko, hdUI.kit.teamTone(G.me).c); gaugeLast = 0;
+  }
+  const t = R.tapT ?? (R.stage === 'drop' ? R.dropT : 0), pos = Sp.dropPos(t), y = pos * gaugeH;
+  const ball = el.querySelector('.hg-ball'), spent = el.querySelector('.hg-spent'), trail = el.querySelector('.hg-trail'), flash = el.querySelector('.hg-flash');
+  // Nose down as it falls (a punter's drop); a trail as long as it's moving fast, gone once it's kicked.
+  if (ball) ball.style.transform = R.ko ? `translateY(${y.toFixed(1)}px)` : `translateY(${y.toFixed(1)}px) rotate(${(-6 - pos * 28).toFixed(1)}deg)`;
+  if (spent) spent.style.height = `${Math.max(0, y - 2).toFixed(1)}px`;
+  const v = R.tapT == null ? Math.max(0, y - gaugeLast) : 0; gaugeLast = y;
+  if (trail){ const h = Math.min(46, v * 9); trail.style.height = `${h.toFixed(1)}px`; trail.style.transform = `translateY(${(y - h - 4).toFixed(1)}px)`; }
+  if (flash) flash.style.transform = '', flash.style.top = `${(y - 24).toFixed(1)}px`;
+  el.classList.toggle('rush', R.stage === 'drop' && (R.hurry || 1) > 1.15);
+  if (R.tapT != null && !el.classList.contains('hit')){
+    const hit = { perfect: 'hit-g', good: 'hit-y', wobbler: 'hit-a', shank: 'hit-r' }[R.q];
+    const err = R.tapErr, ms = Math.abs(err) > 1 ? null : Math.round(Math.abs(err) * 1000);
+    el.querySelector('.hg-res').innerHTML = hdUI.hud.gaugeResult(R.q, ms, err < 0);
+    el.classList.add('hit', hit); el.classList.remove('rush');
+  }
 }
 let movesState = '';
 function syncMoves(){
@@ -2055,7 +2431,10 @@ function keydown(e){
     if (G.youDefend){ if (G.defDrill.kind === 'rush') return rushTap(); jumpRoute(); return; }
     if (phase === 'presnap') return doSnap();
     if (phase === 'kick') return S.kickTap(G);
-    if (phase === 'live' && G.play.carrier){
+    if (phase === 'ret' && !G.play.carrier){ input.fair = true; return; }
+    if (phase === 'punt'){ const R = G.play.punt; if (R.stage === 'aim') Sp.snapPunt(G, null); else if (R.hands && R.stage === 'air') input.dive = true; else Sp.kickTap(G); return; }
+    if (phase === 'ret' && G.play.carrier && G.play.carrier.x <= 0){ input.kneel = true; return; }   // Space under a punt: fair catch
+    if ((phase === 'live' || phase === 'ret') && G.play.carrier){
       const c = G.play.carrier, lat = input.steer || 0;
       const near = G.play.def.filter(d => !d.down).sort((a, b) => hypot(a, c) - hypot(b, c))[0];
       input.juke = lat || (near && near.y > c.y ? -1 : 1);
@@ -2089,6 +2468,8 @@ const HOW = `<ul>
   <li><b>Run:</b> tap the glowing running back (H on a keyboard) to snap and hand off in one go. A plain tap just snaps; press on the QB and drag to scramble.</li>
   <li><b>With the ball:</b> drag anywhere to steer (like a joystick: you can cut, stop and cut back). JUKE (the button, or a quick flick to the side and off the screen) beats the man closing in if you time it as he arrives; the button glows when it's time. TRUCK lowers your shoulder into him, or dives for the extra yard when no one's in front. Keys: arrows or WASD, Space to juke, X to truck.</li>
   <li><b>Kicks:</b> tap to lock the aim, tap again for power. Mind the wind.</li>
+  <li><b>Punts and kickoffs:</b> pull back to aim (the arc shows where it lands and its hang), let go, and tap when the ball (or his run-up) is in the green on the gauge. Kickoffs come deep, sky, squib or onside; on an onside, steer your man to the ball and DIVE.</li>
+  <li><b>Returns:</b> call your wall, then get under the landing spot (it turns green when you're there). FAIR CATCH any time it's up; in the end zone, KNEEL for the 25.</li>
   <li><b>Take over:</b> replay real late-game moments from this week's close games: the real score, clock, spot and teams. Win the game to beat the challenge.</li>
   <li><b>Defense:</b> every opponent drive has a pass play at your man (you're the gold-ringed corner): drag anywhere to steer, and when the ball's up get in the yellow ring and hit JUMP (Space). Key third downs make you the edge rusher: tap at the snap, then tap in the green.</li>
   <li>Between plays the clock runs; snap fast to save time, or call a timeout. The other team's drives are simulated.</li></ul>`;
