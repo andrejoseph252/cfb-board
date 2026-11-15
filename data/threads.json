@@ -1,6 +1,83 @@
 {
- "updated": "2026-11-15T01:22:30+00:00",
+ "updated": "2026-11-15T02:19:20+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Appalachian State Defeats Marshall 20-16",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwju71/postgame_thread_appalachian_state_defeats/",
+   "published": "2026-11-15T02:16:11+00:00",
+   "gameId": "401869928",
+   "teams": [
+    "Appalachian State",
+    "Marshall"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Wyoming @ UTEP (10:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwjj4i/game_thread_wyoming_utep_1000_pm_et/",
+   "published": "2026-11-15T02:00:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Wyoming",
+    "UTEP"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Arizona State Defeats UCF 26-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwjh4u/postgame_thread_arizona_state_defeats_ucf_2613/",
+   "published": "2026-11-15T01:57:10+00:00",
+   "gameId": "401856857",
+   "teams": [
+    "Arizona State",
+    "UCF"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Washington Defeats Michigan State 21-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwjh4r/postgame_thread_washington_defeats_michigan_state/",
+   "published": "2026-11-15T01:57:10+00:00",
+   "gameId": "401858521",
+   "teams": [
+    "Washington",
+    "Michigan State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisiana Tech Defeats Southern Miss 63-31",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwj0kj/postgame_thread_louisiana_tech_defeats_southern/",
+   "published": "2026-11-15T01:33:18+00:00",
+   "gameId": "401871099",
+   "teams": [
+    "Louisiana Tech",
+    "Southern Miss"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Texas Tech @ Oklahoma State (9:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwiyad/game_thread_texas_tech_oklahoma_state_930_pm_et/",
+   "published": "2026-11-15T01:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Texas Tech",
+    "Oklahoma State"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Utah State @ San Diego State (9:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwiy9w/game_thread_utah_state_san_diego_state_930_pm_et/",
+   "published": "2026-11-15T01:30:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Utah State",
+    "San Diego State"
+   ]
+  },
   {
    "kind": "game",
    "title": "[Game Thread] North Texas @ UTSA (9:00 PM ET)",
