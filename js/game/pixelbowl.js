@@ -278,7 +278,7 @@ function loop(ts){
   if (G && !paused && phase !== 'setup') crowd(crowdLevel()); else crowd(0);
   const cover = G?.youDefend && G.defDrill?.kind === 'cover';
   if (G) R.draw(G, paused ? 0 : dt, { fly: phase === 'setup' || phase === 'fly', covered: !!modalEl?.classList.contains('on') && !modalEl.classList.contains('light'), aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
-    stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : phase === 'ret' && !G.play?.carrier || phase === 'punt' && !G.play?.punt?.runner ? Sp.CATCH_R : 0, puntAim: phase === 'punt' && G.play?.punt?.stage === 'aim' ? puntAimV : null, aimArea: phase === 'punt' && G.play?.punt?.stage === 'aim',
+    stick: (cover || ptr?.mode === 'cstick') && ptr?.stick || null, landing: cover && phase === 'live' ? S.JUMP_R : phase === 'ret' && !G.play?.carrier || phase === 'punt' && !G.play?.punt?.runner ? Sp.CATCH_R : 0, puntAim: phase === 'punt' && G.play?.punt?.stage === 'aim' ? puntAimV : null, aimArea: phase === 'punt' && G.play?.punt?.stage === 'aim', safe: phase === 'punt' && G.play?.punt?.stage === 'aim' && puntAimV ? safeArea() : null,
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick && !G.play?.noHandoff || phase === 'live' && S.canHandoff(G)),
     readKey: phase === 'live' && G.play?.option && !G.play.carrier ? G.play.option.key : null });
   if (G) drain();
@@ -1973,6 +1973,7 @@ function hintText(){
   if (phase === 'punt' && G.play?.punt?.ko){
     const R = G.play.punt, st = R.stage;
     if (st === 'aim') return touch ? 'Pull back to aim the kick · let go to start his run-up · tap for his usual' : 'Drag back to aim the kick · let go to start his run-up · Space for his usual';
+    if (st === 'steps') return 'When the READY bar fills, he starts his run-up: tap in the green';
     if (st === 'drop') return 'Strike it in the green!';
     if (R.hands && !R.runner) return touch ? 'Drag to steer your man to the ball · DIVE to get on it (it has to go 10 yards)' : 'Arrows steer your man · Space dives (it has to go 10 yards)';
     return '';
@@ -1980,7 +1981,7 @@ function hintText(){
   if (phase === 'punt' && G.play?.punt){
     const st = G.play.punt.stage;
     if (st === 'aim') return touch ? 'Pull back to aim (shorter hangs higher) · let go to snap · tap for a standard punt' : 'Drag back to aim · let go to snap · Space for a standard punt';
-    if (st === 'snap' || st === 'steps') return 'Watch the gauge on the left: tap when the ball is in the green';
+    if (st === 'snap' || st === 'steps') return 'When the READY bar fills, the ball drops: tap in the green';
     if (st === 'drop') return 'KICK in the green!';
     return '';
   }
@@ -2339,16 +2340,32 @@ function syncPad(){
 }
 /* The punt's drop gauge (left edge): up from the snap, the ball falling down it during the drop, then a glow in the
    band you hit before it fades. The bands come from special.js, so the picture is exactly the timing. */
+/* The part of the field nothing covers, as fractions of the canvas cut off on each side (the score bug and ticker,
+   the gauge, the hint and buttons): while you aim a kick the camera keeps the kicker and the spot inside it. */
+function safeArea(){
+  const c = canvas.getBoundingClientRect(); if (!c.width) return null;
+  const out = { l: 0, r: 0, t: 0, b: 0 }, mid = c.left + c.width / 2;
+  for (const el of root.querySelectorAll('.pb-hud, .pb-tools, .pb-gauge, .pb-hint, .pb-bar > *, .pb-pbp')){
+    if (el.hidden || !el.offsetParent || (el.matches('.pb-hint') && !el.textContent)) continue;
+    const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    // A tall, narrow piece on one side cuts from that side; anything else from the top or the bottom.
+    if (r.height > c.height * .3 && r.width < c.width * .4){ if (r.left + r.width / 2 < mid) out.l = Math.max(out.l, (r.right - c.left + 6) / c.width); else out.r = Math.max(out.r, (c.right - r.left + 6) / c.width); }
+    else if (r.top + r.height / 2 < c.top + c.height / 2) out.t = Math.max(out.t, (r.bottom - c.top + 6) / c.height);
+    else out.b = Math.max(out.b, (c.bottom - r.top + 6) / c.height);
+  }
+  for (const k in out) out[k] = Math.min(.45, out[k]);
+  return out;
+}
 let gaugeFor = null, gaugeH = 0, gaugeLast = 0;
 function syncGauge(){
   const el = $('.pb-gauge'); if (!el) return;
   const R = phase === 'punt' || phase === 'dead' ? G?.play?.punt : null;
-  const show = R && !paused && R.stage !== 'aim';   // up from the snap until the play's over
+  const show = R && !paused;   // up from the moment you start aiming until the play's over
   if (!show){ if (!el.hidden){ el.hidden = true; el.className = 'pb-gauge'; gaugeFor = null; } return; }
   if (gaugeFor !== G.play){
     // Built once per punt: the frame, then the tube sized to the rail (the bands straight from special.js's timing).
     gaugeFor = G.play; el.className = 'pb-gauge'; el.hidden = false;
-    el.innerHTML = hdUI.hud.gauge(G.me, R.ko); el.classList.toggle('ko', !!R.ko);
+    el.innerHTML = hdUI.hud.gauge(G.me, R.ko); el.classList.toggle('ko', !!R.ko); el.dataset.step = '';
     const rail = el.querySelector('.hg-rail'); gaugeH = rail.clientHeight || 220;
     const [b1, b2, b3] = Sp.dropBands(G), T = Sp.PUNT_TIMING.PERFECT, at = t => Sp.dropPos(t);
     const zones = [{ c: 'r', a: 0, b: at(T - b3) }, { c: 'a', a: at(T - b3), b: at(T - b2) }, { c: 'y', a: at(T - b2), b: at(T - b1) }, { c: 'g', a: at(T - b1), b: at(T + b1) },
@@ -2364,11 +2381,21 @@ function syncGauge(){
   if (trail){ const h = Math.min(46, v * 9); trail.style.height = `${h.toFixed(1)}px`; trail.style.transform = `translateY(${(y - h - 4).toFixed(1)}px)`; }
   if (flash) flash.style.transform = '', flash.style.top = `${(y - 24).toFixed(1)}px`;
   el.classList.toggle('rush', R.stage === 'drop' && (R.hurry || 1) > 1.15);
+  // The steps strip and the cue: where you are (aim, snap / set, kick) and what's next.
+  const step = R.stage === 'aim' ? 0 : R.stage === 'snap' || R.stage === 'steps' ? 1 : 2;
+  el.classList.toggle('aiming', step === 0);
+  if (el.dataset.step !== String(step)){
+    el.dataset.step = step;
+    el.querySelectorAll('.hg-steps i').forEach((p, i) => { p.classList.toggle('done', i < step || R.tapT != null); p.classList.toggle('on', i === step && R.tapT == null); });
+    const cue = el.querySelector('.hg-cue'); if (cue) cue.innerHTML = R.tapT == null ? hdUI.hud.gaugeCue(step, R.ko) : '';
+  }
+  const bar = el.querySelector('.hg-bar i'); if (bar) bar.style.width = `${(Sp.readyFrac(G) * 100).toFixed(1)}%`;
   if (R.tapT != null && !el.classList.contains('hit')){
     const hit = { perfect: 'hit-g', good: 'hit-y', wobbler: 'hit-a', shank: 'hit-r' }[R.q];
     const err = R.tapErr, ms = Math.abs(err) > 1 ? null : Math.round(Math.abs(err) * 1000);
     el.querySelector('.hg-res').innerHTML = hdUI.hud.gaugeResult(R.q, ms, err < 0);
     el.classList.add('hit', hit); el.classList.remove('rush');
+    el.querySelectorAll('.hg-steps i').forEach(p => { p.classList.add('done'); p.classList.remove('on'); });
   }
 }
 let movesState = '';

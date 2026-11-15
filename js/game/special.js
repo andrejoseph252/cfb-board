@@ -423,7 +423,7 @@ function loose(G, dt){
    aimed for; a little off, a touch less; further off, a wobbler end over end (shorter, and it'll roll); way off, or
    no tap at all, a shank. Wait too long and their rush gets there: blocked. Then you watch the coverage: gunners
    fly down, the lanes fill, and their returner fields it, fair catches it, lets it go, or brings it back. */
-const MY = { STEPS: 1.2, PERFECT: .42, LATE: .62 };
+const MY = { STEPS: 1.2, KO_SET: .75, PERFECT: .42, LATE: .62, PUNT_RATE: 1.15, KO_RATE: .75 };
 export const PUNT_TIMING = MY;
 /* The kick's timing bands, in seconds either side of the perfect moment: perfect, good, wobbler (past that a shank).
    Tighter on harder levels and with a wet ball. The drop gauge (pixelbowl.js) draws these same bands. */
@@ -431,6 +431,12 @@ const BANDS = [.05, .12, .2];
 export function dropBands(G){
   const w = ({ rookie: 1.3, pro: 1, allpro: .85, legend: .72 })[G.diffKey] ?? 1, wet = G.cond?.sky === 'rain' ? .85 : G.cond?.sky === 'snow' ? .9 : 1;
   return BANDS.map(b => b * w * wet);
+}
+/* How far through the wait before the drop (or the run-up) starts, 0-1: the gauge's READY bar. */
+export function readyFrac(G){
+  const P = G.play, R = P.punt; if (!R) return 0;
+  if (R.stage === 'snap' || R.stage === 'steps') return clamp(P.t / (R.ko ? MY.KO_SET : MY.STEPS), 0, 1);
+  return R.stage === 'drop' ? 1 : 0;
 }
 /* Where the falling ball is on the gauge (0 = in his hands, 1 = at his foot), for a moment of the drop: it speeds up a
    little as it falls. */
@@ -530,7 +536,7 @@ export function snapPunt(G, aim){
     // (A plain tap: his usual. An onside's usual goes at the gap in their front, toward a sideline.)
     const K = KICKS[R.type], side = Math.random() < .5 ? -1 : 1;
     R.aim = aim || { x: R.los + K.def, y: R.type === 'onside' ? MID + side * 4.5 : MID, dist: K.def, T: K.T(K.def) };
-    R.stage = 'drop'; R.dropT = 0; P.t = 0; R.from = { x: R.punter.x, y: R.punter.y }; P.cam = { x: R.los + 9, y: MID };
+    R.stage = 'steps'; R.dropT = 0; P.t = 0; R.from = { x: R.punter.x, y: R.punter.y }; P.cam = { x: R.los + 9, y: MID };   // SET: a beat, then the run-up
     return;
   }
   R.aim = aim || { x: Math.min(R.los + 44, 112), y: MID, dist: 44, T: puntHang(44) };
@@ -600,9 +606,11 @@ export function stepMyPunt(G, dt, inp = {}){
   } else if (R.stage === 'steps'){
     b.x = R.punter.x + .5; b.y = R.punter.y; b.z = 1.4;
     if (P.t >= MY.STEPS){ R.stage = 'drop'; R.dropT = 0; }
+  } else if (R.stage === 'steps' && R.ko){
+    if (P.t >= MY.KO_SET){ R.stage = 'drop'; R.dropT = 0; }
   } else if (R.stage === 'drop' && R.ko){
-    // The run-up: the gauge's marker is his last steps; the green is his plant and strike.
-    R.dropT += dt;
+    // The run-up: the gauge's marker is his last steps; the green is his plant and strike. (Slower than a punt's drop.)
+    R.dropT += dt * MY.KO_RATE;
     const k = Math.min(1, dropPos(R.dropT) / dropPos(MY.PERFECT));
     R.punter.x = R.from.x + (R.los - .6 - R.from.x) * k; R.punter.y = R.from.y + (MID - .6 - R.from.y) * k; R.punter.vx = 6; R.punter.vy = 0;
     if (R.dropT >= MY.LATE){ R.dropT = MY.LATE; myKick(G, 9); }
@@ -610,7 +618,7 @@ export function stepMyPunt(G, dt, inp = {}){
     // Their rush closing in hurries him: the ball comes down faster, so the green goes by quicker.
     const near = Math.min(99, ...P.def.filter(d => d.rush && !d.eng).map(d => dist(d, R.punter)));
     R.hurry = 1 + clamp((4.5 - near) / 4.5, 0, 1) * .7;
-    R.dropT += dt * R.hurry;
+    R.dropT += dt * R.hurry * MY.PUNT_RATE;   // a punt's drop is quicker than a kickoff's run-up (and their rush hurries it)
     b.x = R.punter.x + .6; b.y = R.punter.y; b.z = 1.4 - Math.min(1, R.dropT / MY.PERFECT) * .9;
     if (R.dropT >= MY.LATE){ R.dropT = MY.LATE; myKick(G, 9); }   // it got to the turf before his foot: a shank
   } else if (b.state === 'air'){

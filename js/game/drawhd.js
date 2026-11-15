@@ -129,6 +129,9 @@ export function createRenderer(canvas){
     if (G.kick) return THROW;
     if (P?.ret) return P.carrier ? CARRY : THROW;
     // Aiming a kickoff: pulled out far enough to see the tee and everywhere the kick can land.
+    // Aiming a punt or kickoff: before you pull, the whole range; once you're pulling, the camera tightens on the
+    // kicker and where you're aiming (eased, the way the pass aim pulls the camera between the quarterback and the spot).
+    if (P?.punt?.stage === 'aim' && kAim) return aimFit(P);
     if (P?.punt) return P.punt.ko && P.punt.stage === 'aim' ? clamp(P.punt.reach + 2, THROW, KO_AIM) : P.punt.runner ? CARRY : THROW;   // a punt return: wide while it's up, in close once he has it
     if (G.youDefend) return G.defDrill?.kind === 'rush' ? CLOSE : COVER;
     if (fitting(G, P)) return fit(P).span;
@@ -1524,6 +1527,13 @@ export function createRenderer(canvas){
       const foc = P.carrier || P.cam || air || pair || you || P.qb;
       fx = foc.x; fy = foc.y; ahead = P.carrier ? long * .14 : canThrow(G) ? long * .24 : long * .1;
       if (aim){ fx = (P.qb.x + aim.x) / 2; fy = (P.qb.y + aim.y) / 2; ahead = long * .05; }
+      if (P.punt?.stage === 'aim' && kAim){
+        // The middle of kicker and spot, set in the middle of the uncovered screen (not behind the bug, the gauge or the hint).
+        const k0 = kickFrom(P), c = safeCuts(kSafe || { l: 0, r: 0, t: 0, b: 0 }), mx = (k0.x + kAim.x) / 2, my = (k0.y + kAim.y) / 2;
+        const tx = mx - long * (c.back - c.fwd) / 2, ty = my - lat * (c.lo - c.hi) / 2, q = Math.min(1, dt * 4.5);
+        cam.x += (clamp(tx, -30, 140) - cam.x) * q; cam.y += (clamp(ty, -20, FW + 20) - cam.y) * q;
+        return;
+      }
     }
     // The spear at midfield, framed in the top half (the coin toss card is below).
     if (spearOn()){ fx = 50 - long * (portrait ? .14 : 0); fy = MID; ahead = 0; }
@@ -1538,6 +1548,21 @@ export function createRenderer(canvas){
     const q = Math.min(1, dt * (P?.live ? 5 : 3.2));
     cam.x += (tx - cam.x) * q; cam.y += (ty - cam.y) * q;
   }
+  let kAim = null, kSafe = null;   // the punt / kickoff aim this frame (view.puntAim), and the uncovered screen (view.safe)
+  /* The safe screen as cuts along the field: along its length (toward your end, toward theirs) and across it (low y,
+     high y), for the current orientation and mirroring. */
+  function safeCuts(f){
+    if (portrait) return { back: f.b, fwd: f.t, lo: f.l, hi: f.r };
+    return { back: M ? f.r : f.l, fwd: M ? f.l : f.r, lo: f.t, hi: f.b };
+  }
+  /* Aiming: the zoom that fits the kicker and the spot (with room for the ring and its label) inside the safe area. */
+  function aimFit(P){
+    const k0 = kickFrom(P), c = safeCuts(kSafe || { l: 0, r: 0, t: 0, b: 0 }), long = (portrait ? Hb : Wb) / S, lat = (portrait ? Wb : Hb) / S;
+    const kl = long / zoom.span, kt = lat / zoom.span;
+    const needL = (Math.abs(kAim.x - k0.x) + 12) / ((1 - c.back - c.fwd) * kl), needT = (Math.abs(kAim.y - k0.y) + 10) / ((1 - c.lo - c.hi) * kt);
+    return clamp(Math.max(needL, needT), CLOSE, 90);
+  }
+  const kickFrom = P => P.punt.ko ? { x: P.punt.los, y: MID } : P.punt.punter;
   function snapCamera(G){
     // The new play isn't set up yet: start from the throw view when the routes will need framing (it eases in).
     setZoom(snap(routesOn && !G.youDefend ? THROW : zoomTarget(G) ?? CLOSE));
@@ -1564,6 +1589,7 @@ export function createRenderer(canvas){
     lit = flash > .55 ? BOLT : LIGHT[G.cond?.time] || LIGHT.afternoon; curG = G;
     fsuTrack(G, dt);
     impacts(G, dt);
+    kAim = view.puntAim || null; kSafe = view.safe || null;
     if (!fm){ updateZoom(G, dt, view.aim); updateCamera(G, dt, view.aim); }
     const sh = cam.shake > 0 ? cam.shake : 0; cam.shake = Math.max(0, cam.shake - dt * 10);
     const ox = sh ? Math.round((Math.random() - .5) * sh * 2) : 0, oy = sh ? Math.round((Math.random() - .5) * sh * 2) : 0;

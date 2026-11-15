@@ -69,10 +69,20 @@ const TEE = `<svg class="hg-tee" viewBox="0 0 30 30" aria-hidden="true">
 export function gauge(team, ko = false){
   const t = teamTone(team);
   return `<div class="hg-cap" style="${vars(t)}"><span class="hg-disc">${team.logo ? `<img src="${esc(logo(team.logo, 48))}" alt="">` : ''}</span><b>${ko ? 'KICKOFF' : 'PUNT'}</b></div>
+    <div class="hg-steps" aria-hidden="true">${(ko ? ['AIM', 'SET', 'KICK'] : ['AIM', 'SNAP', 'KICK']).map((l, i) => `<i data-s="${i}">${l}</i>`).join('')}</div>
     <div class="hg-rush" aria-hidden="true"><i></i>RUSH</div>
     <div class="hg-rail"></div>
     <div class="hg-foot">${ko ? TEE : cleat(t.c)}</div>
+    <div class="hg-cue" aria-live="polite"></div>
     <div class="hg-res" aria-live="polite"></div>`;
+}
+/* The cue under the gauge, before the kick: let go (aiming), get ready (the snap / the set, with a bar filling to
+   the drop), then KICK. */
+const LIFT = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="15.5" r="2.6" fill="currentColor" opacity=".45"/><path d="M10 11.5V3.5M6.5 7L10 3.5 13.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+export function gaugeCue(step, ko){
+  if (step === 0) return `<span class="hg-lift">${LIFT}</span><b>LET GO</b><small>${ko ? 'TO START' : 'TO SNAP'}</small>`;
+  if (step === 1) return `<b>READY</b><span class="hg-bar"><i></i></span>`;
+  return `<b class="hg-now">KICK!</b>`;
 }
 /* The tube for a rail `h` pixels tall: zones are { c, a, b } fractions top to bottom. */
 export function gaugeRail(zones, h, ko = false, color = '#fff'){
@@ -270,7 +280,7 @@ export const CSS = `
 .pb.hd .pb-jump.hot{color:#16130a}
 
 /* ---------- the punt's drop gauge (left edge) ---------- */
-.pb.hd .pb-gauge{position:absolute;left:calc(env(safe-area-inset-left,0px) + 12px);top:50%;transform:translateY(-50%);z-index:3;width:72px;display:grid;justify-items:center;
+.pb.hd .pb-gauge{position:absolute;left:calc(env(safe-area-inset-left,0px) + 12px);top:50%;transform:translateY(-50%);z-index:3;width:80px;display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;
   border-radius:22px;overflow:hidden;background:var(--hd-glass);-webkit-backdrop-filter:var(--hd-blur);backdrop-filter:var(--hd-blur);border:1px solid rgba(255,255,255,.14);
   box-shadow:0 14px 34px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);animation:hgIn .38s cubic-bezier(.2,.9,.25,1.12) both;transition:box-shadow .2s,opacity .35s}
 .pb.hd .pb-gauge[hidden]{display:none}
@@ -307,6 +317,23 @@ export const CSS = `
 .pb.hd .pb-gauge.ko .hg-foot{height:32px}
 .pb.hd .pb-gauge.ko .hg-cap{gap:4px} .pb.hd .pb-gauge.ko .hg-cap b{font-size:14px;letter-spacing:.02em} .pb.hd .pb-gauge.ko .hg-disc{width:19px;height:19px} .pb.hd .pb-gauge.ko .hg-disc img{width:14px;height:14px}
 @keyframes hgSwing{0%{transform:rotate(0)}22%{transform:rotate(-38deg) translateY(-3px)}100%{transform:rotate(0)}}
+.pb.hd .hg-steps{display:flex;gap:2px;margin-top:8px;max-width:100%}
+.pb.hd .hg-steps i{font:800 8.5px/1 var(--hd-display);letter-spacing:.03em;font-style:normal;padding:3px 3.5px 2px;border-radius:999px;color:rgba(255,255,255,.35);background:rgba(255,255,255,.06);transition:background .2s,color .2s}
+.pb.hd .hg-steps i.done{color:#1b1400;background:rgba(255,210,63,.75)}
+.pb.hd .hg-steps i.on{color:#0b0d10;background:#fff;box-shadow:0 0 10px rgba(255,255,255,.45)}
+.pb.hd .hg-cue{min-height:40px;width:100%;display:grid;align-content:center;justify-items:center;gap:3px;padding:4px 4px 9px}
+.pb.hd .hg-cue:empty,.pb.hd .pb-gauge.hit .hg-cue{display:none}
+.pb.hd .hg-cue b{font:800 16px/1 var(--hd-display);letter-spacing:.05em;color:#fff}
+.pb.hd .hg-cue small{font:700 8.5px/1 var(--hd-body);letter-spacing:.1em;color:var(--hd-mute)}
+.pb.hd .hg-lift{width:18px;height:18px;color:var(--hd-yellow);animation:hgLift 1s ease-in-out infinite}
+@keyframes hgLift{0%,100%{transform:translateY(2px)}50%{transform:translateY(-3px)}}
+.pb.hd .hg-bar{width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+.pb.hd .hg-bar i{display:block;height:100%;width:0;border-radius:3px;background:var(--hd-yellow);box-shadow:0 0 8px rgba(255,210,63,.7)}
+.pb.hd .hg-now{color:var(--hd-yellow) !important;animation:hgNow .32s ease-in-out infinite alternate}
+@keyframes hgNow{to{transform:scale(1.12);text-shadow:0 0 12px rgba(255,210,63,.8)}}
+.pb.hd .pb-gauge:not(.hit) .hg-res{display:none}
+.pb.hd .pb-gauge.aiming .hg-ball{animation:hgBob 1.2s ease-in-out infinite}
+@keyframes hgBob{50%{margin-top:-7px}}
 .pb.hd .hg-res{min-height:34px;width:100%;display:grid;align-content:center;justify-items:center;gap:3px;padding:4px 2px 9px;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .25s cubic-bezier(.2,.9,.25,1.3)}
 .pb.hd .pb-gauge.hit .hg-res{opacity:1;transform:none}
 .pb.hd .hg-res b{font:800 16px/1 var(--hd-display);letter-spacing:.04em;text-shadow:0 1px 2px rgba(0,0,0,.6)}
