@@ -1,6 +1,17 @@
 {
- "updated": "2026-11-15T15:55:22+00:00",
+ "updated": "2026-11-15T20:38:04+00:00",
  "threads": [
+  {
+   "kind": "game",
+   "title": "[Game Thread] Ole Miss @ Oklahoma (1:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xx0k5k/game_thread_ole_miss_oklahoma_100_pm_et/",
+   "published": "2026-11-15T17:00:09+00:00",
+   "gameId": null,
+   "teams": [
+    "Ole Miss",
+    "Oklahoma"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] North Dakota State Defeats Hawai'i 21-13",
