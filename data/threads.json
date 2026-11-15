@@ -1,6 +1,83 @@
 {
- "updated": "2026-11-15T05:41:23+00:00",
+ "updated": "2026-11-15T08:30:06+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] North Dakota State Defeats Hawai'i 21-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwpeqs/postgame_thread_north_dakota_state_defeats_hawaii/",
+   "published": "2026-11-15T07:28:11+00:00",
+   "gameId": "401864537",
+   "teams": [
+    "North Dakota State",
+    "Hawai'i"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Utah Defeats Arizona 40-39",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwp9cq/postgame_thread_utah_defeats_arizona_4039/",
+   "published": "2026-11-15T07:19:10+00:00",
+   "gameId": "401856864",
+   "teams": [
+    "Utah",
+    "Arizona"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Montana Defeats Idaho State 38-30",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwp3hw/postgame_thread_montana_defeats_idaho_state_3830/",
+   "published": "2026-11-15T07:09:12+00:00",
+   "gameId": "401868109",
+   "teams": [
+    "Montana",
+    "Idaho State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Washington State Defeats Colorado State 73-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwoyxb/postgame_thread_washington_state_defeats_colorado/",
+   "published": "2026-11-15T07:01:19+00:00",
+   "gameId": "401860917",
+   "teams": [
+    "Washington State",
+    "Colorado State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Wyoming Defeats UTEP 27-15",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwoi39/postgame_thread_wyoming_defeats_utep_2715/",
+   "published": "2026-11-15T06:33:16+00:00",
+   "gameId": "401864540",
+   "teams": [
+    "Wyoming",
+    "UTEP"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas Tech Defeats Oklahoma State 52-27",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwoc18/postgame_thread_texas_tech_defeats_oklahoma_state/",
+   "published": "2026-11-15T06:23:11+00:00",
+   "gameId": "401856863",
+   "teams": [
+    "Texas Tech",
+    "Oklahoma State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] San Diego State Defeats Utah State 30-13",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwo3y4/postgame_thread_san_diego_state_defeats_utah/",
+   "published": "2026-11-15T06:10:24+00:00",
+   "gameId": "401860915",
+   "teams": [
+    "San Diego State",
+    "Utah State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] UTSA Defeats North Texas 35-16",
