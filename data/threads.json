@@ -1,6 +1,204 @@
 {
- "updated": "2026-11-15T02:19:20+00:00",
+ "updated": "2026-11-15T05:41:23+00:00",
  "threads": [
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UTSA Defeats North Texas 35-16",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwniji/postgame_thread_utsa_defeats_north_texas_3516/",
+   "published": "2026-11-15T05:35:12+00:00",
+   "gameId": "401862827",
+   "teams": [
+    "UTSA",
+    "North Texas"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Texas Defeats LSU 22-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwm8wu/postgame_thread_texas_defeats_lsu_2221/",
+   "published": "2026-11-15T04:24:11+00:00",
+   "gameId": "401856885",
+   "teams": [
+    "Texas",
+    "LSU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Arkansas Defeats South Carolina 34-6",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwm7jn/postgame_thread_arkansas_defeats_south_carolina/",
+   "published": "2026-11-15T04:22:10+00:00",
+   "gameId": "401856882",
+   "teams": [
+    "Arkansas",
+    "South Carolina"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Tulsa Defeats FAU 38-21",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwm0e6/postgame_thread_tulsa_defeats_fau_3821/",
+   "published": "2026-11-15T04:11:11+00:00",
+   "gameId": "401862826",
+   "teams": [
+    "Tulsa",
+    "FAU"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Stanford Defeats Virginia Tech 40-22",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwlz46/postgame_thread_stanford_defeats_virginia_tech/",
+   "published": "2026-11-15T04:09:11+00:00",
+   "gameId": "401858299",
+   "teams": [
+    "Stanford",
+    "Virginia Tech"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] UNLV Defeats New Mexico 21-17",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwlqds/postgame_thread_unlv_defeats_new_mexico_2117/",
+   "published": "2026-11-15T03:56:11+00:00",
+   "gameId": "401864539",
+   "teams": [
+    "UNLV",
+    "New Mexico"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Iowa Defeats Purdue 28-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwlgeb/postgame_thread_iowa_defeats_purdue_287/",
+   "published": "2026-11-15T03:41:10+00:00",
+   "gameId": "401858519",
+   "teams": [
+    "Iowa",
+    "Purdue"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Louisville Defeats North Carolina 16-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwl7pw/postgame_thread_louisville_defeats_north_carolina/",
+   "published": "2026-11-15T03:28:09+00:00",
+   "gameId": "401858298",
+   "teams": [
+    "Louisville",
+    "North Carolina"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Air Force Defeats San Jos\u00e9 State 24-3",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwl7po/postgame_thread_air_force_defeats_san_jos\u00e9_state/",
+   "published": "2026-11-15T03:28:09+00:00",
+   "gameId": "401864538",
+   "teams": [
+    "Air Force",
+    "San Jos\u00e9 State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Penn State Defeats Minnesota 42-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwl71t/postgame_thread_penn_state_defeats_minnesota_4214/",
+   "published": "2026-11-15T03:27:09+00:00",
+   "gameId": "401858524",
+   "teams": [
+    "Penn State",
+    "Minnesota"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] BYU Defeats Baylor 28-7",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwl71q/postgame_thread_byu_defeats_baylor_287/",
+   "published": "2026-11-15T03:27:08+00:00",
+   "gameId": "401856858",
+   "teams": [
+    "BYU",
+    "Baylor"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] South Alabama Defeats Troy 27-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwl14t/postgame_thread_south_alabama_defeats_troy_2714/",
+   "published": "2026-11-15T03:18:17+00:00",
+   "gameId": "401871100",
+   "teams": [
+    "South Alabama",
+    "Troy"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] North Dakota State @ Hawai'i (11:00 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwkogo/game_thread_north_dakota_state_hawaii_1100_pm_et/",
+   "published": "2026-11-15T03:00:06+00:00",
+   "gameId": null,
+   "teams": [
+    "North Dakota State",
+    "Hawai'i"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Boise State Defeats Oregon State 46-41",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwkamn/postgame_thread_boise_state_defeats_oregon_state/",
+   "published": "2026-11-15T02:40:17+00:00",
+   "gameId": "401860914",
+   "teams": [
+    "Boise State",
+    "Oregon State"
+   ]
+  },
+  {
+   "kind": "post",
+   "title": "[Postgame Thread] Florida Defeats Kentucky 21-14",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwkamf/postgame_thread_florida_defeats_kentucky_2114/",
+   "published": "2026-11-15T02:40:17+00:00",
+   "gameId": "401856884",
+   "teams": [
+    "Florida",
+    "Kentucky"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Utah @ Arizona (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwk3pm/game_thread_utah_arizona_1030_pm_et/",
+   "published": "2026-11-15T02:30:08+00:00",
+   "gameId": null,
+   "teams": [
+    "Utah",
+    "Arizona"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Idaho State @ Montana (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwk3p2/game_thread_idaho_state_montana_1030_pm_et/",
+   "published": "2026-11-15T02:30:07+00:00",
+   "gameId": null,
+   "teams": [
+    "Idaho State",
+    "Montana"
+   ]
+  },
+  {
+   "kind": "game",
+   "title": "[Game Thread] Colorado State @ Washington State (10:30 PM ET)",
+   "url": "https://www.reddit.com/r/CFB/comments/1xwk3oi/game_thread_colorado_state_washington_state_1030/",
+   "published": "2026-11-15T02:30:05+00:00",
+   "gameId": null,
+   "teams": [
+    "Colorado State",
+    "Washington State"
+   ]
+  },
   {
    "kind": "post",
    "title": "[Postgame Thread] Appalachian State Defeats Marshall 20-16",
@@ -2610,39 +2808,6 @@
    "teams": [
     "UTSA",
     "FAU"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Eastern Michigan Defeats Central Michigan 35-7",
-   "url": "https://www.reddit.com/r/CFB/comments/1xo8v7v/postgame_thread_eastern_michigan_defeats_central/",
-   "published": "2026-11-05T03:52:13+00:00",
-   "gameId": "401866456",
-   "teams": [
-    "Eastern Michigan",
-    "Central Michigan"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] UMass Defeats Ball State 31-30",
-   "url": "https://www.reddit.com/r/CFB/comments/1xo8eu0/postgame_thread_umass_defeats_ball_state_3130/",
-   "published": "2026-11-05T03:29:11+00:00",
-   "gameId": "401866455",
-   "teams": [
-    "UMass",
-    "Ball State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Toledo Defeats Sacramento State 20-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1xo89sf/postgame_thread_toledo_defeats_sacramento_state/",
-   "published": "2026-11-05T03:22:11+00:00",
-   "gameId": "401866457",
-   "teams": [
-    "Toledo",
-    "Sacramento State"
    ]
   }
  ],
