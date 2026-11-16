@@ -2,7 +2,7 @@
    country, stats, the playoff), game week (scouting, game plan, practice, kickoff), and the result of each game.
    pixelbowl.js owns the game itself and hands this module what it needs through init(ctx). */
 import { esc, store } from '../util.js';
-import { state, CONF, CONF_ORDER } from '../state.js';
+import { state, CONF, CONF_ORDER, apRank } from '../state.js';
 import * as api from '../api.js';
 import { parseFpi, parseStandings } from '../models.js';
 import { myTeam } from '../myteam.js';
@@ -76,23 +76,117 @@ export function setupScreen(){
 /* The team picker's list, the board's way: a heading per conference in the board's order (independents last), teams
    A to Z under each. Searching hides teams that don't match and, in CSS, any conference left empty. Used for both
    pickers (pixelbowl.js passes its own action). */
-export function teamGroups(list, act){
-  const st = state.standings, confOf = t => st?.byTeam[t.id]?.conf;
-  const name = c => CONF[c] || st?.confs?.find(x => String(x.id) === String(c))?.name || 'Other';
-  const btn = t => `<button type="button" data-pb="${act}" data-id="${esc(t.id)}" data-n="${esc(t.name.toLowerCase())} ${esc(t.abbr.toLowerCase())}" style="--c:${esc(t.color)}">
-      ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72, 'light'))}" alt="" loading="lazy">` : '<i></i>'}<span>${esc(t.name)}</span><em></em></button>`;   // on a white disc: the regular logo
-  const byName = (a, b) => a.name.localeCompare(b.name);
-  if (!list.some(t => confOf(t) != null)) return `<div class="pb-list">${[...list].sort(byName).map(btn).join('')}</div>`;
-  const confs = [...new Set(list.map(t => Number(confOf(t))))].sort((a, b) => (CONF_ORDER.indexOf(a) + 1 || 99) - (CONF_ORDER.indexOf(b) + 1 || 99));
-  return `<div class="pb-list pb-glist">${confs.map(c => `<section class="pb-cgrp"><h3>${esc(name(c))}</h3><div class="pb-cteams">${
-    list.filter(t => Number(confOf(t)) === c).sort(byName).map(btn).join('')}</div></section>`).join('')}</div>`;
+/* ---------- the team picker (exhibition and season) ----------
+   A full-height sheet: the title and search stay put at the top and the list scrolls under them, so whatever you
+   type, the matches sit right under the box (never down behind the keyboard). Browsing: your teams (the board's
+   team, recent picks, this matchup), the Top 25, then every conference (chips jump to one). Searching: one ranked
+   list (names first, then nicknames), the best match marked; Return picks it. */
+const ALIAS = { 333: 'bama roll tide crimson tide', 61: 'uga dawgs bulldogs', 194: 'osu tosu buckeyes', 130: 'um wolverines', 251: 'ut longhorns horns',
+  201: 'ou sooners', 99: 'tigers', 30: 'trojans', 213: 'psu nittany lions', 57: 'uf gators', 52: 'fsu noles seminoles', 228: 'tigers', 145: 'rebels',
+  344: 'msu bulldogs', 245: 'tamu aggies', 2633: 'ut vols volunteers', 87: 'nd fighting irish', 2483: 'ducks', 2390: 'canes hurricanes the u', 2: 'tigers war eagle',
+  197: 'osu cowboys pokes', 2116: 'knights', 153: 'unc tar heels', 152: 'wolfpack', 259: 'vt hokies', 275: 'badgers', 2294: 'hawkeyes', 2306: 'ksu wildcats',
+  9: 'asu sun devils', 252: 'cougars', 2567: 'mustangs', 2628: 'horned frogs', 221: 'pitt panthers', 59: 'gt yellow jackets', 2509: 'boilermakers',
+  356: 'illini', 77: 'wildcats', 135: 'gophers', 164: 'scarlet knights', 84: 'iu hoosiers', 158: 'huskers cornhuskers', 2579: 'gamecocks', 238: 'commodores',
+  96: 'uk wildcats', 25: 'cal golden bears', 26: 'bruins', 12: 'wildcats', 254: 'utes', 264: 'uw huskies', 2305: 'ku jayhawks', 248: 'cougars',
+  66: 'isu cyclones', 103: 'bc eagles', 150: 'blue devils', 258: 'uva cavaliers hoos', 120: 'terps terrapins', 2641: 'red raiders', 142: 'mizzou tigers', 41: 'huskies' };
+const norm = x => String(x || '').toLowerCase().replace(/&/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\bst\b/g, 'state').replace(/\s+/g, ' ').trim();
+const RECENT = 'pickrecent';
+/* Remembers a pick for the "Your teams" row (newest first). */
+export function rememberPick(id){ id = String(id); store.set(RECENT, [id, ...store.get(RECENT, []).filter(x => x !== id)].slice(0, 8)); }
+let pk = null;   // the open picker: its teams and options, for the search
+const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const LENS = '<svg class="pb-qi" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const confName = c => c == null ? '' : CONF[c] || state.standings?.confs?.find(x => String(x.id) === String(c))?.name || '';
+const logoImg = (t, lazy = true) => t.logo ? `<img src="${esc(logoUrl(t.logo, 72, 'light'))}" alt=""${lazy ? ' loading="lazy"' : ''}>` : '';
+const rankOf = t => { const r = apRank(t.id); return r && r <= 25 ? r : null; };
+const mark = t => t.id === pk.cur ? `<i class="pb-tcur" aria-label="Current pick">${CHECK}</i>` : t.id === pk.other ? `<em class="pb-ttag">${esc(pk.otherTag)}</em>` : '';
+/* Browsing: a tile in the team's colors, the logo big, the name in the broadcast type. */
+function tile(t){
+  const s = state.standings?.byTeam[t.id]?.overall, rk = rankOf(t);
+  return `<button type="button" class="pb-tile${t.id === pk.cur ? ' cur' : ''}" data-pb="${pk.act}" data-id="${esc(t.id)}" style="--c:${esc(t.color)};--k:${inkOn(t.color)}">
+    ${rk ? `<span class="pb-trk">${rk}</span>` : ''}${mark(t)}
+    <span class="pb-tdisc">${logoImg(t)}</span><b>${esc(t.name)}</b>${s ? `<small>${s.w}–${s.l}</small>` : ''}</button>`;
 }
+/* Searching: a row, a plate in the team's colors holding the logo, and its rank, record and conference. */
+function row(t, best = false){
+  const st = state.standings?.byTeam[t.id], s = st?.overall, rk = rankOf(t), meta = [s ? `${s.w}–${s.l}` : '', confName(st?.conf)].filter(Boolean).join(' · ');
+  return `<button type="button" class="pb-trow${t.id === pk.cur ? ' cur' : ''}${best ? ' best' : ''}" data-pb="${pk.act}" data-id="${esc(t.id)}" style="--c:${esc(t.color)}">
+    <span class="pb-tplate"><span class="pb-tdisc">${logoImg(t)}</span></span>
+    <span class="pb-tname"><b>${rk ? `<i>${rk}</i>` : ''}${esc(t.name)}</b>${meta ? `<small>${esc(meta)}</small>` : ''}</span>
+    ${mark(t) || (best ? '<kbd class="pb-tgo">GO</kbd>' : '')}</button>`;
+}
+const chip = t => `<button type="button" class="pb-qchip${t.id === pk.cur ? ' cur' : ''}" data-pb="${pk.act}" data-id="${esc(t.id)}" style="--c:${esc(t.color)}">
+  <span class="pb-tdisc">${logoImg(t, false)}</span><small>${esc(t.abbr)}</small></button>`;
+const byName = (a, b) => a.name.localeCompare(b.name);
+/* { title, act, back, list, cur, other, otherTag } */
+export function pickerHTML(o){
+  const ICON_X = ctx?.icon?.x || '×';
+  pk = { ...o, cur: o.cur == null ? null : String(o.cur), other: o.other == null ? null : String(o.other), byId: new Map(o.list.map(t => [String(t.id), t])) };
+  const st = state.standings, confOf = t => st?.byTeam[t.id]?.conf;
+  const quick = [...new Set([myTeam?.id, pk.cur, pk.other, ...store.get(RECENT, [])].filter(Boolean).map(String))].map(id => pk.byId.get(id)).filter(Boolean).slice(0, 8);
+  const top = o.list.map(t => [t, apRank(t.id)]).filter(([, r]) => r && r <= 25).sort((a, b) => a[1] - b[1]).slice(0, 25).map(([t]) => t);
+  const confs = [...new Set(o.list.map(t => confOf(t)).filter(c => c != null).map(Number))].sort((a, b) => (CONF_ORDER.indexOf(a) + 1 || 99) - (CONF_ORDER.indexOf(b) + 1 || 99));
+  const rest = o.list.filter(t => confOf(t) == null);
+  const group = (key, name, teams) => teams.length ? `<section class="pb-cgrp" data-grp="${key}"><h3>${esc(name)}${key === 'top' ? '' : `<small>${teams.length}</small>`}</h3><div class="pb-tiles">${teams.map(tile).join('')}</div></section>` : '';
+  const jumps = [top.length ? ['top', 'Top 25'] : null, ...confs.map(c => [c, confName(c) || 'Other'])].filter(Boolean);
+  return `<div class="pb-setup pb-picker">
+    <div class="pb-ph"><b>${esc(o.title)}</b><button class="pb-x" type="button" data-pb="${o.back}" aria-label="Back">${ICON_X}</button></div>
+    <label class="pb-qw">${LENS}<input class="pb-q" type="search" enterkeyhint="go" placeholder="Search ${o.list.length} teams or nicknames" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-pb-q aria-label="Search teams"><button type="button" class="pb-qx" data-pb="pqx" aria-label="Clear search" hidden>${ICON_X}</button></label>
+    ${jumps.length > 1 ? `<div class="pb-jumps">${jumps.map(([k, n], i) => `<button type="button" data-pb="pjump" data-v="${k}"${i ? '' : ' class="on"'}>${esc(n)}</button>`).join('')}</div>` : ''}
+    <div class="pb-pscroll">
+      <div class="pb-hits" hidden></div>
+      <div class="pb-browse">
+        ${quick.length ? `<section class="pb-cgrp pb-qgrp"><h3>Your teams</h3><div class="pb-quick">${quick.map(chip).join('')}</div></section>` : ''}
+        ${group('top', 'Top 25', top)}
+        ${confs.map(c => group(c, confName(c) || 'Other', o.list.filter(t => Number(confOf(t)) === c).sort(byName))).join('')}
+        ${group('rest', confs.length ? 'Other' : 'Teams', [...rest].sort(byName))}
+      </div>
+    </div></div>`;
+}
+/* The search: a ranked list in place of the browse view, scrolled to the top, the best match marked. */
+export function pickerSearch(root, raw){
+  if (!pk) return;
+  const q = norm(raw), hits = root.querySelector('.pb-hits'), browse = root.querySelector('.pb-browse'), x = root.querySelector('.pb-qx');
+  if (x) x.hidden = !raw;
+  if (!q){ hits.hidden = true; hits.innerHTML = ''; browse.hidden = false; const j = root.querySelector('.pb-jumps'); if (j) j.hidden = false; return; }
+  const score = t => {
+    const n = norm(t.name), a = norm(t.abbr), al = ALIAS[t.id] || '';
+    if (n === q || a === q) return 100;
+    if (n.startsWith(q)) return 80;
+    if ((' ' + n).includes(' ' + q)) return 64;
+    if (a.startsWith(q)) return 56;
+    if ((' ' + al).includes(' ' + q)) return 50;
+    if (n.replace(/ /g, '').includes(q.replace(/ /g, ''))) return 30;
+    return 0;
+  };
+  const rk = t => apRank(t.id) || 99;
+  const list = pk.list.map(t => [t, score(t)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1] || rk(a[0]) - rk(b[0]) || byName(a[0], b[0])).map(([t]) => t);
+  hits.innerHTML = list.length ? `<div class="pb-rows">${list.slice(0, 40).map((t, i) => row(t, i === 0)).join('')}</div>` : `<p class="pb-none">No team matches “${esc(raw.trim())}”.</p>`;
+  hits.hidden = false; browse.hidden = true;
+  const j = root.querySelector('.pb-jumps'); if (j) j.hidden = true;
+  root.querySelector('.pb-pscroll').scrollTop = 0;
+}
+/* Return in the search box: the best match. */
+export function pickerBest(root){ root.querySelector('.pb-hits:not([hidden]) .pb-trow')?.click(); }
+export function pickerJump(root, k){
+  const sc = root.querySelector('.pb-pscroll'), g = root.querySelector(`.pb-cgrp[data-grp="${k}"]`);
+  if (sc && g) sc.scrollTo({ top: g.offsetTop, behavior: 'smooth' });   // (.pb-pscroll is the offset parent)
+}
+/* While browsing, the chip for the section at the top of the list lights up (and scrolls into view). */
+export function pickerSpy(root){
+  const sc = root.querySelector('.pb-pscroll'); if (!sc) return;
+  // A header gets its backing only while it's pinned over the tiles (unpinned, it sits on the sheet like the rest).
+  const st = sc.getBoundingClientRect().top;
+  for (const g of sc.querySelectorAll('.pb-cgrp[data-grp]')){ const h = g.firstElementChild, r = g.getBoundingClientRect(); h.classList.toggle('stuck', r.top < st - 1 && r.bottom > st + 40); }
+  const chips = root.querySelectorAll('.pb-jumps button'); if (!chips.length) return;
+  const top = st + 24;
+  let on = chips[0].dataset.v;
+  for (const g of sc.querySelectorAll('.pb-browse .pb-cgrp[data-grp]')) if (g.getBoundingClientRect().top <= top) on = g.dataset.grp;
+  for (const c of chips){ const a = c.dataset.v === on; if (a !== c.classList.contains('on')){ c.classList.toggle('on', a); if (a) c.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); } }
+}
+export function pickerClear(root){ const i = root.querySelector('.pb-q'); if (!i) return; i.value = ''; pickerSearch(root, ''); i.focus(); }
 function teamList(){
-  const list = ctx.allTeams();
-  ctx.modal(`<div class="pb-setup pb-picker">
-    <div class="pb-ph"><b>YOUR TEAM</b><button class="pb-x" type="button" data-pb="s-new" aria-label="Back">${ctx.icon.x}</button></div>
-    <input class="pb-q" type="search" placeholder="Search ${list.length} teams" autocomplete="off" data-pb-q>
-    ${teamGroups(list, 's-team')}</div>`);
+  ctx.modal(pickerHTML({ title: 'YOUR TEAM', act: 's-team', back: 's-new', list: ctx.allTeams(), cur: setupPick?.team }));
 }
 async function begin(){
   const name = ctx.teamInfo(setupPick.team).name;
@@ -441,7 +535,7 @@ export function click(a, b){
     case 's-hub': recapOpen = recapOpen && document.querySelector('.sz-result') != null; return hub();
     case 's-new': return setupScreen();
     case 's-teams': return teamList();
-    case 's-team': setupPick.team = b.dataset.id; return setupScreen();
+    case 's-team': setupPick.team = b.dataset.id; rememberPick(b.dataset.id); return setupScreen();
     case 's-set': setupPick[b.dataset.k] = b.dataset.v; return setupScreen();
     case 's-begin':
       if (b.dataset.confirm === '1' && b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = 'TAP AGAIN TO START OVER'; return; }

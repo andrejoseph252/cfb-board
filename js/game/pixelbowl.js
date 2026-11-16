@@ -18,6 +18,7 @@ import { createRenderer } from './drawhd.js';
 import * as hdUI from './hdui.js';
 import { initAudio, setSound, soundOn, sfx, resume, crowd, bindTeams, silence, setAtmosphere } from './sfx.js';
 import * as SV from './seasonview.js';
+import * as LK from './locker.js';
 import * as SC from './scout.js';
 import * as W from './weather.js';
 
@@ -173,7 +174,9 @@ export function open({ prefill = null, exit = () => {} } = {}){
   if (Array.isArray(prefill) === false) prefill = null;
   if (root){ if (chal) startChallenge(chal); else if (prefill && phase === 'setup'){ pick = defaults(prefill); setup(); } return; }
   seasonCtx.icon = ICON; SV.init(seasonCtx);
-  if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS + hdUI.CSS }));
+  LK.init({ modal, teamInfo, allTeams, logoUrl, icon: ICON, back: () => setup(),
+    picker: cur => modal(SV.pickerHTML({ title: 'LOCKER ROOM', act: 'lk-pickteam', back: 'lk-open', list: allTeams(), cur })) });
+  if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS + hdUI.CSS + LK.CSS }));
   root = document.createElement('div');
   root.className = 'pb hd'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
   root.innerHTML = `<canvas class="pb-cv"></canvas>
@@ -222,6 +225,9 @@ export function open({ prefill = null, exit = () => {} } = {}){
   // viewport's zoom setting).
   if (!gestureGuard){ gestureGuard = true; for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, e => { if (document.body.classList.contains('pb-open')) e.preventDefault(); }, { passive: false }); }
   root.addEventListener('click', onClick); root.addEventListener('input', onInput);
+  root.addEventListener('change', e => { if (e.target.matches('[data-lk-color], [data-lk-name]')) LK.input(e.target, true); });
+  root.addEventListener('scroll', e => { if (e.target.classList?.contains('pb-pscroll')) SV.pickerSpy(root); }, true);
+  root.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches?.('[data-pb-q]')){ e.preventDefault(); SV.pickerBest(root); } });
   window.addEventListener('resize', onResize); window.addEventListener('orientationchange', onResize); window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
   document.addEventListener('visibilitychange', onHide);
   pick = defaults(prefill);
@@ -240,7 +246,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
 }
 export function close(){
   if (!root) return;
-  cancelAnimationFrame(raf);
+  cancelAnimationFrame(raf); LK.stop();
   window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', onResize); window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup);
   document.removeEventListener('visibilitychange', onHide);
   sizeWatch?.disconnect(); sizeWatch = null;
@@ -347,19 +353,21 @@ function menuGame(){
   G = newGame(me, opp, saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G);
   return { me, opp };
 }
+/* A long single word ("Massachusetts") steps the card's name down a size or two so it never breaks mid-word. */
+const nameFit = n => { const lw = Math.max(...String(n).split(/\s+/).map(w => w.length)), fs = Math.max(15, Math.min(21, Math.floor(240 / lw))); return fs < 21 ? ` style="font-size:${fs}px"` : ''; };
 function setup(){
   phase = 'setup'; paused = false; behind = null; wxOpen = false;
   const { me, opp } = menuGame();
   showHud(false);
   const hp = hdUI.cards.pair(me, opp);   // the two cards' colors kept apart
   const rec = saved.results[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" data-tid="${esc(t.id)}" style="${hp ? hp[t === me ? 0 : 1] : `--c:${esc(t.color)};--k:${inkOn(t.color)}`}">
-      ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b>${esc(t.name)}</b><small>${who}</small>
+      ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b${nameFit(t.name)}>${esc(t.name)}</b><small>${who}</small>
       <span class="pb-rt">${Number.isFinite(t.off) ? `OFF ${Math.round(t.off)} · DEF ${Math.round(t.def)}` : 'Tap to change'}</span></button>`;
   const seg = (key, items, cls = '') => `<div class="pb-seg${cls}">${items.map(([v, l]) => `<button type="button" data-pb="set" data-k="${key}" data-v="${v}" aria-pressed="${saved[key] === v}">${l}</button>`).join('')}</div>`;
   modal(`<div class="pb-setup">
     <button class="pb-x" type="button" data-pb="exit" aria-label="Close">${ICON.x}</button>
     <h1 class="pb-logo"><span>COACH ANDRE'S</span><span>BOWL</span></h1>
-    <div class="pb-match">${card(me, 'YOU', 'pickme')}<button class="pb-vs" type="button" data-pb="swap" aria-label="Swap teams">VS<i>⇄</i></button>${card(opp, 'CPU', 'pickopp')}</div>
+    <div class="pb-match"><div class="pb-tw">${card(me, 'YOU', 'pickme')}<button class="pb-kitbtn${LK.wearing(me.id) ? ' on' : ''}" type="button" data-pb="lk-open" data-id="${esc(me.id)}" aria-label="Uniform: ${esc(LK.wearing(me.id) || 'Home')}. Open the Locker Room">${LK.bust(me)}</button></div><button class="pb-vs" type="button" data-pb="swap" aria-label="Swap teams">VS<i>⇄</i></button>${card(opp, 'CPU', 'pickopp')}</div>
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
     ${wxRow()}
@@ -372,6 +380,7 @@ function setup(){
     <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
     <button class="pb-go pb-take" type="button" data-pb="challenges"><span>TAKE OVER</span><small>Replay this week's real late-game moments</small></button>
     <div class="pb-btns pb-menu2"><button class="pb-go alt" type="button" data-pb="practice">PRACTICE</button><button class="pb-go alt" type="button" data-pb="playbook">MY PLAYBOOK</button></div>
+    <button class="pb-go pb-take pb-lkbtn" type="button" data-pb="lk-open" data-id="${esc(me.id)}"><span>LOCKER ROOM</span><small>${LK.wearing(me.id) ? `${esc(me.name)} wearing: ${esc(LK.wearing(me.id))}` : 'Design your uniforms'}</small></button>
     ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
   </div>`, false, 'setup');   // 'setup': redrawn in place (teams arriving, an option changed) without sliding in again
@@ -417,11 +426,9 @@ function wxSheet(){
 
 function teamPicker(which){
   picking = which;
-  const list = allTeams();
-  modal(`<div class="pb-setup pb-picker">
-    <div class="pb-ph"><b>${which === 'me' ? 'YOUR TEAM' : 'OPPONENT'}</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
-    <input class="pb-q" type="search" placeholder="Search ${list.length} teams" autocomplete="off" data-pb-q>
-    ${SV.teamGroups(list, 'team')}</div>`);
+  const other = which === 'me' ? 'opp' : 'me';
+  modal(SV.pickerHTML({ title: which === 'me' ? 'YOUR TEAM' : 'OPPONENT', act: 'team', back: 'back', list: allTeams(),
+    cur: pick[which], other: pick[other], otherTag: other === 'me' ? 'YOU · SWAP' : 'CPU · SWAP' }));
   if (!coarse()) $('.pb-q')?.focus();
 }
 
@@ -2075,6 +2082,7 @@ function onClick(e){
   resume();
   const a = b.dataset.pb;
   if (a !== 'sound') sfx('blip');
+  if (a.startsWith('lk-')){ if (a === 'lk-open' || a === 'lk-pickteam') phase = 'setup'; return LK.click(a, b); }
   if (a.startsWith('s-')){ if (paused){ paused = false; behind = null; } return SV.click(a, b); }
   switch (a){
     case 'exit': return onExit();
@@ -2136,12 +2144,14 @@ function onClick(e){
     case 'team': {
       const id = b.dataset.id, other = picking === 'me' ? 'opp' : 'me';
       if (id === pick[other]) pick[other] = pick[picking];
-      pick[picking] = id; return setup();
+      pick[picking] = id; SV.rememberPick(id); return setup();
     }
     case 'set':
       if (b.dataset.v === 'random' && saved[b.dataset.k] === 'random') cond = null;   // Random again: a new roll
       saved[b.dataset.k] = b.dataset.v; save(); return wxOpen ? wxSheet() : setup();
     case 'wx': return wxSheet();
+    case 'pjump': return SV.pickerJump(root, b.dataset.v);
+    case 'pqx': return SV.pickerClear(root);
     case 'reroll': cond = null; return wxOpen ? wxSheet() : setup();
     case 'toss': return afterToss();
     case 'pat': return startKick('pat');
@@ -2192,14 +2202,14 @@ function onInput(e){
     const b = e.target.closest('.pb-vol')?.querySelector('b'); if (b) b.textContent = `${e.target.value}%`;
     e.target.style.setProperty('--p', `${e.target.value}%`);
   }
+  if (e.target.matches('[data-lk-color], [data-lk-name]')) LK.input(e.target, false);
   if (e.target.matches('[data-pb-opt]')){
     const k = e.target.dataset.pbOpt; saved[k] = e.target.checked; save();
     if (k === 'sound') setSound(saved.sound);
   }
   if (e.target.matches('[data-pb-name]') && editing){ editing.name = e.target.value; $('.pb-ename-err')?.remove(); }
   if (e.target.matches('[data-pb-q]')){
-    const q = e.target.value.trim().toLowerCase();
-    for (const b of root.querySelectorAll('.pb-list [data-n]')) b.hidden = q && !b.dataset.n.includes(q);
+    SV.pickerSearch(root, e.target.value);
   }
 }
 

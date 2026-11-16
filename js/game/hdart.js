@@ -117,6 +117,8 @@ const paintable = s => String(s || '').toUpperCase().replace(/[^A-Z0-9& ]/g, '')
    Regions: H helmet, W helmet stripe, M facemask, K skin, E eyes, J jersey, T sleeve trim, N numbers, P pants,
    Q pants stripe, O socks, B shoes, G gloves.
    ===================================================================================================== */
+/* The uniform's styles for the figure being built (set by getSprite): see uniform(). */
+let STY = {}, VIEW = 'front';
 class Grid {
   constructor(w, h){ this.w = w; this.h = h; this.reg = new Array(w * h).fill(null); this.part = new Int16Array(w * h).fill(-1); this.force = new Int8Array(w * h).fill(-1); this.flags = []; }
   newPart(f = {}){ this.flags.push(f); return this.flags.length - 1; }
@@ -169,14 +171,18 @@ function numberDecal(g, num, font, x0, y0, gap = 1){
   for (const d of ds){ const gl = font[d]; for (let r = 0; r < fh; r++) for (let c = 0; c < fw; c++) if (gl[r][c] === '1') pts.push([x + c, y0 + r]); x += fw + gap; }
   if (MIR){ const right = x - gap - 1; for (const p of pts) p[0] = left + right - p[0]; }
   for (const [px, py] of pts) g.decal(px, py, 'N');
-  // A one-pixel drop shadow down and right gives the numbers a stitched-on feel.
-  for (const [px, py] of pts) if (g.regAt(px + 1, py + 1) && g.regAt(px + 1, py + 1) !== 'N') g.decal(px + 1, py + 1, null, 4);
+  // A one-pixel drop shadow down and right gives the numbers a stitched-on feel; or a ring in the outline color.
+  if (STY.ns === 'outline'){ for (const [px, py] of pts) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1]]){ const r = g.regAt(px + dx, py + dy); if (r && r !== 'N' && r !== 'K' && r !== 'G') g.decal(px + dx, py + dy, 'U'); } }
+  else if (STY.ns !== 'plain') for (const [px, py] of pts) if (g.regAt(px + 1, py + 1) && g.regAt(px + 1, py + 1) !== 'N') g.decal(px + 1, py + 1, null, 4);
 }
 /* A center stripe over the helmet (front and back), along its crown from the side. */
+/* Front / back columns (from the center) and side rows (down from the crown) for each helmet stripe style. */
+const HSTRIPE = { single: [[-1, 0], [0]], wide: [[-2, -1, 0, 1], [0, 1]], double: [[-2, 1], [0, 2]], triple: [[-3, -1, 0, 2], [0, 1, 2]], thin: [[-1], [0]] };
 function helmetStripe(g, view, cx, top, lim){
+  const st = HSTRIPE[STY.hs || 'single'] || HSTRIPE.single;
   const D = (x, y) => { if (g.regAt(x, y) === 'H') g.decal(x, y, 'W'); };
-  if (view === 'side'){ for (let x = 0; x < g.w; x++) for (let y = top; y < top + 3; y++) if (g.regAt(x, y) === 'H' && g.regAt(x, y - 1) !== 'H' && g.regAt(x, y - 1) !== 'W'){ D(x, y); break; } }
-  else for (let y = top; y <= lim; y++){ D(cx - 1, y); D(cx, y); }
+  if (view === 'side'){ for (let x = 0; x < g.w; x++) for (let y = top; y < top + 3; y++) if (g.regAt(x, y) === 'H' && g.regAt(x, y - 1) !== 'H' && g.regAt(x, y - 1) !== 'W'){ for (const k of st[1]) D(x, y + k); break; } }
+  else for (let y = top; y <= lim; y++) for (const k of st[0]) D(cx + k, y);
 }
 
 /* Front or back, standing set, running, throwing. 22x34, feet on row 32. */
@@ -253,7 +259,7 @@ function figFB(o){
     for (let x = cx - 3; x <= cx + 2; x++) g.set(x, hy + 4, 'M', pM);
     for (const x of [cx - 3, cx + 2]) g.set(x, hy + 3, 'M', pM);
   } else for (let x = cx - 3; x <= cx + 2; x++) g.decal(x, hy + 4, null, 3);
-  if (o.stripe) helmetStripe(g, o.view, cx, hy - 4, back ? hy + 4 : hy - 1);
+  if (o.stripe && STY.hs !== 'none') helmetStripe(g, o.view, cx, hy - 4, back ? hy + 4 : hy - 1);
   numberDecal(g, o.num, F4, cx, 14 + c + b, String(o.num).length > 1 ? 2 : 1);
   return { g, ax: cx, ay: 32 };
 }
@@ -272,7 +278,7 @@ function figLine(o){
   if (back){
     // Head down behind the pads, then the back, the pads, the seat of the pants.
     const pH = g.newPart({ gloss: true, hcx: cx, hcy: 9.8 + b, hrx: 4.6, hry: 4.2 }); g.ell(pH, 'H', cx, 9.8 + b, 4.6, 4.2);
-    if (o.stripe) helmetStripe(g, 'back', cx, 5 + b, 13);
+    if (o.stripe && STY.hs !== 'none') helmetStripe(g, 'back', cx, 5 + b, 13);
     arm(g, [cx - 7.8, 14 + b], [cx - 8.6, 18.6], [cx - 6.9, 22.2]);
     arm(g, [cx + 7.8, 14 + b], [cx + 8.4, 18.8], [cx + 6.4, 24.8]);
     const pB = g.newPart({ pad: true });
@@ -297,7 +303,7 @@ function figLine(o){
     for (let x = cx - 4; x <= cx + 3; x++) g.set(x, hy + 2, 'M', pM);
     for (let x = cx - 3; x <= cx + 2; x++) g.set(x, hy + 4, 'M', pM);
     for (const x of [cx - 3, cx + 2]) g.set(x, hy + 3, 'M', pM);
-    if (o.stripe) helmetStripe(g, 'front', cx, hy - 4, hy - 1);
+    if (o.stripe && STY.hs !== 'none') helmetStripe(g, 'front', cx, hy - 4, hy - 1);
   }
   return { g, ax: cx, ay: 30 };
 }
@@ -351,7 +357,7 @@ function figSide(o){
   const fx = Math.round(hx + 2.6);
   for (let y = hy + 1; y <= hy + 3; y++) for (let x = fx; x <= fx + 2; x++) g.decal(x, y, 'K', 3);
   g.decal(fx, hy + 1, 'E');
-  if (o.stripe) helmetStripe(g, 'side', Math.round(hx), hy - 4, hy + 4);
+  if (o.stripe && STY.hs !== 'none') helmetStripe(g, 'side', Math.round(hx), hy - 4, hy + 4);
   const pM = g.newPart({ mask: true });
   for (let y = hy + 1; y <= hy + 4; y++) g.set(fx + 3, y, 'M', pM);
   for (let x = fx + 1; x <= fx + 3; x++){ g.set(x, hy + 2, 'M', pM); g.set(x, hy + 4, 'M', pM); }
@@ -381,7 +387,7 @@ function figSideLine(o){
   const fx = Math.round(hx + 2.4);
   for (let y = hy + 1; y <= hy + 3; y++) for (let x = fx; x <= fx + 2; x++) g.decal(x, y, 'K', 3);
   g.decal(fx, hy + 1, 'E');
-  if (o.stripe) helmetStripe(g, 'side', Math.round(hx), hy - 4, hy + 4);
+  if (o.stripe && STY.hs !== 'none') helmetStripe(g, 'side', Math.round(hx), hy - 4, hy + 4);
   const pM = g.newPart({ mask: true });
   for (let y = hy + 1; y <= hy + 4; y++) g.set(fx + 3, y, 'M', pM);
   for (let x = fx + 1; x <= fx + 3; x++){ g.set(x, hy + 2, 'M', pM); g.set(x, hy + 4, 'M', pM); }
@@ -598,20 +604,83 @@ export function uniform(t, away){
     ? { ...shared, J: '#f2f2ee', T: color, N: contrast(color, '#f2f2ee'), P: lum(alt) > .7 ? '#d9d9d9' : '#e8e8e8', Q: color, O: '#f2f2ee', G: color }
     : { ...shared, J: color, T: alt, N: contrast(alt, color), P: lum(color) < .25 ? alt : '#f2f2f2', Q: color, O: color, G: alt };
   Object.assign(u, KITS[t.id]?.[away ? 'away' : 'home']);
-  u.key = Object.values(u).join('');
+  Object.assign(u, { S: u.T, X: u.T, U: u.T, V: '#2a2f38', Y: u.W, two: 'solid', hs: 'single', fin: 'gloss', sl: 'band', sh: 'none', ps: 'single', sk: 'none', ns: 'shadow', vis: 'none' });
   u.stripe = !near(u.W, u.H);
+  // A kit made in the Locker Room (locker.js) for this team: its colors and styles over the above.
+  const kit = kitOf?.(t, away);
+  if (kit){ Object.assign(u, kit.c, kit.s); u.stripe = u.hs !== 'none'; }
+  u.key = Object.entries(u).map(([k, v]) => k + v).join('');
   return u;
 }
+/* Where uniform() finds a team's Locker Room kit: (team, away) => kit | null. */
+let kitOf = null;
+export const setKitLookup = fn => { kitOf = fn; };
+/* Bumped whenever a kit changes, so drawhd.js re-dresses the teams (and the sideline). */
+let kitV = 0;
+export const kitVersion = () => kitV, bumpKits = () => { kitV++; };
+
+/* The uniform's finishing touches, laid over any built figure (every pose and view): sleeve stripes, shoulder stripes,
+   the pants stripe's style, sock bands and the visor. Regions they add: S shoulder stripes, X sock bands, V visor,
+   U number outline. */
+function dress(g){
+  const W = g.w, H = g.h, reg = g.reg, part = g.part;
+  const each = fn => { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){ const i = y * W + x; if (part[i] >= 0) fn(x, y, i); } };
+  // Sleeves: no stripe, or a second one above it.
+  if (STY.sl === 'none') each((x, y, i) => { if (reg[i] === 'T') reg[i] = 'J'; });
+  else if (STY.sl === 'double'){ const t = []; each((x, y, i) => { if (reg[i] === 'T') t.push([x, y, part[i]]); }); for (const [x, y, p] of t) if (g.at(x, y - 2) === p && g.regAt(x, y - 2) === 'J') g.decal(x, y - 2, 'T'); }
+  // Pants stripe: none, or doubled / widened toward the middle of the leg.
+  if (STY.ps === 'none') each((x, y, i) => { if (reg[i] === 'Q') reg[i] = 'P'; });
+  else if (STY.ps === 'double' || STY.ps === 'wide'){
+    const sum = new Map(), q = [];
+    each((x, y, i) => { const s0 = sum.get(part[i]) || [0, 0]; s0[0] += x; s0[1]++; sum.set(part[i], s0); if (reg[i] === 'Q') q.push([x, y, part[i]]); });
+    const d = STY.ps === 'double' ? 2 : 1;
+    for (const [x, y, p] of q){ const [sx, n] = sum.get(p), tx = x + (sx / n > x ? d : -d); if (g.at(tx, y) === p && g.regAt(tx, y) === 'P') g.decal(tx, y, 'Q'); }
+  }
+  // Sock bands: one or two rings of X just under the knee.
+  if (STY.sk === 'one' || STY.sk === 'two'){
+    const top = new Map(); each((x, y, i) => { if (reg[i] === 'O' && !top.has(part[i])) top.set(part[i], y); });
+    each((x, y, i) => { if (reg[i] !== 'O') return; const t = top.get(part[i]); if (y === t + 1 || STY.sk === 'two' && y === t + 3) reg[i] = 'X'; });
+  }
+  // Shoulder stripes on the pads: loops (one stripe over each shoulder) or bars (two).
+  if (STY.sh === 'loops' || STY.sh === 'bars'){
+    for (let p = 0; p < g.flags.length; p++){
+      if (!g.flags[p].pad) continue;
+      const tops = new Map(); let x0 = W, x1 = -1;
+      each((x, y, i) => { if (part[i] === p && reg[i] === 'J'){ if (!tops.has(x)) tops.set(x, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); } });
+      if (x1 - x0 < 8) continue;
+      for (const [x, t] of tops){
+        if (!(x >= x0 + 1 && x <= x0 + 3 || x <= x1 - 1 && x >= x1 - 3)) continue;
+        for (const k of STY.sh === 'bars' ? [1, 3] : [1]) if (g.at(x, t + k) === p && g.regAt(x, t + k) === 'J') g.decal(x, t + k, 'S');
+      }
+    }
+  }
+  // The helmet's shell (the gloss part with the helmet's ellipse): a two-tone rear.
+  let hp = -1; for (let p = 0; p < g.flags.length; p++){ const f = g.flags[p]; if (f.gloss && f.hrx > 4 && g.part.some((q, i) => q === p && reg[i] === 'H')){ hp = p; } }
+  if (hp >= 0){
+    const f = g.flags[hp];
+    // Two-tone: the rear half in the second color (from the side, the back half; from behind, all of it).
+    if (STY.two === 'two') each((x, y, i) => { if (part[i] === hp && reg[i] === 'H' && (VIEW === 'back' || VIEW === 'side' && x + .5 < f.hcx - .3)) reg[i] = 'Y'; });
+  }
+  // Visor: the eye slot, tinted.
+  if (STY.vis && STY.vis !== 'none'){
+    let ey = -1; each((x, y, i) => { if (ey < 0 && reg[i] === 'E') ey = y; });
+    if (ey >= 0) each((x, y, i) => { if ((y === ey || y === ey - 1) && (reg[i] === 'K' || reg[i] === 'E')){ reg[i] = 'V'; g.force[i] = (x + y) % 5 === 0 ? 1 : 3; } });
+  }
+}
+/* Chrome: a mirror ramp (near white, then deep) for the helmet. */
+const CHROME = new Map();
+const chromeRamp = c => { let r = CHROME.get(c); if (!r){ const b = hex(c); r = [mix(b, [255, 255, 255], .88), mix(b, [255, 255, 255], .5), b, mix(b, [0, 0, 0], .5), mix(b, [0, 0, 0], .74)]; CHROME.set(c, r); } return r; };
 
 /* Rasterise a Grid: per-part shading, creases, rim light, selective outline. lit = false: inside the stadium shadow. */
 function renderGrid(g, uni, skin, lit){
   const { w, h } = g, cv = canvas(w, h), x = cv.getContext('2d'), img = x.createImageData(w, h), d = img.data;
-  const pal = r => rampOf(r === 'K' ? skin : r === 'F' ? '#a65a24' : r === 'L' ? '#f1ece0' : uni[r]);
+  const fin = uni.fin, shell = r => r === 'H' || r === 'W' || r === 'Y';
+  const pal = r => fin === 'chrome' && (shell(r) || r === 'Y') ? chromeRamp(uni[r]) : rampOf(r === 'K' ? skin : r === 'F' ? '#a65a24' : r === 'L' ? '#f1ece0' : uni[r] || '#808080');
   const L = lit ? LIT : SHD, OUT = [20, 13, 32];
   const same = (i, j, p) => g.at(i, j) === p;
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){
     const k = j * w + i, p = g.part[k]; if (p < 0) continue;
-    const r = g.reg[k], f = g.flags[p];
+    const r = g.reg[k], f0 = g.flags[p], f = fin === 'matte' && f0.gloss && shell(r) ? { ...f0, gloss: false } : f0;
     let tone;
     if (r === 'E') tone = 4;
     else if (g.force[k] >= 0) tone = g.force[k];
@@ -625,8 +694,9 @@ function renderGrid(g, uni, skin, lit){
       if (f.gloss && f.hrx){
         const u = (i + .5 - f.hcx) / f.hrx, v = (j + .5 - f.hcy) / f.hry;
         if (lit && tone === 1 && u < .25 && v < .1) tone = 0;   // rim light along the lit edge
-        if (Math.hypot(u + .38, v + .45) < .2) tone = lit ? 0 : 1;   // specular
-        else if (Math.hypot(u + .38, v + .45) < .38 && tone === 2) tone = 1;
+        const sp = fin === 'chrome' && shell(r) ? 1.6 : 1;   // chrome: a bigger, brighter shine
+        if (Math.hypot(u + .38, v + .45) < .2 * sp) tone = lit ? 0 : 1;   // specular
+        else if (Math.hypot(u + .38, v + .45) < .38 * sp && tone === 2) tone = 1;
         if (u > .35 && v > .2 && tone === 2) tone = 3;
       }
       if (f.pad && tone === 1 && lit && j < g.h * .5 && i < w * .5) tone = 0;   // shoulder pad rim light
@@ -664,9 +734,10 @@ export function getSprite(o){
   const key = `${o.uni.key}|${o.view}|${o.pose}|${o.c}|${o.arms}|${o.b}|${o.run}|${o.num}|${o.skin}|${o.flip}|${o.lit}|${o.down}|${o.ball || 0}${o.sit ? '|s' : ''}${MIR ? '|m' : ''}`;
   let s = SPR.get(key); if (s) return s;
   if (SPR.size > 4000) SPR.clear();   // a long session's worth of jerseys and frames, then start over
-  const fo = { ...o, stripe: o.uni.stripe };
+  const fo = { ...o, stripe: o.uni.stripe }; STY = o.uni; VIEW = o.down ? 'side' : o.view;
   if (o.down){ fo.view = 'side'; fo.pose = 'set'; fo.c = 0; fo.arms = 'hang'; fo.run = null; fo.b = 0; fo.ball = 0; }
   const fig = fo.pose === 'line' ? (fo.view === 'side' ? figSideLine(fo) : figLine(fo)) : fo.view === 'side' ? figSide(fo) : figFB(fo);
+  dress(fig.g); STY = {};
   let cv = renderGrid(fig.g, o.uni, o.skin, o.lit), ax = fig.ax, ay = fig.ay;
   if (o.down){ cv = lieCanvas(cv); ax = cv.width >> 1; ay = cv.height - 3; }
   if (o.flip){ cv = flipCanvas(cv); ax = cv.width - ax; }

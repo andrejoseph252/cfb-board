@@ -217,22 +217,77 @@ export const CSS = `
 .pb.hd .pb-how{padding:2px 4px;font:400 13px/1.5 var(--hd-body);color:rgba(255,255,255,.72)}
 .pb.hd .pb-how summary{font-weight:600;color:var(--hd-yellow)}
 .pb.hd .pb-how b{font-weight:700}
-/* the team picker */
-.pb.hd .pb-q{height:46px;padding:0 16px;border:0;border-radius:23px;background:var(--hd-chip);color:#fff;font:500 16px var(--hd-body);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+/* the team picker: a full-height sheet, the search pinned on top, the list scrolling under it */
+.pb.hd .pb-picker{display:flex;flex-direction:column;gap:12px;height:calc(100dvh - var(--pb-top) - env(safe-area-inset-bottom,0px) - 8px);max-height:920px;overflow:hidden;padding-bottom:0}
+.pb.hd .pb-picker > *{flex:none}
+.pb.hd .pb-qw{position:relative;display:flex;align-items:center}
+.pb.hd .pb-qi{position:absolute;left:16px;width:18px;height:18px;color:rgba(255,255,255,.5);pointer-events:none}
+.pb.hd .pb-q{width:100%;height:50px;padding:0 50px 0 44px;border:0;border-radius:25px;background:var(--hd-chip);color:#fff;font:500 16px var(--hd-body);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);-webkit-appearance:none;appearance:none}
+.pb.hd .pb-q::placeholder{color:rgba(255,255,255,.42)}
+.pb.hd .pb-q::-webkit-search-cancel-button{display:none}
 .pb.hd .pb-q:focus{outline:none;box-shadow:inset 0 0 0 2px var(--hd-yellow)}
-.pb.hd .pb-list{gap:6px;max-height:min(62dvh,560px);grid-template-columns:repeat(auto-fill,minmax(160px,1fr));scrollbar-width:none}
-.pb.hd .pb-list button{min-height:46px;gap:10px;padding:6px 10px 6px 6px;border:0;border-radius:16px;background:var(--hd-chip2);font:600 13.5px/1.2 var(--hd-body);color:#fff;
-  box-shadow:inset 4px 0 0 var(--c)}
-.pb.hd .pb-list img,.pb.hd .pb-list i{width:32px;height:32px;padding:3px;border-radius:50%;background:#fff;object-fit:contain;margin-left:6px}
-.pb.hd .pb-list button:active{background:rgba(255,255,255,.14)}
-.pb.hd .pb-glist{display:block;margin:0 -6px;padding:0 6px 4px}
+.pb.hd .pb-qx{position:absolute;right:8px;display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.13);color:#fff}
+.pb.hd .pb-qx[hidden]{display:none}
+.pb.hd .pb-qx svg{width:12px;height:12px}
+.pb.hd .pb-pscroll{position:relative;flex:1 1 auto;min-height:0;overflow-y:auto;margin:0 -18px;padding:0 18px calc(env(safe-area-inset-bottom,0px) + 28px);overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.pb.hd .pb-pscroll::-webkit-scrollbar{display:none}
+.pb.hd :is(.pb-browse,.pb-hits,.pb-jumps)[hidden]{display:none}
+/* the section chips, pinned under the search; the one you're scrolled to is lit */
+.pb.hd .pb-jumps{display:flex;gap:6px;overflow-x:auto;margin:-2px -18px 0;padding:0 18px 2px;scrollbar-width:none}
+.pb.hd .pb-jumps::-webkit-scrollbar{display:none}
+.pb.hd .pb-jumps button{flex:none;height:32px;padding:0 14px;border:0;border-radius:16px;background:transparent;color:rgba(255,255,255,.6);font:600 13px var(--hd-body);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);transition:background .2s,color .2s,box-shadow .2s}
+.pb.hd .pb-jumps button.on{background:#fff;color:#111;box-shadow:none}
+/* sections: a broadcast-type header that sticks while its teams scroll by */
+.pb.hd .pb-cgrp{padding-top:4px}
 .pb.hd .pb-cgrp + .pb-cgrp{margin-top:14px}
-.pb.hd .pb-cgrp:not(:has(button:not([hidden]))){display:none}
-.pb.hd .pb-cgrp h3{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:10px;margin:0 -6px 6px;padding:9px 10px 7px;border-radius:12px;
-  background:rgba(32,35,40,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);font:700 10.5px/1 var(--hd-body);letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-.pb.hd .pb-cgrp h3::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1)}
-.pb.hd .pb-cteams{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-.pb.hd .pb-glist:not(:has(button:not([hidden])))::after{content:"No team matches.";display:block;padding:18px 4px;font:500 14px var(--hd-body);color:rgba(255,255,255,.5)}
+.pb.hd .pb-cgrp h3{position:sticky;top:0;z-index:2;display:flex;align-items:baseline;gap:8px;margin:0 -18px 10px;padding:10px 18px 8px;
+  transition:background .15s;font:800 22px/1 var(--hd-display);letter-spacing:.01em;text-transform:uppercase;color:#fff}
+.pb.hd .pb-cgrp h3 small{font:600 12px var(--hd-body);color:rgba(255,255,255,.4);letter-spacing:0}
+.pb.hd .pb-cgrp h3.stuck{background:rgba(22,24,29,.94);-webkit-backdrop-filter:var(--hd-blur);backdrop-filter:var(--hd-blur);box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.pb.hd .pb-qgrp h3{position:static;margin-bottom:2px}
+/* your teams: logo discs in a row */
+.pb.hd .pb-quick{display:flex;gap:12px;overflow-x:auto;margin:0 -18px;padding:8px 18px 6px;scrollbar-width:none}   /* room for the rings: the scroller clips them */
+.pb.hd .pb-quick::-webkit-scrollbar{display:none}
+.pb.hd .pb-qchip{flex:none;display:grid;justify-items:center;gap:9px;width:62px;padding:0;border:0;background:none;color:rgba(255,255,255,.8);font:700 11px/1 var(--hd-body);letter-spacing:.06em}
+.pb.hd .pb-qchip .pb-tdisc{width:52px;height:52px;box-shadow:0 0 0 3px var(--c),0 0 0 5px rgba(255,255,255,.08)}
+.pb.hd .pb-qchip.cur .pb-tdisc{box-shadow:0 0 0 3px var(--c),0 0 0 6px var(--hd-yellow)}
+.pb.hd .pb-qchip.cur{color:var(--hd-yellow)}
+.pb.hd .pb-qchip:active .pb-tdisc{transform:scale(.94)}
+.pb.hd .pb-tdisc{flex:none;display:grid;place-items:center;border-radius:50%;background:#fff;overflow:hidden;transition:transform .12s}
+.pb.hd .pb-tdisc img{width:76%;height:76%;object-fit:contain}
+/* browsing: tiles in the team's colors */
+.pb.hd .pb-tiles{display:grid;gap:7px;grid-template-columns:repeat(auto-fill,minmax(74px,1fr))}
+.pb.hd .pb-tile{position:relative;display:grid;justify-items:center;align-content:start;gap:2px;min-height:98px;padding:11px 4px 8px;border:0;border-radius:18px;text-align:center;
+  color:var(--k);background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,0) 45%,rgba(0,0,0,.22)),var(--c);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 4px 12px rgba(0,0,0,.22);transition:transform .12s}
+.pb.hd .pb-tile:active{transform:scale(.95)}
+.pb.hd .pb-tile .pb-tdisc{width:40px;height:40px;margin-bottom:4px;box-shadow:0 2px 8px rgba(0,0,0,.28)}
+.pb.hd .pb-tile b{font:800 13px/.98 var(--hd-display);text-transform:uppercase;letter-spacing:.01em;overflow-wrap:anywhere}
+.pb.hd .pb-tile small{font:600 10px/1.2 var(--hd-body);opacity:.72}
+.pb.hd .pb-tile.cur{box-shadow:0 0 0 2.5px var(--hd-yellow),0 4px 12px rgba(0,0,0,.22)}
+.pb.hd .pb-trk{position:absolute;top:6px;left:6px;min-width:18px;padding:2px 4px 1px;border-radius:7px;background:rgba(0,0,0,.42);color:#fff;font:800 9px/1.2 var(--hd-body)}
+.pb.hd .pb-tile .pb-tcur{position:absolute;top:5px;right:5px;width:18px;height:18px}
+.pb.hd .pb-tile .pb-tcur svg{width:12px;height:12px}
+.pb.hd .pb-tile .pb-ttag{position:absolute;top:-7px;left:50%;transform:translateX(-50%);max-width:calc(100% - 4px);font-size:7.5px}
+/* searching: rows, a plate in the team's colors holding the logo */
+.pb.hd .pb-rows{display:grid;gap:8px;padding-top:2px}
+.pb.hd .pb-trow{display:flex;align-items:center;gap:12px;min-height:64px;padding:6px 12px 6px 6px;border:0;border-radius:20px;text-align:left;color:#fff;
+  background:var(--hd-chip2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);transition:transform .12s}
+.pb.hd .pb-trow:active{transform:scale(.98)}
+.pb.hd .pb-trow.best{background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 2px rgba(255,255,255,.5)}
+.pb.hd .pb-trow.cur{box-shadow:inset 0 0 0 2px var(--hd-yellow)}
+.pb.hd .pb-tplate{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:15px;background:linear-gradient(160deg,rgba(255,255,255,.22),rgba(0,0,0,.2)),var(--c)}
+.pb.hd .pb-tplate .pb-tdisc{width:38px;height:38px}
+.pb.hd .pb-tname{flex:1;display:grid;gap:4px;min-width:0}
+.pb.hd .pb-tname b{display:flex;align-items:center;gap:7px;font:800 20px/1 var(--hd-display);text-transform:uppercase;letter-spacing:.01em}
+.pb.hd .pb-tname b i{padding:3px 5px 2px;border-radius:7px;background:rgba(255,255,255,.14);font:800 10.5px/1.2 var(--hd-body);font-style:normal;letter-spacing:0}
+.pb.hd .pb-tname small{font:500 12px/1.2 var(--hd-body);color:rgba(255,255,255,.58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-tcur{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--hd-yellow);color:#111;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.pb.hd .pb-tcur svg{width:14px;height:14px}
+.pb.hd .pb-ttag{padding:3px 6px 2px;border-radius:7px;background:rgba(0,0,0,.5);color:#fff;font:800 8.5px/1.2 var(--hd-body);letter-spacing:.08em;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-tgo{flex:none;padding:5px 9px 4px;border-radius:9px;background:var(--hd-yellow);color:#111;font:800 10px/1.2 var(--hd-body);letter-spacing:.08em}
+.pb.hd .pb-none{margin:0;padding:20px 4px;font:500 14px var(--hd-body);color:rgba(255,255,255,.55)}
 
 /* ---------- coin toss ---------- */
 .pb.hd .pb-tosscard{text-align:center;gap:12px}
@@ -341,7 +396,6 @@ export const CSS = `
   box-shadow:inset 0 1px 0 rgba(255,255,255,.15),inset 0 0 0 2px rgba(206,184,136,.55),inset 0 -4px 0 var(--fsu-y) !important}
 .pb.hd .pb-team[data-tid="52"]{position:relative;overflow:hidden}
 .pb.hd .pb-team[data-tid="52"]::after{content:"";position:absolute;right:-34px;bottom:5px;width:140px;height:16px;opacity:.5;transform:rotate(-12deg);background:url("${SPEAR_URL}") center/contain no-repeat;pointer-events:none}
-.pb.hd .pb-list [data-id="52"]{box-shadow:inset 4px 0 0 var(--fsu-g),inset 0 0 0 1px rgba(206,184,136,.5);background:linear-gradient(90deg,rgba(120,47,64,.35),rgba(206,184,136,.08))}
 .pb.hd .pb-ccall[data-tid="52"].win{animation-name:hdCWinFSU}
 @keyframes hdCWinFSU{to{background:var(--fsu-g);color:#fff;box-shadow:inset 0 -3px 0 var(--fsu-y),0 0 0 2px var(--fsu-y)}}
 .pb.hd .pb-fsuwin{position:relative;display:grid;justify-items:center;gap:2px;margin:-12px -8px 0;padding:18px 18px 16px;border-radius:26px;overflow:hidden;text-align:center;

@@ -181,7 +181,7 @@ export function createRenderer(canvas){
   let ov = null, ovBake = null, fly = null;   // the pregame flyover's overview (baked a slice at a time) and the shot under way
   function prepare(G){
     const C = G.cond || {}, sky = C.sky || 'clear';
-    const key = `${M ? 'M' : ''}${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${C.time === 'afternoon' || !C.time ? 'sun' : 'flat'}${sky}|${G.youDefend ? 'D' : ''}`;
+    const key = `${M ? 'M' : ''}k${A.kitVersion()}|${G.me.id}${G.me.color}${G.me.alt}${G.me.name}|${G.opp.id}${G.opp.color}${G.opp.alt}${G.opp.name}|${C.time === 'afternoon' || !C.time ? 'sun' : 'flat'}${sky}|${G.youDefend ? 'D' : ''}`;
     if (key !== teamsKey){
       teamsKey = key;
       // On defense your team (G.opp in those scenes) wears its colors and their offense wears road white.
