@@ -326,7 +326,7 @@ export function setupPlay(G){
       off.length = 0; off.push(...keep); rec.length = 0; rec.push(x); x.num = 1;
       def.length = 0; def.push(cb1);
     }
-    Object.assign(cb1, { user: true, spd: 8.6 * M.cb, man: x });
+    Object.assign(cb1, { user: true, spd: 8.6 * M.cb, man: x, acc: 25 });   // quicker feet than the rest: you react a beat late, so you need the change of direction
   } else if (G.defDrill?.kind === 'rush'){
     // You're the edge rusher; the rest of the line stays blocked, so the rush is all on you.
     const me = dl[3];
@@ -365,7 +365,7 @@ function accelToward(p, vx, vy, dt, gain = 7){
   const k = Math.min(1, gain * dt);
   let ax = (vx - p.vx) * k, ay = (vy - p.vy) * k;
   const slowing = vx * p.vx + vy * p.vy < p.vx * p.vx + p.vy * p.vy;
-  const lim = (ACCEL[p.role] || 16) * (slowing ? 1.25 : 1) * dt, m = Math.hypot(ax, ay);
+  const lim = (p.acc || ACCEL[p.role] || 16) * (slowing ? 1.25 : 1) * dt, m = Math.hypot(ax, ay);
   if (m > lim){ ax *= lim / m; ay *= lim / m; }
   p.vx += ax; p.vy += ay;
 }
@@ -439,7 +439,7 @@ export function step(G, dt, inp){
         const w = p.route[p.wp];
         if (!w) moveToward(p, p.x, p.y, 0, dt);
         else {
-          moveToward(p, w.x, w.y, p.spd, dt, 9);
+          moveToward(p, w.x, w.y, G.youDefend ? plantSpd(p, w) : p.spd, dt, 9);
           if (dist(p, w) < .7 && (!w.stop || p.wp < p.route.length - 1)) p.wp++;
         }
       }
@@ -797,7 +797,17 @@ function autoRun(G, c){
 }
 
 /* How close your defender has to be to where the ball comes down for a jump to get a hand on it (yards). */
-export const JUMP_R = 2.2;
+export const JUMP_R = 2.3;
+const HIP = .3;
+/* A receiver's speed into a sharp break when you're covering him: he gathers and plants before he cuts (the tell),
+   rather than turning on a dime at full speed. */
+function plantSpd(p, w){
+  const nx = p.route[p.wp + 1]; if (!nx) return p.spd;
+  const d = dist(p, w); if (d > 1.6) return p.spd;
+  const ax = w.x - p.x, ay = w.y - p.y, bx = nx.x - w.x, by = nx.y - w.y;
+  const cos = (ax * bx + ay * by) / ((Math.hypot(ax, ay) || 1) * (Math.hypot(bx, by) || 1));
+  return cos > .76 ? p.spd : p.spd * (.62 + .38 * d / 1.6);   // breaks of ~40 degrees and sharper (slants, digs, posts)
+}
 /* Your defender: runs the way you push the stick (a drag from where your finger went down) or the arrow keys
    point, at a speed set by how far you push, and jumps the route when you tap. */
 function userDefender(G, d, dt, inp){
@@ -807,7 +817,22 @@ function userDefender(G, d, dt, inp){
   const st = inp.defStick, m = st ? Math.hypot(st.x, st.y) : 0;
   if (m > 0){ tx = d.x + st.x / m * 3; ty = d.y + st.y / m * 3; push = m; }
   else if (inp.defKeys){ tx = d.x + inp.defKeys.x * 3; ty = d.y + inp.defKeys.y * 3; }
-  moveToward(d, tx, ty, d.spd * push * (d.jump > 0 ? 1.1 : 1), dt, 10);
+  // On his hip: while you're with your man and heading his way, your feet turn with his break a little on their own
+  // (you still have to steer; the farther off him, the less help).
+  const man = d.man, B = G.play.ball;
+  const near = man ? clamp((5.5 - dist(d, man)) / 2.5, 0, 1) : 0;   // full help within 3 yards, none past 5.5
+  if (near > 0 && B.state !== 'air' && (m > 0 || inp.defKeys)){
+    const hx = man.x + man.vx * .25 - d.x, hy = man.y + man.vy * .25 - d.y, hl = Math.hypot(hx, hy) || 1;
+    const sx = tx - d.x, sy = ty - d.y, sl = Math.hypot(sx, sy) || 1;
+    if ((hx * sx + hy * sy) / hl / sl > -.2){ const w = HIP * near; tx = d.x + (sx / sl * (1 - w) + hx / hl * w) * 3; ty = d.y + (sy / sl * (1 - w) + hy / hl * w) * 3; }
+  }
+  // Breaking on the ball: with it in the air toward your man and you driving at where it's coming down, a burst.
+  let burst = d.jump > 0 ? 1.1 : 1;
+  if (B.state === 'air' && man && G.play.aimedAt === man){
+    const lx = B.tx - d.x, ly = B.ty - d.y, sx = tx - d.x, sy = ty - d.y;
+    if ((lx * sx + ly * sy) / ((Math.hypot(lx, ly) || 1) * (Math.hypot(sx, sy) || 1)) > .7) burst = Math.max(burst, 1.14);
+  }
+  moveToward(d, tx, ty, d.spd * push * burst, dt, 14);
 }
 /* Ends the current play from outside (drills: the pass rush is over the moment the ball is out). */
 export function stopPlay(G, r){ end(G, r); }

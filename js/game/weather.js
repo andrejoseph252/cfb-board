@@ -3,7 +3,7 @@
    `effects` so the weather plays as well as it looks, kept small on purpose: a wet ball is an edge, not a coin flip.
    `wind` is signed miles per hour across the field (+ toward y = 53.3), the same sense as a kick's crosswind. */
 
-export const TIMES = { noon: { name: 'Noon', icon: '☀️' }, afternoon: { name: 'Afternoon', icon: '🌤️' }, night: { name: 'Night', icon: '🌙' } };
+export const TIMES = { noon: { name: 'Noon', icon: '☀️' }, afternoon: { name: 'Afternoon', icon: '🌤️' }, night: { name: 'Night', icon: '🌙', beta: true } };
 export const SKIES = { clear: { name: 'Clear', icon: '✨' }, rain: { name: 'Rain', icon: '🌧️' }, snow: { name: 'Snow', icon: '❄️' },
   wind: { name: 'Wind', icon: '💨' }, fog: { name: 'Fog', icon: '🌫️' } };
 
@@ -37,7 +37,7 @@ function pickW(weights){
    a little in late October, more once it's November. */
 export function roll(time = 'random', sky = 'random', date = new Date()){
   const m = date.getMonth(), late = m >= 10 || m <= 1, oct = m === 9 && date.getDate() >= 20;
-  const t = TIMES[time] ? time : pickW({ noon: 3, afternoon: 4, night: 4 });
+  const t = TIMES[time] ? time : pickW({ noon: 3, afternoon: 4 });   // night is beta (low frame rate on some phones): picked only on purpose
   const s = SKIES[sky] ? sky : pickW({ clear: 9, rain: 3, wind: 2, fog: 1.2, snow: late ? 1.8 : oct ? .5 : 0 });
   const [w0, w1] = WIND[s], [t0, t1] = TEMP[s];
   const wind = Math.round(rnd(w0, w1)) * (Math.random() < .5 ? -1 : 1);

@@ -191,6 +191,9 @@ export const CSS = `
 .pb.hd .pb-wxwind small{font:700 9.5px/1 var(--hd-body);letter-spacing:.12em;color:rgba(255,255,255,.7)}
 .pb.hd .pb-wxfx{display:flex;align-items:baseline;gap:9px;margin:0;padding:10px 14px;border-radius:16px;background:rgba(255,210,63,.08);box-shadow:inset 0 0 0 1px rgba(255,210,63,.22);font:600 13.5px/1.3 var(--hd-body);color:#fff}
 .pb.hd .pb-wxfx::before{content:"IN PLAY";flex:none;font:800 10px/1 var(--hd-body);letter-spacing:.12em;color:var(--hd-yellow)}
+.pb.hd .pb-beta{display:inline-block;margin-left:5px;padding:1px 4px 0;border-radius:4px;background:#ffd84a;color:#14161a;font:800 8.5px/1.3 var(--hd-body);letter-spacing:.06em;font-style:normal;vertical-align:2px}
+.pb.hd .pb-wx button{position:relative}
+.pb.hd .pb-wx button .pb-beta{position:absolute;top:4px;right:4px;margin:0}
 .pb.hd .pb-wx button{display:grid;place-items:center;align-content:center;gap:4px;height:54px;padding:0 2px;font-size:11.5px;border-radius:17px}
 .pb.hd .pb-wx .wxi{width:22px;height:22px}
 .pb.hd .pb-wx button[aria-pressed="true"] .wxi .wc{fill:#fff;stroke:#2a2f36;stroke-width:1.8}

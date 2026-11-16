@@ -23,7 +23,7 @@ import * as W from './weather.js';
 
 const STEP = 1 / 60;
 // Win-loss records live under `results` (an older `record` field also counted unfinished test games, so it's dropped).
-const saved = { diff: 'pro', len: 'quick', sound: true, atmos: 1, routes: true, time: 'random', sky: 'random', dir: 'left', ...store.get('pixelbowl', {}) };
+const saved = { diff: 'pro', len: 'quick', sound: true, atmos: 1, routes: true, offOnly: false, time: 'random', sky: 'random', ...store.get('pixelbowl', {}) };
 delete saved.record; delete saved.hd; saved.results ||= {};   // (hd: the old HD switch; HD is the only look now)
 /* Every visit starts fresh: Rookie, Quick quarters, and a three-receiver random drill from your own 25 (sound and
    the route preview are the only choices kept). */
@@ -184,9 +184,11 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-pad" hidden aria-label="Move the quarterback"><i></i><span>MOVE</span></div>
     <div class="pb-gauge" hidden aria-hidden="true"></div>
     <div class="pb-moves" hidden><button class="pb-mv" type="button" data-mv="juke" aria-label="Juke">JUKE</button><button class="pb-mv" type="button" data-mv="truck" aria-label="Truck">TRUCK</button></div>
-    <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>`;
+    <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>
+    <div class="pb-turn" aria-live="polite"><i></i><b>TURN YOUR PHONE UPRIGHT</b><small>The game plays in portrait</small></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
-  canvas = $('.pb-cv'); R = createRenderer(canvas); R.setMirror(saved.dir === 'left'); R.resize();
+  canvas = $('.pb-cv'); R = createRenderer(canvas); R.setMirror(false); R.resize();
+  try{ screen.orientation?.lock?.('portrait')?.catch?.(() => {}); }catch{}   // holds where the browser allows it (an installed app); elsewhere .pb-turn covers sideways
   bindTeams(() => ({ me: (keyCtx?.main || G)?.me }));   // the home band plays for your team (and its chant)
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
   if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
@@ -259,8 +261,10 @@ if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__pb = {
   myKick(type){ startMyKickoff(type); }, koReturn(call){ retFrom = 65; retKO = true; startReturn(call); }, kickCard(){ myKickoffCard(); }, koCard(){ theirKickoffCard(); }   // stops the game logic (the screen still draws), for screenshots
 };
 
-function onResize(){ R?.resize(); }
-function onHide(){ if (document.hidden && G && !paused && ['presnap', 'live', 'dead', 'kick', 'ret', 'punt'].includes(phase)) pause(); }
+/* Phones play upright only: turned sideways, the game pauses under the "turn your phone" cover (CSS: .pb-turn). */
+const sideways = () => matchMedia('(orientation: landscape) and (max-height: 520px) and (pointer: coarse)').matches;
+function onResize(){ R?.resize(); if (sideways()) onHide(true); }
+function onHide(force){ if ((force === true || document.hidden) && G && !paused && ['presnap', 'live', 'dead', 'kick', 'ret', 'punt'].includes(phase)) pause(); }
 
 /* ---------- main loop ---------- */
 let waitingData = true, freeze = 0;
@@ -359,8 +363,8 @@ function setup(){
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
     ${wxRow()}
-    ${dirRow()}
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
+      ${offOnlyHTML()}
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label>
       ${atmosHTML()}
 </div>
@@ -382,7 +386,7 @@ const wxWind = c => c.wind ? `<i class="pb-wxar" style="--r:${W.windTurn(c, R.po
 // 'pb-new' plays the flip-in once, when the conditions just changed (a reroll, a new pick), not on every redraw.
 function wxFresh(){ const k = W.describe(G.cond), n = k !== wxSeen; wxSeen = k; return n ? ' pb-new' : ''; }
 function wxRow(){
-  const c = G.cond, name = `${W.TIMES[c.time].name} · ${W.SKIES[c.sky].name}`;
+  const c = G.cond, name = `${W.TIMES[c.time].name}${W.TIMES[c.time].beta ? '<em class="pb-beta">BETA</em>' : ''} · ${W.SKIES[c.sky].name}`;
   return `<div class="pb-wxrow${wxFresh()}">
     <button type="button" class="pb-wxopen" data-pb="wx" aria-label="Game conditions: ${W.describe(c)}. Change">${wxPair(c)}
       <span class="pb-wxtx"><b>${name}</b><small><span>${c.temp}°</span><span>${wxWind(c)}</span>${wxRandom() ? '<em>Random</em>' : ''}</small></span>
@@ -390,7 +394,7 @@ function wxRow(){
     <button type="button" class="pb-dice" data-pb="reroll" aria-label="Reroll the conditions">${W.icon('dice')}</button></div>`;
 }
 /* The Kickoff and Weather choices: an icon over each name, Random first. */
-const wxItems = list => [['random', `${W.icon('dice')}Random`], ...Object.entries(list).map(([k, d]) => [k, `${W.icon(k)}${d.name}`])];
+const wxItems = list => [['random', `${W.icon('dice')}Random`], ...Object.entries(list).map(([k, d]) => [k, `${W.icon(k)}${d.name}${d.beta ? '<em class="pb-beta">BETA</em>' : ''}`])];
 function wxSheet(){
   wxOpen = true; phase = 'setup';
   menuGame();   // the field behind shows each pick at once
@@ -704,12 +708,39 @@ function fourthDown(){
     ${G.ot ? '' : `<button class="pb-go alt${adv[0] === 'PUNT' ? ' pb-adv' : ''}" type="button" data-pb="punt">PUNT</button>`}
     ${fg ? `<button class="pb-go alt${adv[0] === 'FIELD GOAL' ? ' pb-adv' : ''}" type="button" data-pb="fg">FIELD GOAL · ${dist} YDS</button>` : ''}</div></div>`, true);
 }
+/* ---------- offense only: everything but your snaps, simmed ---------- */
+/* On in a real game (not practice or drills) when "Offense only" is set; it can be flipped from the pause menu and
+   takes effect from the next kick or drive. */
+const auto = () => !!(saved.offOnly && G && !G.practice && !G.stDrill && !G.youDefend && !G.defDrill);
+function autoKickoff(){
+  closeModal(); phase = 'wait';
+  const x = kickoffYtg(), tb = x === 75;
+  sfx('kick'); banner('KICKOFF', tb ? 'TOUCHBACK' : `RETURNED TO THEIR ${Math.round(100 - x)}`, '#c9d1d9', 1100);
+  later(() => endMyPossession(x), 1100);
+}
+function autoReturn(r, ko){
+  closeModal(); phase = 'wait';
+  let x, line;
+  if (ko){ const tb = Math.random() < .7; x = tb ? 25 : Math.round(18 + Math.random() * 22); line = tb ? 'Kickoff, touchback' : `Kickoff returned to ${ourSpot(x)}`; }
+  else { x = Math.round(S.clamp(r.myX ?? 20, 1, 99)); line = `Punt, ball at ${ourSpot(x)}`; }
+  sfx(ko ? 'kick' : 'whistle'); banner(ko ? 'KICKOFF' : 'PUNT', line.toUpperCase().replace(/^(KICKOFF|PUNT), /, ''), '#c9d1d9', 1100); pbp(line);
+  later(() => { startMyDrive(x); driveLog(line); }, 1100);
+}
+/* A simmed kick: likely from close, a coin flip from 50+, a little worse in bad weather. */
+function autoKick(kind){
+  closeModal(); G.play = null; phase = 'wait';
+  const spotX = kind === 'pat' ? 90 : G.los - 7, dist = Math.round(110 - spotX), k = W.effects(G.cond).kick;
+  const p = S.clamp(.985 - Math.max(0, dist - 22) * .011 - Math.max(0, dist - 45) * .014 - (1 - k) * 1.5, .1, .99), good = Math.random() < p;
+  const K = { kind, spotX, dist, good, why: good ? null : Math.random() < (dist > 45 ? .6 : .25) ? 'Short' : `Wide ${Math.random() < .5 ? 'left' : 'right'}` };
+  sfx('kick'); later(() => { sfx(good ? 'good' : 'miss'); G.kick = K; afterKick(); }, 500);   // afterKick takes G.kick straight back
+}
 /* ---------- kickoffs (the plays themselves: special.js) ---------- */
 /* Yours: four kicks drawn like the play sheet's cards (the tee, your coverage, their return team, where it goes), the
    sideline's call marked (onside when you're behind late). */
 function myKickoffCard(){
   if (G.ot) return otOpp();
   if (G.clock <= 0 && !G.stDrill) return clockOut();
+  if (auto()) return autoKickoff();
   phase = 'modal';
   const behind = G.score[1] - G.score[0], adv = !G.stDrill && G.quarter >= 4 && G.clock < 240 && behind > 0 && behind <= 16 ? 'onside' : 'deep';
   const P = hdUI.kit.teamPaint(G.me, G.opp), w = Math.abs(Math.round(G.cond?.wind || 0));
@@ -752,6 +783,7 @@ function theirKickoffCard(){
 /* ---------- returning their punt (the play itself: special.js) ---------- */
 let retFrom = 0;
 function puntReturnCard(r, ko = false){
+  if (auto()) return autoReturn(r, ko);
   phase = 'modal'; retFrom = r.endAt; retKO = ko;
   const late = ko && G.quarter >= 4 && G.clock < 240 && G.score[1] < G.score[0];
   const x = Math.round(retFrom), spot = x === 50 ? 'midfield' : x > 50 ? `their ${100 - x}` : `your ${x}`, w = Math.abs(Math.round(G.cond?.wind || 0));
@@ -907,7 +939,7 @@ function puntAfter(){
   return later(() => endMyPossession(x), 500);
 }
 function doPunt(){
-  if (!G.ot) return startMyPunt();
+  if (!G.ot && !auto()) return startMyPunt();
   closeModal(); phase = 'modal';
   const p = S.punt(G);
   sfx('kick'); banner(`PUNT · ${p.net} YDS`, p.touchback ? 'Touchback' : '', '#fff', 1400);
@@ -915,6 +947,7 @@ function doPunt(){
   later(() => endMyPossession(p.oppX), 1300);
 }
 function startKick(kind){
+  if (auto()) return autoKick(kind);
   closeModal(); G.play = null; S.startKick(G, kind); phase = 'kick'; kickT = 0;
 }
 function afterKick(){
@@ -978,6 +1011,7 @@ function pickDriveCall(k){
 function runOppDrive(ytg, opts = {}, then){
   phase = 'modal'; aim = null;
   const r = S.simDrive(G, ytg, opts);
+  if (auto()) return finishOppDrive(r, then);
   if (!G.practice) return coverPrompt(r, opts, then);
   const k = pickStop(r);
   if (k >= 0) return keyStopPrompt(r, k, then);
@@ -1882,7 +1916,7 @@ function pause(){
     ? [btn('resume', 'RESUME', false), btn('endsess', G.seasonDrill ? 'BACK TO GAME WEEK' : 'END SESSION'), btn('menu', 'MAIN MENU'), btn('exit', 'EXIT TO BOARD')]
     : [btn('resume', 'RESUME', false), done ? '' : btn('restart', 'RESTART GAME'),
       main.season ? btn('s-hub', done ? 'SEASON HUB' : "SEASON HUB (GAME WON'T COUNT)") : btn('menu', 'MAIN MENU'), btn('exit', 'EXIT TO BOARD')];
-  modal(`<div class="pb-card"><h2>PAUSED</h2>${drill || keyCtx ? '' : scoreLine()}<div class="pb-checks pb-vol1">${atmosHTML()}</div>${dirRow()}<div class="pb-btns col">${items.join('')}</div></div>`, false, 'pause');
+  modal(`<div class="pb-card"><h2>PAUSED</h2>${drill || keyCtx ? '' : scoreLine()}<div class="pb-checks pb-vol1">${atmosHTML()}${drill ? '' : offOnlyHTML()}</div><div class="pb-btns col">${items.join('')}</div></div>`, false, 'pause');
 }
 let behind = null;
 function unpause(){ paused = false; closeModal('pause'); }
@@ -2107,10 +2141,6 @@ function onClick(e){
     case 'set':
       if (b.dataset.v === 'random' && saved[b.dataset.k] === 'random') cond = null;   // Random again: a new roll
       saved[b.dataset.k] = b.dataset.v; save(); return wxOpen ? wxSheet() : setup();
-    case 'dir':
-      saved.dir = b.dataset.v; save(); R?.setMirror(saved.dir === 'left');
-      document.querySelectorAll('[data-pb="dir"]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === saved.dir)));
-      return;
     case 'wx': return wxSheet();
     case 'reroll': cond = null; return wxOpen ? wxSheet() : setup();
     case 'toss': return afterToss();
@@ -2152,10 +2182,8 @@ function onClick(e){
   }
 }
 /* "Crowd & music": the crowd, its reactions and the band, quieter or off; the whistle, snap and hits stay as they are. */
-/* Which way your offense drives with the phone on its side: toward the left (the default) suits a right thumb.
-   Portrait always drives up the screen. */
-const dirRow = () => `<div class="pb-opt pb-dir"><span>Sideways, drive</span><div class="pb-seg">${[['left', '◀ Left'], ['right', 'Right ▶']].map(([v, l]) =>
-  `<button type="button" data-pb="dir" data-v="${v}" aria-pressed="${saved.dir === v}">${l}</button>`).join('')}</div></div>`;
+/* "Offense only": you play your snaps; defense, kickoffs, returns, punts and kicks are simmed (see auto()). */
+const offOnlyHTML = () => `<label><input type="checkbox" data-pb-opt="offOnly"${saved.offOnly ? ' checked' : ''}> Offense only (sim defense &amp; kicks)</label>`;
 const atmosHTML = () => `<label class="pb-vol"><span>Crowd &amp; music <b>${Math.round(saved.atmos * 100)}%</b></span>
   <input type="range" min="0" max="100" step="5" value="${Math.round(saved.atmos * 100)}" style="--p:${Math.round(saved.atmos * 100)}%" data-pb-vol aria-label="Crowd and music volume"></label>`;
 function onInput(e){
@@ -2514,6 +2542,11 @@ body.pb-open{overflow:hidden}
 .pb-cv{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;display:block}
 .pb-hud{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);display:grid;justify-items:center;gap:4px;pointer-events:none}
 .pb-hud[hidden],.pb-tools[hidden]{display:none}
+.pb-turn{display:none;position:absolute;inset:0;z-index:50;place-content:center;justify-items:center;gap:14px;padding:24px;background:#0b0d10;text-align:center;touch-action:none}
+.pb-turn i{width:34px;height:58px;border:4px solid #ffd84a;border-radius:8px;animation:pbTurn 1.6s ease-in-out infinite}
+.pb-turn b{font-size:12px;color:#ffd84a}.pb-turn small{font-size:8px;opacity:.7}
+@keyframes pbTurn{0%,25%{transform:rotate(-90deg)}60%,100%{transform:rotate(0)}}
+@media (orientation:landscape) and (max-height:520px) and (pointer:coarse){.pb-turn{display:grid}}
 .pb-bugw{position:relative;display:grid}
 .pb-bug{display:flex;align-items:stretch;background:#101215;border:2px solid #000;box-shadow:0 0 0 2px #2c3138,0 4px 0 #000}
 .pb-tm{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--c);color:var(--k)}
