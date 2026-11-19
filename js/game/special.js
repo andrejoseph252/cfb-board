@@ -21,7 +21,7 @@ const GRAV = 10.7;            // yards per second per second (as the field goal'
 const WIND_K = .045;          // sideways acceleration per mph of crosswind (as the field goal's flight)
 export const CATCH_R = 1.9;   // how close (yards) the returner's hands must be to the ball as it comes down
 const CATCH_Z = 1.7;          // the ball's height at the catch
-const SNAP_T = .75, KICK_T = 1.95;   // the long snap reaches the punter; his foot meets the ball
+const SNAP_T = .6, KICK_T = 1.5;   // the long snap reaches the punter; his foot meets the ball
 
 export const RET_CALLS = {
   left: { name: 'LEFT WALL', short: 'Get outside the wall', tip: 'Your blockers wall off the left sideline: get outside them' },
@@ -96,7 +96,7 @@ export const KO_CALLS = {
   left: { name: 'LEFT WALL', short: 'Get outside the wall' }, middle: { name: 'MIDDLE', short: 'Hit the crease' },
   right: { name: 'RIGHT WALL', short: 'Get outside the wall' }, safe: { name: 'TOUCHBACK', short: 'Kneel or fair catch: the 25' }
 };
-const KO_T = 1.1, KO_X = 65;   // their approach; their tee, in your coordinates
+const KO_T = .8, KO_X = 65;   // their approach; their tee, in your coordinates
 export function setupKickReturn(G, call){
   const fx = I.wx(G), dMul = (G.diff.defSpd || 1) * fx.spd, oMul = fx.spd;
   const late = G.quarter >= 4 && G.clock < 240 && G.score[1] < G.score[0] && !G.stDrill, u = Math.random();
@@ -162,6 +162,49 @@ function pickBlocks(P){
   }
 }
 
+/* ---------- blocking on kicks (either side) ----------
+   A block is a lock: the cover man is held (his .eng names the blocker) for a beat while the blocker stays glued to
+   him, between him and whatever he's protecting (the ball coming down, or the man with it). Before the catch a
+   blocker sets up at his spot and takes on anyone who comes through his patch; after it, he goes and finds a man. */
+function locked(P, o){
+  const m = o.lockOn;
+  if (m && m.eng?.by === o && !m.down && !o.down && o.stun <= 0) return m;
+  o.lockOn = null; return null;
+}
+function lock(P, o, m, lo, hi){ m.eng = { by: o, until: P.t + rnd(lo, hi) }; o.lockOn = m; o.tgt = null; o.lockCD = .9; }
+/* How long a block holds (seconds): a chip while the ball's in the air, a real block once someone's running with it. */
+const CHIP = [.3, .55], DRIVE = [.35, .65], BUMP = [.15, .3];
+function glue(o, m, pt, dt){
+  const dx = pt.x - m.x, dy = pt.y - m.y, n = Math.hypot(dx, dy) || 1;
+  moveToward(o, m.x + dx / n * .85, m.y + dy / n * .85, o.spd * 1.15, dt, 12);
+}
+/* One blocker's tick. foes: the cover men; pt: what he's protecting; home: where he sets up when no one's near;
+   reach: how far from himself he'll go to pick someone up; taken: men another blocker already has. */
+function wallBlock(P, o, foes, pt, dt, home, reach, taken, dur = CHIP){
+  o.lockCD = Math.max(0, (o.lockCD || 0) - dt);
+  const m = locked(P, o);
+  if (m){ glue(o, m, pt, dt); return; }
+  let f = o.tgt;
+  if (!f || f.eng || f.down || dist(f, o) > reach * 1.4 || taken.has(f) && taken.get(f) !== o) f = null;
+  if (!f){
+    f = foes.filter(d => !d.eng && !d.down && d.stun <= 0 && !taken.has(d) && dist(d, o) < reach)
+      .sort((a, b) => dist(a, o) + dist(a, pt) * .35 - dist(b, o) - dist(b, pt) * .35)[0] || null;
+  }
+  o.tgt = f;
+  if (f){
+    taken.set(f, o);
+    glue(o, f, pt, dt);
+    if (dist(o, f) < 1.15 && o.lockCD <= 0) lock(P, o, f, dur[0], dur[1]);
+  } else if (home) moveToward(o, home.x, home.y, o.spd, dt, 9);
+  else moveToward(o, o.x, o.y, 0, dt);
+}
+/* Who each blocker already has, so two don't double the same man while another runs free. */
+function claims(list){
+  const m = new Map();
+  for (const o of list){ const f = o.lockOn?.eng?.by === o ? o.lockOn : o.tgt; if (f) m.set(f, o); }
+  return m;
+}
+
 /* One tick of the return. inp: the same input as on offense (carStick steers the returner, juke, truck). */
 export function stepReturn(G, dt, inp){
   const P = G.play, R = P.ret, b = P.ball, ret = R.returner;
@@ -193,6 +236,8 @@ export function stepReturn(G, dt, inp){
     const p = predict(b, w); b.tx = p.x; b.ty = p.y;
     // The catch, as it comes down to his hands.
     if (b.vz < 0 && b.z <= CATCH_Z && b.z > .3 && Math.hypot(ret.x - b.x, ret.y - b.y) <= CATCH_R && !ret.down) return catchIt(G);
+    // You called the touchback and it's sailing deep into the end zone: no need to wait for it to come down.
+    if (R.ko && R.call === 'safe' && R.kind === 'deep' && b.tx < -1.5 && P.t - R.kickT > .9){ pop(P, ret.x, ret.y, 'TOUCHBACK', '#fff'); return end(G, { type: 'touchback', x: R.tb, y: MID }); }
     if (b.z <= 0) bounce(G);
   } else if (b.state === 'ground' || b.state === 'loose') loose(G, dt);
   if (P.result) return;
@@ -214,6 +259,7 @@ export function stepReturn(G, dt, inp){
   /* ----- your blockers ----- */
   const chase = R.ko && (b.state === 'ground' || b.state === 'loose' || R.kind === 'onside' && b.state === 'air')
     ? P.off.filter(o => o !== ret && !o.down).sort((a, c) => dist(a, b) - dist(c, b)).slice(0, 2) : [];
+  const covers = P.def.filter(d => d.cov), taken = claims(P.off), kicked = b.state !== 'snap' && b.state !== 'punter' && b.state !== 'tee';
   for (const o of P.off){
     if (o === ret) continue;
     if (chase.includes(o)){ moveToward(o, b.x, b.y, o.spd, dt, 10); continue; }   // a kickoff on the ground: go get it
@@ -222,14 +268,16 @@ export function stepReturn(G, dt, inp){
       const g = o.jam, dx = ret.x - g.x, dy = ret.y - g.y, n = Math.hypot(dx, dy) || 1;
       moveToward(o, g.x + dx / n * .9, g.y + dy / n * .9, o.spd * (P.t < SNAP_T ? .3 : 1.05), dt, 10);
       if (!g.eng && (g.jamCD || 0) <= 0 && dist(o, g) < 1.1 && P.t > .2){ g.eng = { by: o, until: P.t + rnd(.7, 1.6) }; g.jamCD = 1.2; }
-    } else if (o.spot){
-      // The wall (set at the kick): peel back to your spot.
-      moveToward(o, o.spot.x, o.spot.y, o.spd, dt, 9);
-    } else if (R.call === 'safe' || !R.spots){
-      // Fair catch called (or no wall yet): hold up whoever's nearest.
-      const f = P.def.filter(d => d.cov && !d.eng).sort((a, c) => dist(a, o) - dist(c, o))[0];
-      if (f && P.t > SNAP_T){ moveToward(o, f.x - .8, f.y, o.spd, dt, 9); if (dist(o, f) < 1.1 && !f.eng){ f.eng = { by: o, until: P.t + rnd(.6, 1.2) }; } }
-      else moveToward(o, o.x, o.y, 0, dt);
+      continue;
+    }
+    const m = locked(P, o);
+    if (m){ glue(o, m, ret, dt); continue; }
+    if (o.spot && kicked){
+      // The wall (set at the kick): get to your spot and take on whoever comes through your patch.
+      wallBlock(P, o, covers, ret, dt, o.spot, dist(o, o.spot) < 4 ? 2.5 : 1.5, taken, BUMP);
+    } else if ((R.call === 'safe' || !R.spots) && P.t > SNAP_T){
+      // Fair catch called (or no wall yet): hold up whoever comes off the line at you.
+      wallBlock(P, o, covers, ret, dt, null, 3, taken);
     } else moveToward(o, o.x, o.y, 0, dt);
   }
 
@@ -253,7 +301,7 @@ export function stepReturn(G, dt, inp){
       moveToward(d, Math.max(KO_X + .6, d.x - 4), d.y, d.spd * .6, dt, 7); continue;
     } else if (b.state === 'snap' || b.state === 'punter'){
       // Protect, then release: gunners go at the snap, the line just before the kick.
-      if (!d.gunner && P.t < KICK_T - .25){ moveToward(d, d.x, d.y, 0, dt); continue; }
+      if (!d.gunner && P.t < KICK_T - .65){ moveToward(d, d.x, d.y, 0, dt); continue; }
       tx = d.x - 10; ty = d.y + (d.gunner ? 0 : d.laneDy * .1);
     } else if (b.state === 'air'){
       // Down the field in their lanes, breaking down short of the returner; gunners straight at the ball.
@@ -423,7 +471,7 @@ function loose(G, dt){
    aimed for; a little off, a touch less; further off, a wobbler end over end (shorter, and it'll roll); way off, or
    no tap at all, a shank. Wait too long and their rush gets there: blocked. Then you watch the coverage: gunners
    fly down, the lanes fill, and their returner fields it, fair catches it, lets it go, or brings it back. */
-const MY = { STEPS: 1.2, KO_SET: .75, PERFECT: .42, LATE: .62, PUNT_RATE: 1.15, KO_RATE: .75 };
+const MY = { STEPS: 1.0, KO_SET: .5, PERFECT: .42, LATE: .62, PUNT_RATE: 1.15, KO_RATE: .75 };
 export const PUNT_TIMING = MY;
 /* The kick's timing bands, in seconds either side of the perfect moment: perfect, good, wobbler (past that a shank).
    Tighter on harder levels and with a wet ball. The drop gauge (pixelbowl.js) draws these same bands. */
@@ -487,7 +535,9 @@ export function setupMyPunt(G){
   front[0].rush = front[5].rush = true;   // the edges come after the punter
   const jams = gunners.map(g => mk('CB', 'def', los + 1, g.y, SPEED.CB * dMul, { jam: g }));
   const ups = [-4, 4].map(dy => mk('S', 'def', los + 13, MID + dy, SPEED.S * dMul, { up: true }));
-  front.forEach(d => { d.front = true; });
+  front.forEach((d, i) => { d.front = true; d.hx = 8; d.wy = (i - 2.5) * 3; });
+  ups.forEach(d => { d.hx = 4; d.wy = (d.y - MID) * 1.5; });
+  for (const d of [...front, ...ups]) d.sx = d.x;
   def.push(ret, ...front, ...jams, ...ups);
   for (const p of off) p.face = 1;
   for (const d of def) d.face = -1;
@@ -514,6 +564,9 @@ export function setupMyKick(G, type){
   const deep = [-7, 7].map(dy => mk('RB', 'def', 97, MID + dy, SPEED.RB * dMul, { deep: true }));
   const front = [-18, -9, 0, 9, 18].map(dy => mk('LB', 'def', los + 11, MID + dy, SPEED.LB * dMul, { front: true }));
   const mid = [-10, 0, 10].map(dy => mk('S', 'def', 62, MID + dy, SPEED.S * dMul, { up: true }));
+  // Where each sets up once it's kicked (yards in front of where it's coming down, and across): front five deeper.
+  front.forEach(d => { d.hx = 34; d.wy = (d.y - MID) * .6; d.sx = d.x; d.reach = 4.5; });
+  mid.forEach(d => { d.hx = 21; d.wy = (d.y - MID) * .8; d.sx = d.x; d.reach = 4.5; });
   def.push(...deep, ...front, ...mid);
   for (const p of off) p.face = 1;
   for (const d of def) d.face = -1;
@@ -589,6 +642,15 @@ function myKick(G, err){
     // An onside: you have the man nearest the spot (your hands team): steer him to it, DIVE to get on it.
     if (R.type === 'onside') R.hands = P.off.filter(o => o.cov).sort((a, c) => Math.hypot(a.x - b.tx, a.y - b.ty) - Math.hypot(c.x - b.tx, c.y - b.ty))[0];
   }
+}
+
+/* How fast to run your punt or kickoff: once it's off his foot and there's nothing for you to do but watch it come
+   down (or roll), the game moves it along; back to real time when their man has it, or on an onside (you're
+   steering your hands-team man). pixelbowl.js runs this many steps for each one. */
+export function warp(G){
+  const P = G.play, R = P?.punt;
+  if (!R || P.result || R.runner || R.stage !== 'air' || R.ko && R.type === 'onside') return 1;
+  return 1.6;
 }
 
 /* One tick of your punt. */
@@ -691,7 +753,8 @@ export function stepMyPunt(G, dt, inp = {}){
     } else moveToward(ret, ret.x, ret.y, 0, dt);
   }
 
-  /* ----- their front: edges rush, the rest hold up your coverage; jammers on your gunners ----- */
+  /* ----- their front: edges rush, the rest hold up your coverage, then set a wall; jammers on your gunners ----- */
+  const mine = P.off.filter(o => o.cov), taken = claims(P.def);
   for (const d of P.def){
     if (d === ret || d === runner) continue;
     if (d.stun > 0){ moveToward(d, d.x, d.y, 0, dt, 4); continue; }
@@ -702,14 +765,26 @@ export function stepMyPunt(G, dt, inp = {}){
       if (d.deep){ const t = runner || ret; moveToward(d, t.x + 4, t.y + (d.y < t.y ? -3 : 3), d.spd * .8, dt, 8); continue; }
     }
     if (d.rush && ['snap', 'steps', 'drop'].includes(R.stage)){ moveToward(d, R.punter.x, R.punter.y, d.spd * (P.t < .5 ? .3 : .92), dt, 8); continue; }
-    // Once it's kicked the front turns and runs back with the play (they can't catch your gunners to block them).
-    if (d.front && !['snap', 'steps', 'drop'].includes(R.stage)){ const t = runner || ret; moveToward(d, t.x + 6, d.y + (t.y - d.y) * .3, d.spd * .75, dt, 7); continue; }
-    const f = d.jam || (d.blockOn && !d.blockOn.down ? d.blockOn : null) || P.off.filter(o => o.cov && !o.eng && !P.def.some(x => x !== d && x.blockOn === o)).sort((a, c) => dist(a, d) - dist(c, d))[0];
-    if (!f){ moveToward(d, d.x, d.y, 0, dt); continue; }
-    if (!d.jam) d.blockOn = f;
-    const tgt = runner || ret, dx = tgt.x - f.x, dy = tgt.y - f.y, n = Math.hypot(dx, dy) || 1;
-    moveToward(d, f.x + dx / n * .9, f.y + dy / n * .9, d.spd * (R.stage === 'snap' ? .3 : 1), dt, 10);
-    if (!f.eng && (f.jamCD || 0) <= 0 && dist(d, f) < 1.1 && P.t > .3){ f.eng = { by: d, until: P.t + rnd(.4, .9) }; f.jamCD = 1.6; }
+    const tgt = runner || ret, pre = ['snap', 'steps', 'drop'].includes(R.stage);
+    if (d.jam){
+      // On your gunner from the snap: shadow him between him and the returner, and lock on when he gets there.
+      const f = d.jam, dx = tgt.x - f.x, dy = tgt.y - f.y, n = Math.hypot(dx, dy) || 1;
+      moveToward(d, f.x + dx / n * .9, f.y + dy / n * .9, d.spd * (R.stage === 'snap' ? .3 : 1), dt, 10);
+      if (!f.eng && (f.jamCD || 0) <= 0 && dist(d, f) < 1.1 && P.t > .3){ f.eng = { by: d, until: P.t + rnd(.6, 1.2) }; f.jamCD = 1.2; }
+      continue;
+    }
+    const m = locked(P, d);
+    if (m){ glue(d, m, tgt, dt); continue; }
+    if (pre){
+      // At the line: the punt front holds up whoever releases at him; everyone else waits for the kick.
+      if (d.front && !R.ko && R.stage === 'drop') wallBlock(P, d, mine, tgt, dt, null, 2.2, taken);
+      else moveToward(d, d.x, d.y, 0, dt);
+      continue;
+    }
+    // Kicked: drop back and set up in front of where it's coming down, taking on anyone who comes through; once he
+    // has it, lead him up the field and go find a man coming at him.
+    const home = runner ? { x: Math.min(d.x, runner.x - 3), y: clamp(runner.y + d.wy * .4, 3, FW - 3) } : { x: Math.max(d.sx, b.tx - d.hx), y: clamp(b.ty + d.wy, 3, FW - 3) };
+    wallBlock(P, d, runner ? mine.filter(o => o.x < runner.x + 1 && o.x > d.x - 9) : mine, tgt, dt, home, runner ? 8 : d.reach || 2.5, taken, runner ? DRIVE : CHIP);
   }
 
   /* ----- your coverage ----- */

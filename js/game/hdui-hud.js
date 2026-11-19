@@ -132,7 +132,9 @@ export function dd({ text, goal, spot, side, tell }){
 export const wx = (c, portrait) => `<div class="hb-wx" title="${esc(W.describe(c))}">${W.mark(c)}<b>${c.temp}°</b>${c.wind ? `<span><i style="--r:${W.windTurn(c, portrait)}deg">${W.ARROW}</i>${Math.abs(c.wind)}</span>` : ''}</div>`;
 
 /* ---------- the bottom bar: the play call (yellow) and the glass chips ---------- */
-export const callBtn = name => `<button type="button" data-pb="call" class="pb-call"><span><small>PLAY</small><b>${esc(name)}</b></span><i class="chev">${CHEV}</i></button>`;
+export const callBtn = (name, sub = 'PLAY') => `<button type="button" data-pb="call" class="pb-call"><span><small>${esc(sub)}</small><b${name.length > 9 ? ' class="long"' : ''}>${esc(name)}</b></span><i class="chev">${CHEV}</i></button>`;
+/* The dice beside the play: roll a different play. An icon over a word, the same height as the other chips. */
+export const dice = icon => `<button type="button" data-pb="rollplay" class="hb-chip hb-dice" aria-label="Roll a random play">${icon}<small>RANDOM</small></button>`;
 export const chip = (pb, label, sub = '', cls = '') => `<button type="button" data-pb="${pb}" class="hb-chip ${cls}"><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`;
 
 /* ---------- play by play ---------- */
@@ -242,24 +244,32 @@ export const CSS = `
 .pb.hd .pb-bar button{pointer-events:auto;height:56px;border-radius:14px;padding:0 14px;font:800 19px/1 var(--hd-display);letter-spacing:.05em;color:#fff;-webkit-tap-highlight-color:transparent}
 .pb.hd .pb-bar button:active{transform:translateY(2px)}
 .pb.hd .pb-bar>button:not(.pb-call):not(.hb-chip){background:var(--hd-glass);-webkit-backdrop-filter:var(--hd-blur);backdrop-filter:var(--hd-blur);border:1px solid var(--hd-line);box-shadow:0 8px 22px rgba(0,0,0,.4)}
-.pb.hd .pb-bar .pb-call{flex:1 1 150px;min-width:0;display:flex;align-items:center;gap:10px;padding:0 10px 0 18px;text-align:left;color:#16130a;border:0;
+.pb.hd .pb-bar .pb-call{flex:4 1 130px;min-width:0;display:flex;align-items:center;gap:10px;padding:0 10px 0 18px;text-align:left;color:#16130a;border:0;
   background:linear-gradient(180deg,#ffe172,var(--hd-yellow) 55%,#f2c21c);box-shadow:0 8px 22px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.6)}
 .pb.hd .pb-call>span{flex:1;min-width:0;display:grid;gap:3px}
 .pb.hd .pb-call small{font:700 11px/1 var(--hd-body);letter-spacing:.14em;opacity:.62}
 .pb.hd .pb-call b{font:800 24px/1 var(--hd-display);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-call b.long{font-size:19px;line-height:1.1}   /* a long name (Post-Corner · Pistol) steps down before it would cut off */
 .pb.hd .pb-call .chev{flex:none;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.12);display:grid;place-items:center}
 .pb.hd .pb-call .chev svg{width:17px;height:17px}
 .pb.hd .hb-chip{display:grid;align-content:center;justify-items:center;gap:4px;flex:0 0 auto}
 .pb.hd .hb-chip b{font:800 19px/1 var(--hd-display);letter-spacing:.05em}
 .pb.hd .hb-chip small{font:700 10.5px/1 var(--hd-body);letter-spacing:.1em;color:var(--hd-mute)}
 .pb.hd .hb-chip.go{background:#fff;color:#0b0d10;border:0}
+.pb.hd .pb-bar:has(.pb-call) .hb-chip:not(.hb-dice):not([data-pb="timeout"]){flex:1 0 auto}   /* the late-game row over the play (spike, kneel, FG) shares the width evenly; the play keeps its room */
+.pb.hd .pb-bar .hb-dice,.pb.hd .pb-bar:has(.pb-call) .hb-dice{flex:none;gap:5px;width:64px;padding:0;color:#fff}
+.pb.hd .hb-dice .wxi{width:24px;height:24px}
+.pb.hd .hb-dice small{font-size:9.5px;letter-spacing:.12em}
+.pb.hd .hb-dice.roll .wxi{animation:hbRoll .55s cubic-bezier(.2,.8,.3,1.15) both}
+@keyframes hbRoll{0%{transform:rotate(0) scale(1)}35%{transform:rotate(-200deg) scale(.7)}100%{transform:rotate(-360deg) scale(1)}}
+@media (prefers-reduced-motion:reduce){.pb.hd .hb-dice.roll .wxi{animation:none}}
 .pb.hd .hb-chip.go small{color:#4a525c}
 
 /* ---------- the hint line ---------- */
 .pb.hd .pb-hint{left:16px;right:16px;bottom:calc(${B} + 12px);font:600 12.5px/1.35 var(--hd-body);color:rgba(255,255,255,.94);text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.75);opacity:1}
 /* A light glass backing, so the hint reads over end zone paint and the crowd. */
 .pb.hd .pb-hint:not(:empty){background:rgba(12,14,18,.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:12px;padding:5px 10px}
-.pb.hd .pb-bar:not(:empty)+.pb-hint{bottom:calc(${B} + 80px)}
+.pb.hd .pb-bar:not(:empty)+.pb-hint{bottom:calc(${B} + 24px + var(--pb-barh, 56px))}   /* just above the bar, one row or two (setBar measures it) */
 .pb.hd .pb-moves:not([hidden])~.pb-hint,.pb.hd .pb-jump:not([hidden])~.pb-hint{left:calc(env(safe-area-inset-left,0px) + 186px);text-align:left;bottom:calc(${B} + 20px)}
 .pb.hd .pb-jump:not([hidden])~.pb-hint{left:calc(env(safe-area-inset-left,0px) + 120px)}
 

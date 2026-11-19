@@ -73,6 +73,27 @@ export const CSS = `
 .pb.hd .pb-seg button{flex:1 1 0;min-width:0;height:38px;padding:0 6px;border:0;border-radius:19px;background:none;box-shadow:none;
   font:600 13.5px/1 var(--hd-body);color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pb.hd .pb-seg button[aria-pressed="true"]{background:var(--hd-pill);color:var(--hd-pill-ink)}
+/* The menu's segmented controls: one pill that slides to the pick (springy, like the board's tab bar), the words
+   fading between ink colors, and a press that gives a little. */
+.pb.hd .pb-seg[data-seg]{position:relative;isolation:isolate}
+.pb.hd .pb-seg[data-seg]::before{content:"";position:absolute;z-index:-1;top:4px;bottom:4px;left:4px;width:calc((100% - 8px - (var(--n) - 1) * 3px) / var(--n));border-radius:19px;
+  background:var(--hd-pill);box-shadow:0 1px 4px rgba(0,0,0,.3);transform:translateX(calc(var(--i) * (100% + 3px)));transition:transform .42s cubic-bezier(.3,1.3,.5,1)}
+.pb.hd .pb-seg[data-seg].pb-still::before{transition:none}
+.pb.hd .pb-seg[data-seg][style*="--i:-1"]::before{opacity:0}
+.pb.hd .pb-seg[data-seg] button{transition:color .3s,transform .18s cubic-bezier(.2,.8,.2,1)}
+.pb.hd .pb-seg[data-seg] button[aria-pressed="true"]{background:none}
+.pb.hd .pb-seg[data-seg] button:active{transform:scale(.9)}
+@media (prefers-reduced-motion:reduce){.pb.hd .pb-seg[data-seg]::before{transition:none}}
+/* The dice under VS: a new matchup; the team cards flip in. */
+.pb.hd .pb-vsc{display:grid;justify-items:center;gap:8px}
+.pb.hd .pb-deal{display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:50%;background:none;color:rgba(255,255,255,.55);transition:color .2s,transform .15s}
+.pb.hd .pb-deal:active{transform:scale(.85);color:#fff}
+.pb.hd .pb-deal .wxi{width:20px;height:20px}
+.pb.hd .pb-modal .pb-match.pb-new .pb-deal .wxi{animation:wxRoll .5s cubic-bezier(.2,.8,.3,1) both}
+.pb.hd .pb-modal .pb-match.pb-new .pb-team{animation:pbDeal .5s cubic-bezier(.2,.9,.25,1.15) both}
+.pb.hd .pb-modal .pb-match.pb-new > .pb-team{animation-delay:.07s}
+@keyframes pbDeal{from{opacity:0;transform:translateY(14px) scale(.9) rotate(-3deg)}}
+@media (prefers-reduced-motion:reduce){.pb.hd .pb-modal .pb-match.pb-new .pb-team{animation:none}}
 .pb.hd .pb-opt{gap:7px}
 .pb.hd .pb-opt > span{font:700 10.5px/1 var(--hd-body);letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);padding-left:4px}
 .pb.hd .pb-checks{gap:0;border-radius:20px;background:var(--hd-chip2);overflow:hidden;font:500 14.5px/1.2 var(--hd-body);color:var(--hd-ink)}
@@ -111,10 +132,58 @@ export const CSS = `
 .pb.hd .pb-vs{width:40px;height:40px;border-radius:50%;place-items:center;align-content:center;gap:0;background:rgba(255,255,255,.16);color:#fff !important;font:800 14px/1 var(--hd-display)}
 .pb.hd .pb-vs i{font-size:12px;line-height:1;opacity:.65;color:#fff}
 .pb.hd [data-pb="start"]{min-height:62px;font-size:28px;letter-spacing:.06em}
-.pb.hd .pb-take{display:grid;place-items:center;gap:4px;background:var(--hd-chip);color:#fff !important;box-shadow:inset 0 0 0 1.5px rgba(255,210,63,.45)}
-.pb.hd .pb-take small{font:500 12px/1.2 var(--hd-body);letter-spacing:0;color:rgba(255,255,255,.6)}
-.pb.hd .pb-menu2 .pb-go{font-size:19px}
 .pb.hd .pb-rec{font:500 12.5px var(--hd-body);color:rgba(255,255,255,.55)}
+/* The menu: this game on top, then the other ways to play and your program as tiles; settings behind the gear. */
+.pb.hd .pb-hbtns{position:absolute;right:14px;top:16px;display:flex;gap:8px;z-index:2}
+.pb.hd .pb-hbtns .pb-x{position:static}
+.pb.hd .pb-hbtns .pb-x svg{width:17px;height:17px}
+.pb.hd .pb-home .pb-logo{padding-right:92px}
+.pb.hd .pb-home [data-pb="start"]{margin-top:4px}
+.pb.hd .pb-home .pb-rec{margin:-4px 0 0}
+.pb.hd .pb-seg2 button{display:grid;place-content:center;gap:3px;height:46px;line-height:1}
+.pb.hd .pb-seg2 small{font:500 11px/1 var(--hd-body);opacity:.65}
+.pb.hd .pb-sect{display:grid;gap:8px;margin-top:8px}
+.pb.hd .pb-sect > span{font:700 10.5px/1 var(--hd-body);letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);padding-left:4px}
+.pb.hd .pb-sect > span{margin-top:2px}
+/* More ways to play: two feature cards with some art: the season in its team's colors, Take Over's late-game clock. */
+.pb.hd .pb-feats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pb.hd .pb-feat{position:relative;overflow:hidden;isolation:isolate;display:grid;align-content:end;justify-items:start;gap:3px;min-height:112px;padding:12px 13px;border:0;border-radius:22px;
+  text-align:left;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 6px 18px rgba(0,0,0,.28);transition:transform .12s}
+.pb.hd .pb-feat:active{transform:scale(.97)}
+.pb.hd .pb-feat .pb-fk{font:700 10px/1 var(--hd-body);letter-spacing:.11em;text-transform:uppercase;opacity:.75}
+.pb.hd .pb-feat b{font:800 22px/.95 var(--hd-display);letter-spacing:.02em}
+.pb.hd .pb-feat small{font:500 12px/1.3 var(--hd-body);opacity:.78}
+.pb.hd .sz-feat{background:linear-gradient(155deg,color-mix(in srgb,var(--c) 92%,#fff 8%) 0%,color-mix(in srgb,var(--c) 70%,#000) 55%,color-mix(in srgb,var(--c) 38%,#000) 100%)}
+.pb.hd .sz-feat{padding-top:54px}   /* the logo's corner: the words always start below it (a long line grows the card) */
+.pb.hd .sz-feat::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.45))}
+.pb.hd .pb-fart{position:absolute;z-index:-1;right:-18px;top:-24px;width:76px;height:76px;padding:10px;border-radius:50%;background:rgba(255,255,255,.92);transform:rotate(-10deg);opacity:.95;
+  box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.pb.hd .pb-fart img{width:100%;height:100%;object-fit:contain}
+.pb.hd .pb-take{background:radial-gradient(120% 90% at 100% 0%,rgba(255,180,40,.24),transparent 60%),linear-gradient(160deg,#23262c,#121417);box-shadow:inset 0 0 0 1px rgba(255,210,63,.28),0 6px 18px rgba(0,0,0,.28)}
+.pb.hd .pb-take b{color:var(--hd-yellow)}
+.pb.hd .pb-sb{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:7px;padding:7px 9px 6px;border-radius:10px;background:#07080a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  font:9px/1 'Press Start 2P',ui-monospace,monospace;color:#ffb627;text-shadow:0 0 6px rgba(255,182,39,.6)}
+.pb.hd .pb-sb i{font-style:normal;color:rgba(255,182,39,.7);font-size:7px}
+.pb.hd .pb-sb b{font:inherit;letter-spacing:.04em;animation:pbSbBlink 2s steps(1) infinite}
+@keyframes pbSbBlink{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.pb.hd .pb-sb b{animation:none}}
+/* Your program: one grouped list, an icon on each row. */
+.pb.hd .pb-mlist{display:grid;border-radius:22px;background:var(--hd-chip2);overflow:hidden}
+.pb.hd .pb-mrow{display:grid;grid-template-columns:40px minmax(0,1fr) 16px;align-items:center;gap:13px;min-height:64px;padding:10px 14px 10px 12px;border:0;background:none;color:#fff;text-align:left}
+.pb.hd .pb-mrow{position:relative}
+.pb.hd .pb-mrow + .pb-mrow::before{content:"";position:absolute;left:65px;right:0;top:0;height:1px;background:rgba(255,255,255,.08)}   /* divider from the text, past the icon */
+.pb.hd .pb-mrow:active{background:rgba(255,255,255,.06)}
+.pb.hd .pb-mric{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.08);color:var(--hd-yellow);overflow:hidden}
+.pb.hd .pb-mric svg{width:22px;height:22px}
+.pb.hd .pb-mric img{width:40px;height:auto;margin-top:8px;image-rendering:pixelated}
+.pb.hd .pb-mrow[data-pb="practice"] .pb-mric{color:#ff8a3d;background:rgba(255,138,61,.14)}
+.pb.hd .pb-mrow[data-pb="playbook"] .pb-mric{color:#7df9ff;background:rgba(125,249,255,.11)}
+.pb.hd .pb-mrtx{display:grid;gap:3px;min-width:0}
+.pb.hd .pb-mrtx b{font:700 15.5px/1.15 var(--hd-body)}
+.pb.hd .pb-mrtx small{font:400 12.5px/1.25 var(--hd-body);color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-mrch{display:grid;place-items:center;color:rgba(255,255,255,.35)}
+.pb.hd .pb-mrch svg{width:15px;height:15px}
+.pb.hd .pb-settings .pb-how{padding:2px 4px}
 /* ---------- game conditions: the weather icons (weather.js), the menu's Conditions row, its sheet, the coin toss chip ---------- */
 .pb.hd .wxi{display:block;flex:none;overflow:visible}
 .pb.hd .wxi .ws,.pb.hd .wxi .wk{fill:#ffc93c}
@@ -333,7 +402,8 @@ export const CSS = `
 .pb.hd .pb-4th{grid-template-columns:auto 1fr;column-gap:12px;row-gap:12px;align-items:baseline;padding-top:24px}
 .pb.hd .pb-4th h2{font-size:46px;line-height:.85;white-space:nowrap}
 .pb.hd .pb-4th > p:not(.pb-advice){font-weight:600;font-size:15px;color:rgba(255,255,255,.65)}
-.pb.hd .pb-4th > .pb-advice,.pb.hd .pb-4th > .pb-btns{grid-column:1/-1}
+.pb.hd .pb-4th > .pb-advice,.pb.hd .pb-4th > .pb-btns,.pb.hd .pb-4th > .pb-skip{grid-column:1/-1}
+.pb.hd .pb-4th > .pb-btns + .pb-skip{margin-top:-4px;align-self:start}
 .pb.hd .pb-advice{display:flex;align-items:center;gap:12px;padding:8px 14px 8px 52px;border-radius:18px;position:relative;min-height:46px;
   background:rgba(61,220,132,.11);box-shadow:inset 0 0 0 1px rgba(61,220,132,.3);font:600 13px/1.3 var(--hd-body) !important;color:rgba(255,255,255,.85) !important}
 .pb.hd .pb-advice::before{content:"";position:absolute;left:10px;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;background:rgba(61,220,132,.2) url("${SIDELINE}") center/16px no-repeat}
@@ -438,13 +508,45 @@ export const CSS = `
 .pb.hd .pb-sess .pb-go.sm{font-size:16px}
 
 /* ---------- practice, the playbook and the play designer ---------- */
-.pb.hd .pb-practice{gap:12px}
-.pb.hd .pb-side button{flex:1 1 auto;padding:0 10px;font:800 16px/1 var(--hd-display);letter-spacing:.03em;height:40px;white-space:nowrap}
 .pb.hd .pb-form{border:0;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .pb.hd .pb-form p{padding:8px 12px;border:0;border-top:1px solid rgba(255,255,255,.07);font:500 12.5px/1.35 var(--hd-body);color:rgba(255,255,255,.7)}
 .pb.hd :is(.pb-form,.pb-concepts,.pb-callrow,.pb-pbc) .q{font:700 8px var(--hd-body)}
 .pb.hd .pb-form .tag{font:700 5.5px var(--hd-body)}
 .pb.hd .pb-concepts{gap:8px;grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+/* Practice offense: the concepts as one row you swipe, the one you're on in view. */
+.pb.hd .pb-crow{display:grid;grid-auto-flow:column;grid-auto-columns:31%;grid-template-columns:none;gap:7px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -18px;padding:2px 18px;scroll-padding:0 18px}
+.pb.hd .pb-crow::-webkit-scrollbar{display:none}
+.pb.hd .pb-crow button{scroll-snap-align:start;padding:5px 5px 8px;font-size:12px;border-radius:16px}
+.pb.hd .pb-crow button span{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-crow button i{font:700 8px/1 var(--hd-body);font-style:normal;letter-spacing:.08em;padding:3px 4px;border-radius:5px;background:rgba(125,249,255,.16);color:#7df9ff}
+/* The play card: the field, the play's name, and how many receivers are out. */
+.pb.hd .pb-ohero{display:grid}
+.pb.hd .pb-ohero svg{display:block}
+.pb.hd .pb-ocap{display:grid;gap:3px;padding:11px 14px 2px}
+.pb.hd .pb-ocap b{font:800 22px/1 var(--hd-display);letter-spacing:.02em;color:#fff}
+.pb.hd .pb-ocap small{font:400 12px/1.2 var(--hd-body);color:rgba(255,255,255,.5)}
+.pb.hd .pb-orec{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;padding:10px 10px 10px 14px}
+.pb.hd .pb-orec > span{font:700 10.5px/1 var(--hd-body);letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.pb.hd .pb-orec .pb-seg button{height:34px}
+/* Situation: where the rep starts (a mini field, the ball gliding to the spot) and who you throw to. */
+.pb.hd .pb-osit{display:grid;gap:8px;padding:10px;border-radius:22px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.pb.hd .pb-fmini{position:relative;height:30px;margin:0 6px;border-radius:9px;overflow:hidden;
+  background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),rgba(255,255,255,.22) calc(10% - 1px) 10%),linear-gradient(#3f7a3a,#336b2f)}
+.pb.hd .pb-fez{position:absolute;right:0;top:0;bottom:0;width:7%;background:rgba(255,255,255,.14);box-shadow:inset 1px 0 0 rgba(255,255,255,.5)}
+.pb.hd .pb-fball{position:absolute;top:50%;left:calc(var(--x) * .93%);width:16px;height:10px;margin:-5px 0 0 -8px;border-radius:50%;background:#a5612f;box-shadow:0 0 0 1.5px #fff,0 2px 5px rgba(0,0,0,.5);z-index:1;
+  transition:left .5s cubic-bezier(.3,1.2,.5,1)}
+.pb.hd .pb-fball::before{content:"";position:absolute;left:3px;right:3px;top:50%;height:1px;background:rgba(255,255,255,.85)}
+.pb.hd .pb-fmini::after{content:"";position:absolute;top:0;bottom:0;left:calc(var(--x) * .93%);width:2px;margin-left:-1px;background:rgba(90,150,255,.95);transition:left .5s cubic-bezier(.3,1.2,.5,1)}
+.pb.hd .pb-fmini.pb-still .pb-fball,.pb.hd .pb-fmini.pb-still::after{transition:none}
+@media (prefers-reduced-motion:reduce){.pb.hd .pb-fball,.pb.hd .pb-fmini::after{transition:none}}
+.pb.hd .pb-otog{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:54px;margin-top:2px;padding:8px 6px 4px;border:0;border-top:1px solid rgba(255,255,255,.07);border-radius:0;background:none;color:#fff;text-align:left}
+.pb.hd .pb-otog span{display:grid;gap:3px}
+.pb.hd .pb-otog b{font:600 14.5px/1.2 var(--hd-body)}
+.pb.hd .pb-otog small{font:400 12px/1.25 var(--hd-body);color:rgba(255,255,255,.5)}
+.pb.hd .pb-otog i{position:relative;width:46px;height:28px;border-radius:14px;background:rgba(255,255,255,.18);transition:background .2s}
+.pb.hd .pb-otog i::after{content:"";position:absolute;top:3.5px;left:3.5px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .25s cubic-bezier(.3,1.3,.5,1)}
+.pb.hd .pb-otog[aria-checked="true"] i{background:var(--hd-green)}
+.pb.hd .pb-otog[aria-checked="true"] i::after{transform:translateX(18px)}
 .pb.hd .pb-concepts button{gap:6px;padding:6px 6px 9px;border:0;border-radius:18px;background:var(--hd-chip2);font:600 13px/1.2 var(--hd-body)}
 .pb.hd .pb-concepts button svg{border-radius:12px;background:rgba(70,110,60,.3)}
 .pb.hd .pb-concepts button[aria-pressed="true"]{background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 2px var(--hd-pill)}
@@ -457,13 +559,36 @@ export const CSS = `
 .pb.hd .pb-rq{font:800 24px/1 var(--hd-display)}
 .pb.hd .pb-name{font:800 26px/1 var(--hd-display) !important;letter-spacing:.02em}
 .pb.hd .pb-ename-err{font-size:13px}
-.pb.hd .pb-ddrills{gap:8px}
-.pb.hd .pb-ddrills button{gap:6px;padding:12px 14px;border:0;border-radius:20px;background:var(--hd-chip2);box-shadow:none}
-.pb.hd .pb-ddrills button b{font:800 20px/1 var(--hd-display);letter-spacing:.02em}
-.pb.hd .pb-ddrills button small{font:400 12.5px/1.4 var(--hd-body);color:rgba(255,255,255,.6)}
-.pb.hd .pb-ddrills button[aria-pressed="true"]{background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 2px var(--hd-yellow)}
-.pb.hd .pb-ddrills button[aria-pressed="true"] b{color:var(--hd-yellow)}
-.pb.hd .pb-hist{gap:6px;margin-top:2px}
+/* Practice: one frame for every side, drills as tiles, the reps and START together, recent grades as chips. */
+.pb.hd .pb-prac{display:flex;flex-direction:column;gap:12px;height:calc(100dvh - var(--pb-top) - env(safe-area-inset-bottom,0px) - 8px)}   /* one height for every side: switching never moves the sheet's top */
+.pb.hd .pb-side button{font:800 16px/1 var(--hd-display);letter-spacing:.03em;height:40px}
+.pb.hd .pb-pbody{flex:1 0 auto;display:flex;flex-direction:column;gap:12px}
+.pb.hd .pb-modal .pb-prac .pb-pbody.pb-new{animation:pbSideIn .3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pbSideIn{from{opacity:0;transform:translateY(8px)}}
+@media (prefers-reduced-motion:reduce){.pb.hd .pb-modal .pb-prac .pb-pbody.pb-new{animation:none}}
+.pb.hd .pb-psub{margin:0;padding:0 4px;font:400 13px/1.35 var(--hd-body);color:rgba(255,255,255,.58)}
+.pb.hd .pb-psub b{font-weight:600;color:#fff}
+.pb.hd .pb-dtiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pb.hd .pb-dtiles button{display:grid;justify-items:start;align-content:start;gap:5px;min-height:100px;padding:13px 12px 12px;border:0;border-radius:20px;background:var(--hd-chip2);
+  color:#fff;text-align:left;transition:background .2s,box-shadow .2s,transform .15s}
+.pb.hd .pb-dtiles button:active{transform:scale(.97)}
+.pb.hd .pb-dtiles svg{width:26px;height:26px;margin-bottom:5px;color:rgba(255,255,255,.5);transition:color .2s}
+.pb.hd .pb-dtiles b{font:800 18px/1 var(--hd-display);letter-spacing:.02em;transition:color .2s}
+.pb.hd .pb-dtiles small{font:400 12px/1.3 var(--hd-body);color:rgba(255,255,255,.55)}
+.pb.hd .pb-dtiles button[aria-pressed="true"]{background:rgba(255,210,63,.09);box-shadow:inset 0 0 0 2px var(--hd-yellow)}
+.pb.hd .pb-dtiles button[aria-pressed="true"] :is(svg,b){color:var(--hd-yellow)}
+.pb.hd .pb-form p b{font-weight:700;color:#fff}
+/* The reps and START, pinned to the bottom of the sheet on every side (the options scroll under it). */
+.pb.hd .pb-pgo{position:sticky;bottom:-18px;z-index:2;display:grid;gap:12px;margin:auto -18px -18px;padding:22px 18px 18px;
+  background:linear-gradient(rgba(22,24,29,0),rgba(22,24,29,.97) 20px)}
+.pb.hd .pb-hist{display:grid;gap:8px;margin-top:2px}
+.pb.hd .pb-hchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:2px}
+.pb.hd .pb-hc{flex:none;display:grid;justify-items:center;gap:4px;min-width:54px;padding:9px 8px 8px;border-radius:16px;background:var(--hd-chip2)}
+.pb.hd .pb-hc b{font:800 22px/1 var(--hd-display)}
+.pb.hd .pb-hc small{font:500 10.5px/1 var(--hd-body);color:rgba(255,255,255,.5)}
+.pb.hd .pb-hc.best{box-shadow:inset 0 0 0 1.5px rgba(255,210,63,.6)}
+.pb.hd .pb-hall summary{padding:4px;font:600 12.5px/1.2 var(--hd-body);color:var(--hd-yellow);cursor:pointer}
+.pb.hd .pb-hrows{display:grid;gap:6px;margin-top:6px}
 .pb.hd .pb-hh{align-items:baseline;font:700 10.5px/1 var(--hd-body);letter-spacing:.1em;color:rgba(255,255,255,.5);padding:0 4px}
 .pb.hd .pb-hh small{font:500 12px var(--hd-body);letter-spacing:0;color:rgba(255,255,255,.6)}
 .pb.hd .pb-hr{grid-template-columns:42px 1fr auto;gap:10px;padding:8px 8px 8px 12px;border:0;border-radius:18px;background:var(--hd-chip2)}
@@ -526,6 +651,10 @@ export const CSS = `
 .pb.hd .pb-rcalls small{margin:0 6px;font:400 12px/1.3 var(--hd-body);color:rgba(255,255,255,.58)}
 .pb.hd .pb-rcalls .safe b{color:rgba(255,255,255,.85)}
 .pb.hd .pb-retfoot{margin:0;text-align:center;font-size:12px}
+/* "Skip it": the quiet way out of a kick or return (simmed, as in Offense only). */
+.pb.hd .pb-skip{display:block;width:100%;min-height:44px;margin:0;padding:10px 16px;border:0;border-radius:22px;background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);color:rgba(255,255,255,.72);font:600 14px/1.2 var(--hd-body);cursor:pointer}
+.pb.hd .pb-btns + .pb-skip{margin-top:-6px}   /* tucked under the button it's the alternative to, like a second row of .pb-btns */
+.pb.hd .pb-skip:active{transform:scale(.98);background:rgba(255,255,255,.08)}
 .pb.hd .pb-rcalls button{position:relative}
 .pb.hd .pb-rcalls button.pb-adv{background:rgba(61,220,132,.1);box-shadow:inset 0 0 0 2px var(--hd-green)}
 .pb.hd .pb-rcalls button.pb-adv::after{content:"SIDELINE'S CALL";position:absolute;top:-8px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:4px 8px;border-radius:999px;
@@ -553,11 +682,6 @@ export const CSS = `
 .pb.hd .pb-load{text-align:center;padding:20px 0}
 
 /* ---------- season mode ---------- */
-.pb.hd .sz-menu{display:grid !important;gap:4px;padding:12px 14px 12px 18px !important;border-radius:22px !important;background:rgba(255,255,255,.07) !important;color:#fff !important;
-  box-shadow:inset 4px 0 0 var(--c,var(--hd-yellow)) !important;text-align:left;min-height:0}
-.pb.hd .sz-menu span{font:800 19px/1 var(--hd-display);letter-spacing:.03em;gap:10px}
-.pb.hd .sz-menu img{width:30px;height:30px;padding:3px;border-radius:50%;background:#fff}
-.pb.hd .sz-menu small{font:400 12.5px/1.35 var(--hd-body);letter-spacing:0;color:rgba(255,255,255,.6)}
 .pb.hd .sz-kicker{font:700 11px/1 var(--hd-body);letter-spacing:.12em;color:var(--hd-cyan)}
 .pb.hd .sz-title{font:800 26px/.92 var(--hd-display);color:rgba(255,255,255,.75);text-shadow:none;padding-right:44px}
 .pb.hd .sz-title span{display:inline-block;font-size:2.4em;line-height:.85;color:#fff}

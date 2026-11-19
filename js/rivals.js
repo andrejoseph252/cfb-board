@@ -58,5 +58,6 @@ const PAIRS = [
   [201, 158],   // Oklahoma – Nebraska
   [254, 328]    // Utah – Utah State
 ];
+export const RIVAL_PAIRS = PAIRS;   // (the game's Rivalry matchup draws from these too)
 const KEYS = new Set(PAIRS.map(([a, b]) => [a, b].sort((x, y) => x - y).join('-')));
 export const isRivalry = g => KEYS.has([Number(g.home.id), Number(g.away.id)].sort((x, y) => x - y).join('-'));

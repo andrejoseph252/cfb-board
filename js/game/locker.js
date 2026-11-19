@@ -38,6 +38,8 @@ export function kitFor(t, away){
    to helmet and shoulders, as an image (cached per uniform). */
 const BUSTS = new Map();
 export function bust(t){ return bustOf(A.uniform(t, false)) + EDIT; }
+/* The same bust without the EDIT tag (the menu's Locker Room row). */
+export function bustPlain(t){ return bustOf(A.uniform(t, false)); }
 const EDIT = '<span class="pb-kitcap"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 1.8l3 3L5.5 13.5l-3.8.8.8-3.8z" fill="currentColor"/></svg>EDIT</span>';
 function bustOf(uni){
   let url = BUSTS.get(uni.key);
@@ -400,5 +402,4 @@ export const CSS = `
 .pb.hd .pb-kitcap{position:absolute;left:0;right:0;bottom:0;z-index:1;display:flex;align-items:center;justify-content:center;gap:3px;height:16px;
   background:rgba(8,10,14,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font:800 8.5px/1 var(--hd-body);letter-spacing:.12em;color:#fff}
 .pb.hd .pb-kitcap svg{width:8px;height:8px;opacity:.85}
-.pb.hd .pb-kitbtn.on::after{content:"";position:absolute;top:5px;right:5px;z-index:2;width:8px;height:8px;border-radius:50%;background:var(--hd-green);box-shadow:0 0 0 2px rgba(8,10,14,.5)}
 `;

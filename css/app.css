@@ -71,7 +71,7 @@
   --accent:#EDEDED;--accent-ink:#111111;--good:#5CC08A;--fpi:#8FB0E0;
 }
 *,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px);touch-action:manipulation}
 html,body{overflow-x:clip;overscroll-behavior-y:none}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
 body.drawer-open{overflow:hidden}

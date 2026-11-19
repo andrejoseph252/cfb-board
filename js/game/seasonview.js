@@ -566,21 +566,20 @@ export function click(a, b){
 }
 
 /* ---------- the menu card on the main screen ---------- */
-export function menuCard(){
-  const x = SN.load();
-  if (!x) return `<button class="pb-go sz-menu" type="button" data-pb="s-new"><span>SEASON MODE</span><small>Your real schedule, week by week: scout, plan, practice, play or coach</small></button>`;
+/* The Season card on the menu: your season's team (or, before one's started, the team you've picked) in its colors. */
+export function menuCard(me){
+  const x = SN.load(), art = t => t?.logo ? `<span class="pb-fart"><img src="${esc(logoUrl(t.logo, 144))}" alt=""></span>` : '';
+  if (!x) return `<button class="pb-feat sz-feat" type="button" data-pb="s-new" style="--c:${esc(me?.color || '#3a4250')}">${art(me)}
+    <span class="pb-fk">Season mode</span><b>SEASON</b><small>Play ${me?.abbr ? `${esc(me.abbr)}'s` : 'a'} real schedule, week by week</small></button>`;
   const r = SN.recOf(SN.table(x), x.teamId), t = x.teams[x.teamId], n = SN.next(x), g = n.id ? x.games[n.id] : null;
   const what = n.kind === 'done' ? 'Season complete' : g ? `Next: ${g.post ? esc(g.name || '') : `Week ${g.w}`} ${SN.homeAway(x, g) === 'A' ? '@' : 'vs'} ${esc(SN.oppOf(x, g).abbr)}` : n.kind === 'bye' ? `Week ${n.week}: bye` : 'The postseason rolls on';
-  return `<button class="pb-go sz-menu" type="button" data-pb="s-hub" style="--c:${esc(t.color)}"><span>${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}YOUR SEASON · ${rec(r)}</span><small>${what}</small></button>`;
+  return `<button class="pb-feat sz-feat" type="button" data-pb="s-hub" style="--c:${esc(t.color)}">${art(t)}
+    <span class="pb-fk">Your season · ${rec(r)}</span><b>${esc(t.abbr || t.name)}</b><small>${what.replace(/^Next: /, '')}</small></button>`;
 }
 
 export const CSS = `
 .sz-px{width:100%;height:100%;display:block;shape-rendering:crispEdges}
 .sz-nologo{display:inline-grid;place-items:center;background:var(--c);color:#fff;font-style:normal;font-size:7px;border-radius:50%}
-.sz-menu{display:grid !important;gap:6px;text-align:left;background:#101215 !important;color:#ffd84a !important;box-shadow:0 4px 0 #000,inset 0 0 0 2px #ffd84a,inset 6px 0 0 var(--c,#ffd84a) !important;padding:14px 14px 14px 20px !important}
-.sz-menu span{display:flex;align-items:center;gap:8px;font-size:12px}
-.sz-menu img{width:22px;height:22px;object-fit:contain}
-.sz-menu small{font-size:7px;color:#c9d1d9;line-height:1.6}
 .sz-kicker{font-size:8px;color:#7df9ff;letter-spacing:.08em}
 .sz-title{margin:0;font-size:clamp(18px,5.5vw,28px);font-weight:400;line-height:1.1;color:#fff;text-shadow:3px 3px 0 #000}
 .sz-title span{color:#ffd84a;font-size:1.25em}

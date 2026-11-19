@@ -567,6 +567,11 @@ export function createRenderer(canvas){
       const o = d.eng?.by || (d.role === 'DL' && !d.free && d.ol) || null;
       if (o && !d.down && !o.down){ engaged.set(d, o); engaged.set(o, d); }
     }
+    // On your punts and kickoffs it's your cover men who get blocked (their .eng names the blocker).
+    if (P?.live) for (const o of P.off){
+      const d = o.eng?.by;
+      if (d && !o.down && !d.down){ engaged.set(o, d); engaged.set(d, o); }
+    }
     // A tackle: the man with the ball goes down away from the hit, the tackler on top of him.
     const R_ = P?.result, victim = R_?.by ? (R_.type === 'sack' ? P.qb : P.carrier) : null;
     for (const p of list){
@@ -1018,13 +1023,26 @@ export function createRenderer(canvas){
       const [x, y] = toScreen(f.x, f.y, f.z); ctx.fillStyle = f.c; ctx.fillRect(x, y, n, n);
     }
     P.fx = P.fx.filter(f => f.t <= f.life);
-    // Pop-up words: pop in, rise, fade.
-    for (const p of P.pops){
-      p.t += dt; if (p.t > 1.3) continue;
-      const [x, y] = toScreen(p.x, p.y), grow = Math.min(1, p.t / .12), a = p.t > 1 ? 1 - (p.t - 1) / .3 : 1;
-      say(p.text, x, y - 32 - L - p.t * 14, 10.5 * (.7 + .3 * grow), POP[String(p.color).toLowerCase()] || p.color, { rim: 2.6, alpha: a });
-    }
-    P.pops = P.pops.filter(p => p.t <= 1.3);
+    // Pop-up words: pop in, rise, fade. Words up at the same time never sit on each other: the newest gets its own
+    // spot and any older one in its way steps up out of it (easing, not jumping); each stays on screen; the same word
+    // twice in a beat at the same spot shows once; and only the three newest stay up (older ones fade out early).
+    for (const p of P.pops) p.t += dt;
+    P.pops = P.pops.filter((p, i, all) => p.t <= 1.3 && !all.some((q, j) => j < i && q.text === p.text && Math.abs(q.t - p.t) < .35 && Math.hypot(q.x - p.x, q.y - p.y) < 4));
+    const up = [...P.pops].sort((a, b) => a.t - b.t);   // newest first
+    up.slice(3).forEach(p => { p.t = Math.max(p.t, 1); });
+    const placed = [], H = 15;
+    ctx.save(); ctx.font = font(10.5);
+    const wide = up.map(p => ctx.measureText(p.text).width + 8);
+    ctx.restore();
+    up.forEach((p, i) => {
+      const w = wide[i], [sx, sy] = toScreen(p.x, p.y), x = clamp(sx, w / 2 + 4, Wu - w / 2 - 4), y0 = Math.max(H, sy - 32 - L - p.t * 14);
+      let lift = 0;
+      while (lift < H * 4 && placed.some(q => Math.abs(q.x - x) < (q.w + w) / 2 && Math.abs(q.y - (y0 - lift)) < H)) lift += H;
+      p.lift = p.lift == null ? lift : p.lift + (lift - p.lift) * Math.min(1, dt * 14);
+      const y = y0 - p.lift, grow = Math.min(1, p.t / .12), a = p.t > 1 ? Math.max(0, 1 - (p.t - 1) / .3) : 1;
+      placed.push({ x, y, w });
+      say(p.text, x, y, 10.5 * (.7 + .3 * grow), POP[String(p.color).toLowerCase()] || p.color, { rim: 2.6, alpha: a });
+    });
   }
   /* Close in, a receiver can be off the screen: a glass tab on the edge points the way (in his tag's color once
      the ball is snapped; with his number on a keyboard). */

@@ -100,6 +100,8 @@ export const CONCEPTS = {
   bubble:  { name: 'Bubble-Go', tip: 'Bubble to the slot, or the go over the top', fam: 'quick', form: 'trips', tags: ['short'], reads: ['SL', 'Z', 'TE'], routes: { X: 'hitch', Z: 'go', SL: 'bubble', TE: 'seam', RB: 'block' } },
   whip:    { name: 'Whips', tip: 'Fake inside, whip out; beats man', fam: 'quick', tags: ['man', 'short'], reads: ['SL', 'TE', 'X'], routes: { X: 'go', Z: 'go', SL: 'whip', TE: 'whip', RB: 'angle' } },
   choice:  { name: 'Option', tip: 'Sit down vs zone, break out vs man', fam: 'quick', tags: ['short'], reads: ['SL', 'TE', 'RB', 'X'], routes: { X: 'go', Z: 'go', SL: 'option', TE: 'option', RB: 'flat' } },
+  spacing: { name: 'Spacing', tip: 'Everyone settles five yards apart: throw to the open window', fam: 'quick', tags: ['short'], reads: ['Z', 'SL', 'TE', 'X'], routes: { X: 'out', Z: 'spot', SL: 'hitch', TE: 'flat', RB: 'block' } },
+  ystick:  { name: 'Y-Stick', tip: 'The tight end sits down over the ball', fam: 'quick', tags: ['short'], reads: ['TE', 'RB', 'X'], routes: { X: 'slant', Z: 'go', SL: 'out', TE: 'stick', RB: 'flat' } },
   curlflat:{ name: 'Curl-Flat', tip: 'Short and safe', fam: 'quick', tags: ['short'], reads: ['X', 'Z', 'SL', 'RB'], routes: { X: 'curl', Z: 'curl', SL: 'flat', TE: 'flat', RB: 'swing' } },
   // The intermediate game: crossers, levels and high-lows.
   mesh:    { name: 'Mesh', tip: 'Crossers rub underneath; murders man', fam: 'mid', tags: ['man'], reads: ['SL', 'TE', 'Z', 'RB'], routes: { X: 'dig', Z: 'corner', SL: 'drag', TE: 'drag', RB: 'wheel' } },
@@ -112,6 +114,9 @@ export const CONCEPTS = {
   mills:   { name: 'Mills', tip: 'Post over a dig: the safety can\'t take both', fam: 'mid', tags: ['long'], reads: ['Z', 'SL', 'TE'], routes: { X: 'go', Z: 'post', SL: 'dig', TE: 'stick', RB: 'flat' } },
   texas:   { name: 'Texas', tip: 'The back\'s angle route beats a linebacker', fam: 'mid', tags: ['man'], reads: ['RB', 'SL', 'X'], routes: { X: 'curl', Z: 'curl', SL: 'out', TE: 'seam', RB: 'angle' } },
   outs:    { name: 'Outs', tip: 'Timing throws to the sideline', fam: 'mid', tags: ['sideline'], reads: ['Z', 'X', 'SL'], routes: { X: 'out', Z: 'out', SL: 'out', TE: 'out', RB: 'flat' } },
+  dragdig: { name: 'Drag-Dig', tip: 'Dig from the outside over a drag underneath', fam: 'mid', reads: ['Z', 'SL', 'RB'], routes: { X: 'go', Z: 'dig', SL: 'drag', TE: 'seam', RB: 'swing' } },
+  comebacks:{ name: 'Comebacks', tip: 'Outside receivers drive deep, then snap back to the sideline', fam: 'mid', tags: ['sideline', 'long'], reads: ['X', 'Z', 'TE'], routes: { X: 'comeback', Z: 'comeback', SL: 'seam', TE: 'drag', RB: 'flat' } },
+  hank:    { name: 'Hank', tip: 'Curls outside, the tight end drags under them', fam: 'mid', tags: ['zone'], reads: ['TE', 'Z', 'RB'], routes: { X: 'hitch', Z: 'curl', SL: 'seam', TE: 'drag', RB: 'angle' } },
   sail:    { name: 'Sail', tip: 'Deep out off a clear-out: move the chains', fam: 'mid', tags: ['sideline', 'long'], reads: ['SL', 'Z', 'RB'], routes: { X: 'dig', Z: 'go', SL: 'sail', TE: 'drag', RB: 'flat' } },
   // Shots: deep balls and double moves, with extra protection on the big ones.
   verts:   { name: 'Four Verts', tip: 'Stretch the safeties deep', fam: 'deep', tags: ['long'], reads: ['SL', 'TE', 'Z', 'RB'], routes: { X: 'go', Z: 'go', SL: 'seam', TE: 'seam', RB: 'flat' } },
@@ -120,10 +125,12 @@ export const CONCEPTS = {
   sluggo:  { name: 'Sluggo', tip: 'Sell the slant, then go; beats jumpy corners', fam: 'deep', tags: ['shot', 'man'], reads: ['X', 'Z', 'SL'], routes: { X: 'sluggo', Z: 'sluggo', SL: 'slant', TE: 'stick', RB: 'block' } },
   outnup:  { name: 'Out & Up', tip: 'Show the out, turn it up the sideline', fam: 'deep', tags: ['shot', 'sideline'], reads: ['X', 'Z', 'TE'], routes: { X: 'outnup', Z: 'outnup', SL: 'hitch', TE: 'flat', RB: 'block' } },
   scissors:{ name: 'Scissors', tip: 'Post outside, corner inside: they cross', fam: 'deep', tags: ['zone'], reads: ['SL', 'Z', 'TE'], routes: { X: 'dig', Z: 'post', SL: 'corner', TE: 'stick', RB: 'block' } },
+  postcorner:{ name: 'Post-Corner', tip: 'Sell the post, break to the corner', fam: 'deep', tags: ['shot', 'zone'], reads: ['Z', 'X', 'SL'], routes: { X: 'post', Z: 'postcorner', SL: 'drag', TE: 'stick', RB: 'block' } },
   hitchgo: { name: 'Hitch & Go', tip: 'Sit on the hitch... then don\'t', fam: 'deep', tags: ['shot'], reads: ['Z', 'X', 'TE'], routes: { X: 'stopgo', Z: 'stopgo', SL: 'curl', TE: 'flat', RB: 'block' } },
   // The red zone: the field is short, so are the routes.
   fades:   { name: 'Double Fade', tip: 'Back-shoulder fades, spot inside', fam: 'rz', tags: ['rz'], reads: ['X', 'Z', 'SL'], routes: { X: 'fade', Z: 'fade', SL: 'spot', TE: 'stick', RB: 'flat' } },
   rzcross: { name: 'Goal-Line Rub', tip: 'Crossers pick their men at the goal line', fam: 'rz', tags: ['rz', 'man'], reads: ['SL', 'TE', 'RB'], routes: { X: 'corner', Z: 'slant', SL: 'shallow', TE: 'drag', RB: 'arrow' } },
+  ycorner: { name: 'Y-Corner', tip: 'Tight end to the back pylon', fam: 'rz', tags: ['rz'], reads: ['TE', 'SL', 'RB'], routes: { X: 'fade', Z: 'slant', SL: 'flat', TE: 'corner', RB: 'block' } },
   cornerflat:{ name: 'Corner-Flat', tip: 'Trips: corner over the flat, in the end zone', fam: 'rz', form: 'trips', tags: ['rz'], reads: ['SL', 'TE', 'Z'], routes: { X: 'slant', Z: 'in', SL: 'corner', TE: 'flat', RB: 'block' } }
 };
 /* When the quarterback's eyes move to each read (seconds after the snap): the quick game is a rhythm throw, the
@@ -154,7 +161,9 @@ export function coachCall(G){
     if (togo <= 3 && t.includes('short')) v *= 1.4;
     if (late && behind && t.includes('sideline')) v *= 2.2;
     if (L < 10 && t.includes('shot')) v *= .3;   // backed up: no seven-step drops in his own end zone
-    if (recent.includes(k)) v *= recent[0] === k ? 0 : .35;
+    if (recent.includes(k)) v *= recent[0] === k ? 0 : .35;   // nothing twice in a row, little of what he's run lately
+    const last = CONCEPTS[recent[0]]?.routes;
+    if (last && c.routes.X === last.X && c.routes.Z === last.Z) v *= .4;   // or the same look outside as last snap
     w[k] = v;
   }
   let u = Math.random() * Object.values(w).reduce((a, x) => a + x, 0);
@@ -175,6 +184,9 @@ export const RUN_CALLS = {
 };
 export const FORMATIONS = { gun: 'Shotgun', pistol: 'Pistol', under: 'Under center', trips: 'Trips', empty: 'Empty' };
 
+/* Routes that do the same job as each other (see the clear-outs in setupPlay). */
+const VARIANTS = { go: ['go', 'fade', 'post'], fade: ['fade', 'go'], dig: ['dig', 'in', 'cross'], curl: ['curl', 'comeback', 'hitch'], hitch: ['hitch', 'curl', 'spot'],
+  stick: ['stick', 'spot', 'hitch'], drag: ['drag', 'shallow'], seam: ['seam', 'go'], flat: ['flat', 'swing', 'arrow'], swing: ['swing', 'flat'] };
 const POOL = {
   X: ['go', 'slant', 'post', 'corner', 'out', 'dig', 'curl', 'comeback', 'hitch', 'fade'],
   Z: ['go', 'slant', 'post', 'corner', 'out', 'dig', 'curl', 'comeback', 'hitch', 'fade'],
@@ -211,8 +223,9 @@ function pickCoverage(G, L){
   return 'c3';
 }
 /* Who covers whom (man) or what (zone: center across the field, half-width, depth past the line, deep or not). */
-function assignCoverage(cov, { lb, cb1, cb2, fs, ss }, o, L){
-  const Z = (cy, hw, depth, deep = false) => ({ cy, hw, depth, deep });
+function assignCoverage(cov, { lb, cb1, cb2, fs, ss }, o, L, sd = 1){
+  // Drawn for the offense's strength on the right; when it's flipped, the zones flip with it.
+  const Z = (cy, hw, depth, deep = false) => ({ cy: sd < 0 ? FW - cy : cy, hw, depth, deep });
   const flatL = Z(6, 7, 5), flatR = Z(FW - 6, 7, 5), curlL = Z(14, 6, 9), curlR = Z(FW - 14, 6, 9), hook = Z(MID, 6, 8), hookL = Z(MID - 7, 5, 8), hookR = Z(MID + 7, 5, 8);
   const man = (d, r) => { if (r) d.man = r; else d.spy = true; };
   const blitz = d => { d.blitz = true; d.x = L + 2; };
@@ -243,17 +256,29 @@ export function setupPlay(G){
   // Formations. Shotgun (the default): the back offset beside the quarterback, toward the wide side, easy to tap
   // apart from him. Pistol: the back right behind a short shotgun. Under center: the quarterback at the center with
   // a deep back. Trips: three receivers to one side. Empty: the back split out wide (no handoff).
-  const F = G.practice ? 'gun' : (G.formation || 'gun'), wide = b < MID ? 1 : -1;
+  // The call first: random in a game is the coach's call, a play from the book, kept (with its side and formation)
+  // through re-setups until the snap's over.
+  const PR = G.practice;
+  if (!PR && !G.call && !G.autoCall){ G.autoCall = coachCall(G); G.recentCalls = [G.autoCall, ...(G.recentCalls || [])].slice(0, 6); }
+  const book = !PR && (CONCEPTS[G.call] || (!G.call ? CONCEPTS[G.autoCall] : null));
+  // Formation: the one you picked; else the play's own (Trips plays in trips), and the coach mixes in the pistol.
+  if (!PR && !G.formPick && G.snapForm == null) G.snapForm = book?.form || (book && Math.random() < .3 ? 'pistol' : null);
+  const F = PR ? 'gun' : G.formPick ? (G.formation || 'gun') : (G.snapForm || 'gun'), wide = b < MID ? 1 : -1;
+  if (!PR && !G.formPick) G.formation = F;   // the play sheet shows what this snap lines up in
+  // Strength: the slot (and trips) to the field most snaps, the boundary now and then, so a play can come from either
+  // side. Practice and your cover drill keep the drawn sides.
+  if (G.snapSide == null) G.snapSide = PR || G.defDrill ? 1 : Math.abs(b - MID) < 2 ? (Math.random() < .5 ? 1 : -1) : Math.random() < .7 ? wide : -wide;
+  const sd = G.snapSide, toward = (a, lim) => sd > 0 ? Math.min(a, lim) : Math.max(a, lim);
   const qb = mk('QB', 'off', L - (F === 'under' ? 1.2 : F === 'pistol' ? 3.6 : 4.5), b, SPEED.QB * oMul);
   const rb = mk('RB', 'off', F === 'empty' ? L - 1.1 : L - (F === 'under' ? 5.5 : F === 'pistol' ? 6.2 : 5),
     F === 'empty' ? clamp(b - 12 * wide, 3, FW - 3) : F === 'pistol' || F === 'under' ? b : b + 2.6 * wide, SPEED.RB * oMul);
-  const te = mk('TE', 'off', L - .9, b - 5, SPEED.TE * oMul * M.rec);
-  const x = mk('X', 'off', L - .9, Math.max(3, b - 19), SPEED.X * oMul * M.rec);
-  const z = mk('Z', 'off', L - .9, Math.min(FW - 3, b + 19), SPEED.Z * oMul * M.rec);
-  const sl = mk('SL', 'off', L - 1.2, F === 'trips' ? Math.min(b + 13.5, z.y - 4) : Math.min(b + 10.5, z.y - 5), SPEED.SL * oMul * M.rec);
-  if (F === 'trips'){ te.y = Math.min(b + 6.5, sl.y - 4); te.x = L - 1.2; }
+  const te = mk('TE', 'off', L - .9, b - 5 * sd, SPEED.TE * oMul * M.rec);
+  const x = mk('X', 'off', L - .9, clamp(b - 19 * sd, 3, FW - 3), SPEED.X * oMul * M.rec);
+  const z = mk('Z', 'off', L - .9, clamp(b + 19 * sd, 3, FW - 3), SPEED.Z * oMul * M.rec);
+  const sl = mk('SL', 'off', L - 1.2, F === 'trips' ? toward(b + 13.5 * sd, z.y - 4 * sd) : toward(b + 10.5 * sd, z.y - 5 * sd), SPEED.SL * oMul * M.rec);
+  if (F === 'trips'){ te.y = toward(b + 6.5 * sd, sl.y - 4 * sd); te.x = L - 1.2; }
   // Practice: only the receivers you asked for line up (the back always does, to block or take a handoff).
-  const PR = G.practice, out = p => PR && p.role !== 'RB' && !PR.roles.includes(p.role);
+  const out = p => PR && p.role !== 'RB' && !PR.roles.includes(p.role);
   off.push(qb, rb, ...[te, x, z, sl].filter(p => !out(p)));
 
   // Routes: X and Z never run the same one; the back sometimes stays in to block. In practice, the routes you
@@ -263,13 +288,16 @@ export function setupPlay(G){
   const used = new Set();
   // Called plays (in a game) and picked routes (in practice) set the routes; anything unset is random.
   // Random in a game is the coach's call: a play from the book, kept through re-setups until the snap's over.
-  if (!PR && !G.call && !G.autoCall){ G.autoCall = coachCall(G); G.recentCalls = [G.autoCall, ...(G.recentCalls || [])].slice(0, 2); }
-  const book = !PR && (CONCEPTS[G.call] || (!G.call ? CONCEPTS[G.autoCall] : null));
+
   const plan = PR ? (PR.mode !== 'random' ? PR.routes : null)
     : RUN_CALLS[G.call] ? RUN_CALLS[G.call].routes : G.call === 'custom' ? G.callRoutes || null : book?.routes || null;
+  // A called play's men who aren't its first two reads are clearing space or checking down: each runs one of the
+  // routes that does that job, so the play reads the same but doesn't look the same every time.
+  const keyReads = (book?.reads || []).slice(0, 2);
   for (const p of rec){
     let r = plan?.[p.role];
-    if (Array.isArray(r)) r = 'block';   // the back on a called run: he gets the ball at the snap
+    if (Array.isArray(r)) r = 'block';
+    if (book && plan === book.routes && VARIANTS[r] && !keyReads.includes(p.role) && Math.random() < .55) r = pick(VARIANTS[r]);   // the back on a called run: he gets the ball at the snap
     if (p.role === 'RB' && F === 'empty' && (!r || r === 'block')) r = pick(POOL.SL);   // split out wide, he's a receiver
     if (p.role === 'RB' && G.pa && !PR) r = 'block';   // play action: he carries out the fake, then protects
     if (!r || !ROUTES[r]){ do { r = pick(POOL[p.role]); } while (used.has(r) && p.role !== 'RB' && Math.random() < .8); }
@@ -300,15 +328,15 @@ export function setupPlay(G){
   // Corners line up D.press yards off (6 on Rookie, tighter on harder levels); closer in near the goal line.
   const deep = L > 88 ? Math.min(L + 9, 108) : L + 13, press = L > 88 ? L + Math.min(3, D.press) : L + D.press;
   [-4.3, -1.3, 1.3, 4.3].forEach(dy => def.push(mk('DL', 'def', L + .9, b + dy, SPEED.DL * dMul)));
-  const lb = [-4.5, 0, 4.5].map(dy => mk('LB', 'def', Math.min(L + 4.5, 109), b + dy, SPEED.LB * dMul));
-  const cb1 = mk('CB', 'def', Math.min(press, 109), x.y + 1, SPEED.CB * dMul), cb2 = mk('CB', 'def', Math.min(press, 109), z.y - 1, SPEED.CB * dMul);
-  const fs = mk('S', 'def', deep, clamp(b - 9, 6, FW - 6), SPEED.S * dMul), ss = mk('S', 'def', deep, clamp(b + 9, 6, FW - 6), SPEED.S * dMul);
+  const lb = [-4.5, 0, 4.5].map(dy => mk('LB', 'def', Math.min(L + 4.5, 109), b + dy * sd, SPEED.LB * dMul));   // mirrored with the offense's strength
+  const cb1 = mk('CB', 'def', Math.min(press, 109), x.y + sd, SPEED.CB * dMul), cb2 = mk('CB', 'def', Math.min(press, 109), z.y - sd, SPEED.CB * dMul);
+  const fs = mk('S', 'def', deep, clamp(b - 9 * sd, 6, FW - 6), SPEED.S * dMul), ss = mk('S', 'def', deep, clamp(b + 9 * sd, 6, FW - 6), SPEED.S * dMul);   // the strong safety on the slot's side
   def.push(...lb, cb1, cb2, fs, ss);
   // The coverage for this snap. Everyone lines up in the same two-high look either way; the coverage only shows
   // after the snap, when the zones drop and the safeties rotate.
   const cov = G.defDrill ? 'c2m' : pickCoverage(G, L);
   const backs = { x, z, sl, te, rb: rb.routeName === 'block' ? null : rb };
-  assignCoverage(cov, { lb, cb1, cb2, fs, ss }, backs, L);
+  assignCoverage(cov, { lb, cb1, cb2, fs, ss }, backs, L, sd);
   const blitz = def.some(d => d.blitz);
   lb.forEach((d, i) => { d.gap = [-2.2, 0, 2.2][i]; });   // run fits: each backer fills a different gap
 
@@ -1089,7 +1117,7 @@ export function reactToBall(G){
 /* ---------- ending a play ---------- */
 function end(G, r){
   const P = G.play; if (P.result) return;
-  P.result = r; P.live = false; P.endT = 0; G.autoCall = null;
+  P.result = r; P.live = false; P.endT = 0; G.autoCall = null; G.snapSide = null; G.snapForm = null;
   if (r.by){ r.by.vx = r.by.vy = 0; }
   const c = P.carrier;
   if (['tackle', 'sack', 'dive', 'fumble'].includes(r.type)){

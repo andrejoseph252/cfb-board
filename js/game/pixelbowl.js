@@ -3,7 +3,8 @@
    throw, hand off, juke and dive, kick field goals. The other team's drives are simulated between yours.
    Opened full screen at #play; loaded on demand so it costs nothing until then. */
 import { esc, store } from '../util.js';
-import { state } from '../state.js';
+import { state, apRank } from '../state.js';
+import { RIVAL_PAIRS } from '../rivals.js';
 import * as api from '../api.js';
 import { myTeam } from '../myteam.js';
 import { logoUrl as boardLogo } from '../views/components.js';
@@ -104,6 +105,36 @@ function withImage(t){
    feels like a marquee one. */
 const MARQUEE = ['333', '61', '194', '130', '251', '201', '99', '30', '213', '57', '52', '228', '2390', '2483', '2633', '2',
   '245', '264', '275', '145', '158', '127', '26', '2294', '254', '2579', '8', '97', '38', '259', '2306', '197', '142', '2641'];
+/* The dice under VS on the menu: a new matchup. Mostly two ranked teams, now and then a rivalry or an upset (you're
+   the underdog). Never the matchup you already have. */
+let dealt = false;   // a fresh deal: the team cards flip in on the next draw
+const dealKind = () => { const u = Math.random(); return u < .6 ? 'big' : u < .85 ? 'rival' : 'dog'; };
+function dealMatch(kind){
+  const fbs = allTeams().filter(t => t.name !== 'Team'), ids = new Set(fbs.map(t => t.id));
+  const any = l => l[Math.floor(Math.random() * l.length)], was = [pick.me, pick.opp].map(String).sort().join('-');
+  for (let n = 0; n < 25; n++){
+    let me, opp;
+    if (kind === 'rival'){
+      // A real rivalry, either side of it yours.
+      const pairs = RIVAL_PAIRS.filter(([a, b]) => ids.has(String(a)) && ids.has(String(b)));
+      if (!pairs.length) return dealMatch('big');
+      [me, opp] = any(pairs).map(String); if (Math.random() < .5) [me, opp] = [opp, me];
+    } else if (kind === 'dog'){
+      // You're the underdog: a middle-of-the-pack team against one of the best (by FPI).
+      const r = fbs.filter(t => Number.isFinite(t.fpi)).sort((a, b) => b.fpi - a.fpi);
+      if (r.length < 40) return dealMatch('big');
+      opp = any(r.slice(0, 12)).id; me = any(r.slice(Math.floor(r.length * .4), Math.floor(r.length * .8))).id;
+    } else if (kind === 'any' && fbs.length > 20){
+      me = any(fbs).id; opp = any(fbs.filter(t => t.id !== me)).id;
+    } else {
+      // A big game: two ranked teams (two big-name programs before the rankings are in).
+      const ranked = fbs.filter(t => apRank(t.id)).map(t => t.id), pool = ranked.length >= 10 ? ranked : MARQUEE;
+      me = any(pool); opp = any(pool.filter(x => x !== me));
+    }
+    if ([me, opp].map(String).sort().join('-') !== was) return { me: String(me), opp: String(opp) };
+  }
+  return null;
+}
 function defaults(prefill){
   let me, opp;
   if (prefill?.length === 2){
@@ -240,7 +271,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     if (!root) return;
     if (chal){ drawn = true; return startChallenge(chal); }
     if (!drawn) return draw();
-    if (phase === 'setup' && !document.querySelector('.sz-hub,.sz-gw,.sz-new,.sz-load')) setup();
+    if (phase === 'setup' && document.querySelector('.pb-home')) setup();
   });
   last = 0; raf = requestAnimationFrame(loop);
 }
@@ -281,10 +312,10 @@ function loop(ts){
   R.resize();   // cheap when nothing changed; catches any size change the observer missed
   if (++insetTick % 15 === 0) insets();
   // Opened straight to #play before the board's team data arrived: fill in the real teams once it does.
-  if (waitingData && state.standings && colors){ waitingData = false; if (phase === 'setup' && !document.querySelector('.sz-hub,.sz-gw,.sz-new,.sz-load') && (G?.me.name === 'Team' || G?.me.color === '#5a6470')){ pick = defaults(openPrefill); setup(); } }
+  if (waitingData && state.standings && colors){ waitingData = false; if (phase === 'setup' && document.querySelector('.pb-home') && (G?.me.name === 'Team' || G?.me.color === '#5a6470')){ pick = defaults(openPrefill); setup(); } }
   const dt = Math.min(.05, last ? (ts - last) / 1000 : 0); last = ts;
   if (freeze > 0){ freeze -= dt; acc = 0; }
-  else if (!paused && G){ acc += dt * (phase === 'live' && coaching() ? 1.5 : 1); while (acc >= STEP){ update(STEP); acc -= STEP; } }
+  else if (!paused && G){ acc += dt * (phase === 'live' && coaching() ? 1.5 : phase === 'punt' ? Sp.warp(G) : 1); while (acc >= STEP){ update(STEP); acc -= STEP; } }
   if (G && !paused && phase !== 'setup') crowd(crowdLevel()); else crowd(0);
   const cover = G?.youDefend && G.defDrill?.kind === 'cover';
   if (G) R.draw(G, paused ? 0 : dt, { fly: phase === 'setup' || phase === 'fly', covered: !!modalEl?.classList.contains('on') && !modalEl.classList.contains('light'), aim: aim?.active ? aim.target : null, routes: phase === 'presnap' && saved.routes && !G.youDefend, rush: rushView(),
@@ -363,27 +394,46 @@ function setup(){
   const rec = saved.results[saved.diff], card = (t, who, act) => `<button class="pb-team" type="button" data-pb="${act}" data-tid="${esc(t.id)}" style="${hp ? hp[t === me ? 0 : 1] : `--c:${esc(t.color)};--k:${inkOn(t.color)}`}">
       ${t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : ''}<b${nameFit(t.name)}>${esc(t.name)}</b><small>${who}</small>
       <span class="pb-rt">${Number.isFinite(t.off) ? `OFF ${Math.round(t.off)} · DEF ${Math.round(t.def)}` : 'Tap to change'}</span></button>`;
-  const seg = (key, items, cls = '') => `<div class="pb-seg${cls}">${items.map(([v, l]) => `<button type="button" data-pb="set" data-k="${key}" data-v="${v}" aria-pressed="${saved[key] === v}">${l}</button>`).join('')}</div>`;
-  modal(`<div class="pb-setup">
-    <button class="pb-x" type="button" data-pb="exit" aria-label="Close">${ICON.x}</button>
+  // A segmented control with a pill that slides to the pick (modal() carries it over from the last draw).
+  const seg = (key, items, cls = '', act = 'set') => { const cur = saved[key] ?? items[0][0];
+    return `<div class="pb-seg${cls}" data-seg="${key}" style="--n:${items.length};--i:${items.findIndex(([v]) => v === cur)}">${items.map(([v, l]) => `<button type="button" data-pb="${act}" data-k="${key}" data-v="${v}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`; };
+  const fresh = dealt ? ' pb-new' : ''; dealt = false;
+  // Three parts, top to bottom: this game (teams, difficulty, length, conditions, KICK OFF), the other ways to play,
+  // and your program (practice, playbook, uniforms). Settings that hold for every game live behind the gear.
+  const row = (act, icon, title, sub, extra = '') => `<button class="pb-mrow" type="button" data-pb="${act}"${extra}><span class="pb-mric">${icon}</span><span class="pb-mrtx"><b>${title}</b><small>${sub}</small></span><i class="pb-mrch">${ICON.chev}</i></button>`;
+  const wear = LK.wearing(me.id);
+  modal(`<div class="pb-setup pb-home">
+    <div class="pb-hbtns"><button class="pb-x" type="button" data-pb="settings" aria-label="Settings">${ICON.gear}</button><button class="pb-x" type="button" data-pb="exit" aria-label="Close">${ICON.x}</button></div>
     <h1 class="pb-logo"><span>COACH ANDRE'S</span><span>BOWL</span></h1>
-    <div class="pb-match"><div class="pb-tw">${card(me, 'YOU', 'pickme')}<button class="pb-kitbtn${LK.wearing(me.id) ? ' on' : ''}" type="button" data-pb="lk-open" data-id="${esc(me.id)}" aria-label="Uniform: ${esc(LK.wearing(me.id) || 'Home')}. Open the Locker Room">${LK.bust(me)}</button></div><button class="pb-vs" type="button" data-pb="swap" aria-label="Swap teams">VS<i>⇄</i></button>${card(opp, 'CPU', 'pickopp')}</div>
+    <div class="pb-match${fresh}"><div class="pb-tw">${card(me, 'YOU', 'pickme')}<button class="pb-kitbtn" type="button" data-pb="lk-open" data-id="${esc(me.id)}" aria-label="Uniform: ${esc(LK.wearing(me.id) || 'Home')}. Open the Locker Room">${LK.bust(me)}</button></div><div class="pb-vsc"><button class="pb-vs" type="button" data-pb="swap" aria-label="Swap teams">VS<i>⇄</i></button><button type="button" class="pb-deal" data-pb="deal" aria-label="New matchup">${W.icon('dice')}</button></div>${card(opp, 'CPU', 'pickopp')}</div>
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
-    <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name} ${mmss(d.q)}`]))}</div>
+    <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name}<small>${mmss(d.q)}</small>`]), ' pb-seg2')}</div>
     ${wxRow()}
+    <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
+    ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
+    <div class="pb-sect"><span>More ways to play</span><div class="pb-feats">${SV.menuCard(me)}
+      <button class="pb-feat pb-take" type="button" data-pb="challenges"><span class="pb-sb"><i>4TH</i><b>2:14</b></span>
+        <span class="pb-fk">This week</span><b>TAKE OVER</b><small>Real late-game moments</small></button></div></div>
+    <div class="pb-sect"><span>Your program</span><div class="pb-mlist">
+      ${row('practice', ICON.cone, 'Practice', 'Offense, defense &amp; kicking drills')}
+      ${row('playbook', ICON.xo, 'My Playbook', 'Draw up your own plays')}
+      ${row('lk-open', LK.bustPlain(me), 'Locker Room', wear ? `${esc(me.abbr || me.name)} wearing ${esc(wear)}` : 'Design your uniforms', ` data-id="${esc(me.id)}"`)}</div></div>
+  </div>`, false, 'setup');   // 'setup': redrawn in place (teams arriving, an option changed) without sliding in again
+}
+
+/* The gear on the menu: the settings that hold for every game, and how to play. */
+function settingsSheet(){
+  phase = 'setup';
+  modal(`<div class="pb-card pb-settings">
+    <button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button>
+    <h2>SETTINGS</h2>
     <div class="pb-checks"><label><input type="checkbox" data-pb-opt="routes"${saved.routes ? ' checked' : ''}> Show routes before the snap</label>
       ${offOnlyHTML()}
       <label><input type="checkbox" data-pb-opt="sound"${saved.sound ? ' checked' : ''}> Sound</label>
-      ${atmosHTML()}
-</div>
-    ${SV.menuCard()}
-    <button class="pb-go" type="button" data-pb="start">KICK OFF</button>
-    <button class="pb-go pb-take" type="button" data-pb="challenges"><span>TAKE OVER</span><small>Replay this week's real late-game moments</small></button>
-    <div class="pb-btns pb-menu2"><button class="pb-go alt" type="button" data-pb="practice">PRACTICE</button><button class="pb-go alt" type="button" data-pb="playbook">MY PLAYBOOK</button></div>
-    <button class="pb-go pb-take pb-lkbtn" type="button" data-pb="lk-open" data-id="${esc(me.id)}"><span>LOCKER ROOM</span><small>${LK.wearing(me.id) ? `${esc(me.name)} wearing: ${esc(LK.wearing(me.id))}` : 'Design your uniforms'}</small></button>
-    ${rec ? `<p class="pb-rec">Your record on ${S.DIFFS[saved.diff].name}: ${rec.w}–${rec.l}</p>` : ''}
+      ${atmosHTML()}</div>
     <details class="pb-how"><summary>How to play</summary>${HOW}</details>
-  </div>`, false, 'setup');   // 'setup': redrawn in place (teams arriving, an option changed) without sliding in again
+    <button class="pb-go" type="button" data-pb="back">DONE</button>
+  </div>`, false, 'settings');
 }
 
 /* ---------- game conditions: the menu's one Conditions row, and the sheet behind it ---------- */
@@ -713,15 +763,16 @@ function fourthDown(){
     <p class="pb-advice">SIDELINE: ${adv[0]} · ${esc(adv[1])}</p>
     <div class="pb-btns"><button class="pb-go${adv[0] === 'GO FOR IT' ? ' pb-adv' : ''}" type="button" data-pb="goforit">GO FOR IT</button>
     ${G.ot ? '' : `<button class="pb-go alt${adv[0] === 'PUNT' ? ' pb-adv' : ''}" type="button" data-pb="punt">PUNT</button>`}
-    ${fg ? `<button class="pb-go alt${adv[0] === 'FIELD GOAL' ? ' pb-adv' : ''}" type="button" data-pb="fg">FIELD GOAL · ${dist} YDS</button>` : ''}</div></div>`, true);
+    ${fg ? `<button class="pb-go alt${adv[0] === 'FIELD GOAL' ? ' pb-adv' : ''}" type="button" data-pb="fg">FIELD GOAL · ${dist} YDS</button>` : ''}</div>
+    ${G.ot ? '' : '<button class="pb-skip" type="button" data-pb="puntsim">Skip the punt · just kick it away</button>'}</div>`, true);
 }
 /* ---------- offense only: everything but your snaps, simmed ---------- */
 /* On in a real game (not practice or drills) when "Offense only" is set; it can be flipped from the pause menu and
    takes effect from the next kick or drive. */
 const auto = () => !!(saved.offOnly && G && !G.practice && !G.stDrill && !G.youDefend && !G.defDrill);
-function autoKickoff(){
+function autoKickoff(touchback = false){
   closeModal(); phase = 'wait';
-  const x = kickoffYtg(), tb = x === 75;
+  const x = touchback ? 75 : kickoffYtg(), tb = x === 75;
   sfx('kick'); banner('KICKOFF', tb ? 'TOUCHBACK' : `RETURNED TO THEIR ${Math.round(100 - x)}`, '#c9d1d9', 1100);
   later(() => endMyPossession(x), 1100);
 }
@@ -757,6 +808,7 @@ function myKickoffCard(){
       <span class="pb-retwx${w >= 12 ? ' gusty' : ''}">${w ? `WIND ${w} MPH` : 'CALM'}</span></div>
     <div class="pb-rcalls">${Object.entries(Sp.KICKS).map(([k, c]) => `<button type="button" data-pb="kocall" data-v="${k}" class="${k === adv && !G.stDrill ? 'pb-adv' : ''}">
       ${koDiagram(k, P.me.c)}<b>${c.name}</b><small>${c.short}</small></button>`).join('')}</div>
+    ${G.stDrill ? '' : '<button class="pb-skip" type="button" data-pb="kotb">Skip it · touchback, their ball at the 25</button>'}
     <p class="pb-sub pb-retfoot">Pull back to aim · let go to start his run-up · strike it in the green</p></div>`);
 }
 function koDiagram(k, me){
@@ -788,10 +840,10 @@ function theirKickoffCard(){
 }
 
 /* ---------- returning their punt (the play itself: special.js) ---------- */
-let retFrom = 0;
+let retFrom = 0, retCard = null;   // retCard: their drive's result, for a simmed return
 function puntReturnCard(r, ko = false){
   if (auto()) return autoReturn(r, ko);
-  phase = 'modal'; retFrom = r.endAt; retKO = ko;
+  phase = 'modal'; retFrom = r.endAt; retKO = ko; retCard = r;
   const late = ko && G.quarter >= 4 && G.clock < 240 && G.score[1] < G.score[0];
   const x = Math.round(retFrom), spot = x === 50 ? 'midfield' : x > 50 ? `their ${100 - x}` : `your ${x}`, w = Math.abs(Math.round(G.cond?.wind || 0));
   const opp = G.opp, P = hdUI.kit.teamPaint(G.me, G.opp);
@@ -801,6 +853,7 @@ function puntReturnCard(r, ko = false){
       <span class="pb-retwx${w >= 12 ? ' gusty' : ''}">${w ? `WIND ${w} MPH` : 'CALM'}</span></div>
     <div class="pb-rcalls">${Object.entries(ko ? Sp.KO_CALLS : Sp.RET_CALLS).map(([k, c]) => `<button type="button" data-pb="retcall" data-v="${k}" class="${k === 'safe' ? 'safe' : ''}">
       ${retDiagram(k, P.me.c, P.opp.c)}<b>${c.name}</b><small>${c.short}</small></button>`).join('')}</div>
+    ${G.stDrill || late ? '' : `<button class="pb-skip" type="button" data-pb="retsim">Skip it · sim the ${ko ? 'kickoff' : 'punt'}</button>`}
     <p class="pb-sub pb-retfoot">${ko ? 'Drag under the landing spot (it turns green) · in the end zone, KNEEL for the 25' : 'Drag under the landing spot (it turns green) · FAIR CATCH any time it\'s up'}</p></div>`);
 }
 /* The return calls drawn like the play sheet's cards: their coverage coming down, your wall, your returner and his lane. */
@@ -832,14 +885,14 @@ function startReturn(call){
 }
 function retOver(){
   const P = G.play, r = P.result;
-  phase = 'dead'; deadT = 0; aim = null; deadWait = 1.4;
+  phase = 'dead'; deadT = 0; aim = null; deadWait = 1;
   const gain = P.carrier ? r.x - P.catchX : 0;
   G.replay = frames.length > 20 && (r.type === 'td' || gain >= 20 || r.type === 'muff') ? frames.slice() : null; frames = [];
   if (G.replay) deadWait = 3.2;
   const ko = P.ret.ko;
   if (r.type === 'td'){ banner('TOUCHDOWN!', `${ko ? 'KICKOFF' : 'PUNT'} RETURN · ${G.me.name.toUpperCase()}`, G.me.color, 2600); sfx('td'); sfx('band'); G.cheer = 3; deadWait = Math.max(deadWait, 2.6); }
-  else if (r.type === 'muff'){ banner('MUFFED PUNT', `${G.opp.name.toUpperCase()} BALL`, '#ff5a4e', 1800); sfx('turnover'); }
-  else if (r.type === 'kickrec'){ banner(P.ret.kind === 'onside' ? 'ONSIDE RECOVERED' : 'THEY RECOVERED IT', `${G.opp.name.toUpperCase()} BALL`, '#ff5a4e', 1800); sfx('turnover'); }
+  else if (r.type === 'muff'){ deadWait = 1.6; banner('MUFFED PUNT', `${G.opp.name.toUpperCase()} BALL`, '#ff5a4e', 1800); sfx('turnover'); }
+  else if (r.type === 'kickrec'){ deadWait = 1.6; banner(P.ret.kind === 'onside' ? 'ONSIDE RECOVERED' : 'THEY RECOVERED IT', `${G.opp.name.toUpperCase()} BALL`, '#ff5a4e', 1800); sfx('turnover'); }
   else if (ko && P.carrier && P.ret.kind === 'onside' && r.type !== 'fumble'){ banner('WE GOT IT', 'ONSIDE KICK RECOVERED', '#4cff7a', 1500); sfx('good'); }
   else if (r.type === 'fumble'){ banner('FUMBLE!', '', '#ff5a4e', 1800); sfx('turnover'); }
   else if (gain >= 20){ banner('BIG RETURN', `${Math.round(gain)} YARDS`, '#ffd84a', 1500); sfx('charge'); }
@@ -892,7 +945,7 @@ function startMyPunt(){
 }
 function puntOver(){
   const P = G.play, r = P.result;
-  phase = 'dead'; deadT = 0; aim = null; deadWait = 1.5;
+  phase = 'dead'; deadT = 0; aim = null; deadWait = ['blocked', 'recovered', 'rettd'].includes(r.type) ? 1.8 : 1;
   const ret = P.punt.runner ? P.punt.catchX - r.x : 0;
   G.replay = frames.length > 20 && (['rettd', 'blocked', 'recovered'].includes(r.type) || ret >= 20) ? frames.slice() : null; frames = [];
   if (G.replay) deadWait = 3.2;
@@ -945,8 +998,8 @@ function puntAfter(){
   if (r.type === 'touchback') return later(() => endMyPossession(80), 500);
   return later(() => endMyPossession(x), 500);
 }
-function doPunt(){
-  if (!G.ot && !auto()) return startMyPunt();
+function doPunt(sim = false){
+  if (!G.ot && !auto() && !sim) return startMyPunt();
   closeModal(); phase = 'modal';
   const p = S.punt(G);
   sfx('kick'); banner(`PUNT · ${p.net} YDS`, p.touchback ? 'Touchback' : '', '#fff', 1400);
@@ -1095,30 +1148,34 @@ const RUSH = { rookie: { period: 1.3, win: .3, release: [2.6, 3.2] }, pro: { per
 /* Hard counts before the snap: the quarterback barks "HUT!" just as he does on the real one, but the ball stays put. The
    ball is the only true cue, the way a real edge rusher times his get-off. Average per snap, by difficulty. */
 const HARD_COUNTS = { rookie: .3, pro: .6, allpro: .9, legend: 1.2 };
-const DDRILLS = { cover: { name: 'Cover drill', tip: 'You are the corner, one on one with their receiver. Drag anywhere like a joystick to stay with him; when the ball goes up, get inside the yellow ring and hit JUMP.' },
-  rush: { name: 'Pass rush', tip: 'You are the edge rusher. Watch the ball and tap the instant it moves (the quarterback\'s hard count is a trap: jump on it and you\'re offside), then tap in the green to beat the tackle, and race the quarterback.' } };
+const DDRILLS = { cover: { name: 'Cover drill', short: 'One on one with their receiver' },
+  rush: { name: 'Pass rush', short: 'Beat the snap, get to the QB' } };
 let keyCtx = null;   // a key third down inside a real game: { main, r, k, then }
 
 function defSetupHTML(){
-  const P = saved.practice, seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k]) === String(v)}">${l}</button>`).join('')}</div>`;
-  return `<div class="pb-opt"><span>Drill</span><div class="pb-ddrills">${Object.entries(DDRILLS).map(([k, d]) => `<button type="button" data-pb="pset" data-k="ddrill" data-v="${k}" aria-pressed="${P.ddrill === k}"><b>${d.name.toUpperCase()}</b><small>${esc(d.tip)}</small></button>`).join('')}</div></div>
-    <div class="pb-opt"><span>Session</span>${seg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.name} · ${x.n}`]))}</div>
-    <button class="pb-go" type="button" data-pb="pstart">START ${SESSIONS[P.session].name.toUpperCase()} SESSION</button>
-    ${historyHTML('defense')}`;
+  return drillTiles('ddrill', DDRILLS, saved.practice.ddrill);
 }
 
 /* ---------- special teams practice: punt returns, rep after rep ---------- */
-const ST_DRILLS = { ret: { name: 'Punt return', tip: 'They punt, you field it: get under the ring, fair catch or let it go, then find the lane.' },
-  kick: { name: 'Kickoff', tip: 'Pick deep, sky, squib or onside, aim it, strike it in the green, then watch your coverage (or chase down your onside).' },
-  koret: { name: 'Kickoff return', tip: 'They kick off, you take it: get under it, kneel it in the end zone, or bring it out behind your wall.' },
-  punt: { name: 'Punting', tip: 'Pull back to aim, let go to snap, then tap when the falling ball on the gauge is in the green. Then watch your coverage.' } };
-function stSetupHTML(){
-  const P = saved.practice, seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k] ?? '') === String(v)}">${l}</button>`).join('')}</div>`;
-  P.stdrill ||= 'ret'; P.stcall ||= 'ask';
-  return `<div class="pb-opt"><span>Drill</span><div class="pb-ddrills">${Object.entries(ST_DRILLS).map(([k, d]) => `<button type="button" data-pb="pset" data-k="stdrill" data-v="${k}" aria-pressed="${P.stdrill === k}"><b>${d.name.toUpperCase()}</b><small>${esc(d.tip)}</small></button>`).join('')}</div></div>
-    ${P.stdrill === 'punt' || P.stdrill === 'kick' ? '' : `<div class="pb-opt"><span>Return call</span>${seg('stcall', [['ask', 'Ask'], ['left', 'Left'], ['middle', 'Middle'], ['right', 'Right'], ['safe', 'Fair']])}</div>`}
-    <div class="pb-opt"><span>Session</span>${seg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.name} · ${x.n}`]))}</div>
-    <button class="pb-go" type="button" data-pb="pstart">START ${SESSIONS[P.session].name.toUpperCase()} SESSION</button>`;
+const ST_DRILLS = { ret: { name: 'Punt return', short: 'Field it, find the lane' },
+  kick: { name: 'Kickoff', short: 'Aim it, strike it, cover it' },
+  koret: { name: 'Kickoff return', short: 'Kneel it or take it out' },
+  punt: { name: 'Punting', short: 'Aim, snap, time the drop' } };
+/* Each drill's mark on its tile. */
+const DRILL_ICON = {
+  cover: '<path d="M7 18.5 9.6 7.5M15.2 5.5l2.4 13" stroke-dasharray="2.2 2.4"/><circle cx="9.8" cy="6" r="2.4" fill="currentColor"/><circle cx="17.8" cy="19" r="2.4"/>',
+  rush: '<path d="M4 19c5-1 9-5 11-11"/><path d="M11.4 7.5 15.2 7.6l.4 3.8"/><circle cx="18.5" cy="5" r="2.4" fill="currentColor"/>',
+  ret: '<path d="M5 6c4-3 10-3 13 2"/><ellipse cx="18.2" cy="11" rx="2.6" ry="1.7" transform="rotate(-50 18.2 11)" fill="currentColor"/><path d="M12 21v-5m0 0-2.6 2.4M12 16l2.6 2.4"/>',
+  kick: '<path d="M9.5 20.5 11 17h2l1.5 3.5z" fill="currentColor"/><path d="M12 15C11 9 15 5 20 4"/><path d="m16.6 3.6 3.6.4-.9 3.4"/>',
+  koret: '<path d="M12 21V8m0 0-3.4 3.2M12 8l3.4 3.2"/><path d="M5 4h14" stroke-dasharray="2 2.4"/>',
+  punt: '<path d="M4 18c3-9 10-12 16-11"/><path d="m17 4.6 3.2 2.4-2.6 3"/><path d="M4 21h5"/>'
+};
+const drillTiles = (key, list, cur) => `<div class="pb-dtiles">${Object.entries(list).map(([k, d]) => `<button type="button" data-pb="pset" data-k="${key}" data-v="${k}" aria-pressed="${cur === k}">
+  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${DRILL_ICON[k] || ''}</svg><b>${d.name}</b><small>${d.short}</small></button>`).join('')}</div>`;
+function stSetupHTML(pseg){
+  const P = saved.practice; P.stdrill ||= 'ret'; P.stcall ||= 'ask';
+  return drillTiles('stdrill', ST_DRILLS, P.stdrill) +
+    (P.stdrill === 'punt' || P.stdrill === 'kick' ? '' : `<div class="pb-opt"><span>Return call</span>${pseg('stcall', [['ask', 'Ask'], ['left', 'Left'], ['middle', 'Middle'], ['right', 'Right'], ['safe', 'Fair']])}</div>`);
 }
 function startSTDrill(){
   initAudio(saved.sound);
@@ -1341,7 +1398,8 @@ function coverPrompt(r, opts, then){
     <div class="pb-strip" style="--me:${esc(G.me.color)};--op:${esc(G.opp.color)}"><i class="pb-mark" style="left:${at}%"></i></div>
     <div class="pb-dres" style="color:#ffd84a">${ord(down)} & ${toGo >= at ? 'GOAL' : toGo} AT YOUR ${at}</div>
     <p class="pb-sub">They're throwing at your man. You're the corner: stay on his hip, and when the ball's up, get in the ring and hit JUMP.</p>
-    <div class="pb-btns"><button class="pb-go" type="button" data-pb="keycover">COVER HIM</button>${G.coach ? '<button class="pb-go alt" type="button" data-pb="keyskip">LET IT PLAY</button>' : ''}</div></div>`);
+    <div class="pb-btns"><button class="pb-go" type="button" data-pb="keycover">COVER HIM</button></div>
+    <button class="pb-skip" type="button" data-pb="keyskip">Skip it · let the play run</button></div>`);
 }
 function keyStopPrompt(r, k, then){
   phase = 'modal';
@@ -1352,7 +1410,8 @@ function keyStopPrompt(r, k, then){
     <div class="pb-strip" style="--me:${esc(G.me.color)};--op:${esc(G.opp.color)}"><i class="pb-mark" style="left:${at}%"></i></div>
     <div class="pb-dres" style="color:#ffd84a">3RD & ${toGo >= at ? 'GOAL' : toGo} AT YOUR ${at}</div>
     <p class="pb-sub">Key third down. You're the edge rusher: get a sack or pressure and the drive stalls.</p>
-    <div class="pb-btns"><button class="pb-go" type="button" data-pb="keyrush">RUSH THE PASSER</button>${G.coach ? '<button class="pb-go alt" type="button" data-pb="keyskip">LET IT PLAY</button>' : ''}</div></div>`);
+    <div class="pb-btns"><button class="pb-go" type="button" data-pb="keyrush">RUSH THE PASSER</button></div>
+    <button class="pb-skip" type="button" data-pb="keyskip">Skip it · let the play run</button></div>`);
 }
 let keyPending = null;
 function startKeyDef(){
@@ -1710,58 +1769,55 @@ function drillPreview(roles, routes, color){
   return h + '</svg>';
 }
 
-const sideSwitch = () => `<div class="pb-seg pb-side">${[['offense', 'OFFENSE'], ['defense', 'DEFENSE'], ['special', 'SPECIAL TEAMS']].map(([v, l]) =>
-  `<button type="button" data-pb="pside" data-v="${v}" aria-pressed="${(saved.practice.side || 'offense') === v}">${l}</button>`).join('')}</div>`;
-function practiceSetup(keepScroll){
-  const prevScroll = keepScroll ? $('.pb-setup')?.scrollTop : 0;
+/* Practice: the same frame on every tab (title, the three sides, one line on what this side is), then the drill and its
+   options, the reps and START together at the bottom, and your recent grades. Redrawn in place, so a tap never
+   re-slides the sheet; switching sides slides the pill and fades the new side in. */
+let psideFresh = false;
+function practiceSetup(){
   phase = 'setup'; paused = false; behind = null;
   if (!G || G.practice || G.youDefend){ G = newGame(withImage(teamInfo(pick.me)), withImage(teamInfo(pick.opp)), saved.diff, saved.len); S.setupPlay(G); R.snapCamera(G); }
   showHud(false);
-  const P = saved.practice, roles = practiceRoles(), routes = practiceRoutes();
-  if (P.side === 'special'){
-    modal(`<div class="pb-setup pb-practice">
-      <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
-      ${sideSwitch()}
-      <p class="pb-sub">Special teams against ${esc(G.opp.name)}: rep after rep, from a different spot each time, in this game's weather.</p>
-      ${stSetupHTML()}
-    </div>`);
-    if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
-    return;
-  }
-  if (P.side === 'defense'){
-    modal(`<div class="pb-setup pb-practice">
-      <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
-      ${sideSwitch()}
-      <p class="pb-sub">Defense against ${esc(G.opp.name)}'s offense: you control one defender (gold), their quarterback reads and throws. Graded every rep.</p>
-      ${defSetupHTML()}
-    </div>`);
-    if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
-    return;
-  }
-  const seg = (k, items) => `<div class="pb-seg">${items.map(([v, l]) => `<button type="button" data-pb="pset" data-k="${k}" data-v="${v}" aria-pressed="${String(P[k]) === String(v)}">${l}</button>`).join('')}</div>`;
-  let routesUI = '';
-  const cc = (v, name, routes) => `<button type="button" data-pb="pset" data-k="concept" data-v="${esc(v)}" aria-pressed="${P.concept === v}">${formationSVG(roles, routes, true)}<span>${esc(name)}</span></button>`;
-  if (P.mode === 'concept') routesUI = `<div class="pb-concepts">${Object.entries(S.CONCEPTS).map(([k, c]) => cc(k, c.name, c.routes)).join('')}</div>` +
-    (saved.plays.length ? `<span class="pb-hh">Your plays</span><div class="pb-concepts">${saved.plays.map(p => cc('u:' + p.id, p.name, p.routes)).join('')}</div>` : '');
-  else if (P.mode === 'pick') routesUI = routeRows(roles, P.routes, 'proute') +
-    `<button class="pb-go alt sm" type="button" data-pb="pbsave">SAVE THESE ROUTES AS A PLAY</button>`;
-  modal(`<div class="pb-setup pb-practice">
+  const P = saved.practice, side = P.side || 'offense', SIDES = [['offense', 'OFFENSE'], ['defense', 'DEFENSE'], ['special', 'SPECIAL']];
+  const pseg = (k, items, act = 'pset', cur = P[k]) => `<div class="pb-seg" data-seg="p-${k}" style="--n:${items.length};--i:${items.findIndex(([v]) => String(v) === String(cur ?? ''))}">${items.map(([v, l]) =>
+    `<button type="button" data-pb="${act}" data-k="${k}" data-v="${v}" aria-pressed="${String(cur ?? '') === String(v)}">${l}</button>`).join('')}</div>`;
+  const sub = { offense: `Throwing for <b>${esc(G.me.name)}</b> · no defense, no clock`, defense: `Against <b>${esc(G.opp.name)}</b>'s offense · you're in gold`,
+    special: `Against <b>${esc(G.opp.name)}</b> · a new spot every rep` }[side];
+  let body = '';
+  if (side === 'offense'){
+    // The play up top (the field, its name, how many are out), then what they run, then the situation.
+    const roles = practiceRoles(), routes = practiceRoutes();
+    const cc = (v, name, rts, mine) => `<button type="button" data-pb="pset" data-k="concept" data-v="${esc(v)}" aria-pressed="${P.concept === v}">${formationSVG(roles, rts, true)}<span>${esc(name)}${mine ? '<i>MINE</i>' : ''}</span></button>`;
+    let routesUI = '';
+    if (P.mode === 'concept') routesUI = `<div class="pb-concepts pb-crow">${Object.entries(S.CONCEPTS).map(([k, c]) => cc(k, c.name, c.routes)).join('')}${saved.plays.map(p => cc('u:' + p.id, p.name, p.routes, true)).join('')}</div>`;
+    else if (P.mode === 'pick') routesUI = routeRows(roles, P.routes, 'proute') + `<button class="pb-go alt sm" type="button" data-pb="pbsave">SAVE THESE ROUTES AS A PLAY</button>`;
+    const what = P.mode === 'concept' ? esc((P.concept?.startsWith('u:') ? findPlay(P.concept.slice(2))?.name : S.CONCEPTS[P.concept]?.name) || 'Concept') : P.mode === 'pick' ? 'Your routes' : 'Random routes';
+    const spotX = Number(P.spot) || 25, on = P.target !== 'off';
+    body = `<div class="pb-form pb-ohero">${drillPreview(roles, routes, G.me.color)}
+        <div class="pb-ocap"><b>${what}</b><small>Graded on timing, accuracy &amp; release</small></div>
+        <div class="pb-orec"><span>Receivers</span>${pseg('count', [1, 2, 3, 4, 5].map(n => [n, n]))}</div></div>
+      <div class="pb-opt"><span>Play</span>${pseg('mode', [['random', 'Random'], ['concept', 'Concept'], ['pick', 'Draw routes']])}</div>
+      ${routesUI}
+      <div class="pb-opt"><span>Situation</span><div class="pb-osit">
+        <div class="pb-fmini" data-slide="spot" style="--x:${spotX}"><i class="pb-fez"></i><i class="pb-fball"></i></div>
+        ${pseg('spot', SPOTS)}
+        <button type="button" class="pb-otog" data-pb="pset" data-k="target" data-v="${on ? 'off' : 'on'}" role="switch" aria-checked="${on}">
+          <span><b>Throw to the called target</b><small>${on ? 'One receiver lights up each rep: hit him' : 'Throw to whoever is open'}</small></span><i></i></button></div></div>`;
+  } else body = side === 'defense' ? defSetupHTML() : stSetupHTML(pseg);
+  const n = SESSIONS[P.session]?.n || 5, fresh = psideFresh ? ' pb-new' : ''; psideFresh = false;
+  modal(`<div class="pb-setup pb-practice pb-prac">
     <div class="pb-ph"><b>PRACTICE</b><button class="pb-x" type="button" data-pb="back" aria-label="Back">${ICON.x}</button></div>
-    <p class="pb-sub">No defense, no clock: every rep starts from the same spot. Throwing for ${esc(G.me.name)}. Every throw is graded on timing (in stride), accuracy and release.</p>
-
-    ${sideSwitch()}
-    <div class="pb-form">${drillPreview(roles, routes, G.me.color)}
-      <p>${roles.length} receiver${roles.length === 1 ? '' : 's'} out · ${P.mode === 'concept' ? esc((P.concept?.startsWith('u:') ? findPlay(P.concept.slice(2))?.name : S.CONCEPTS[P.concept]?.name) || '') : P.mode === 'pick' ? 'Your routes' : 'Random routes'}</p></div>
-    <div class="pb-opt"><span>Receivers out</span>${seg('count', [1, 2, 3, 4, 5].map(n => [n, n]))}</div>
-    <div class="pb-opt"><span>Routes</span>${seg('mode', [['random', 'Random'], ['concept', 'Concepts'], ['pick', 'Pick routes']])}</div>
-    ${routesUI}
-    <div class="pb-opt"><span>Start at</span>${seg('spot', SPOTS)}</div>
-    <div class="pb-opt"><span>Throw to</span>${seg('target', [['on', 'Called target'], ['off', 'Anyone']])}</div>
-    <div class="pb-opt"><span>Session</span>${seg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.name} · ${x.n}`]))}</div>
-    <button class="pb-go" type="button" data-pb="pstart">START ${SESSIONS[P.session].name.toUpperCase()} SESSION</button>
-    ${historyHTML()}
-  </div>`);
-  if (prevScroll) $('.pb-setup').scrollTop = prevScroll;
+    ${pseg('side', SIDES, 'pside', side).replace('class="pb-seg"', 'class="pb-seg pb-side"')}
+    <div class="pb-pbody${fresh}">
+      <p class="pb-psub">${sub}</p>
+      ${body}
+      ${side === 'special' ? '' : historyHTML(side)}
+      <div class="pb-pgo"><div class="pb-opt"><span>Reps</span>${pseg('session', Object.entries(SESSIONS).map(([k, x]) => [k, `${x.n}`]))}</div>
+        <button class="pb-go" type="button" data-pb="pstart">START · ${n} REPS</button></div>
+    </div>
+  </div>`, false, 'practice');
+  // First look at the concepts: the one you're on in view.
+  const row = $('.pb-crow'), cur = row?.querySelector('[aria-pressed="true"]');
+  if (row && cur && !row.scrollLeft) row.scrollLeft = Math.max(0, cur.offsetLeft - row.offsetLeft - 24);
 }
 
 function startPractice(){
@@ -1839,14 +1895,16 @@ function finishSession(){
 /* Your saved sessions on the practice screen: newest first, best one starred, each deletable. */
 function historyHTML(side = 'offense'){
   const list = saved.sessions.filter(x => (x.side || 'offense') === side);
-  if (!list.length) return '<p class="pb-sub pb-nohist">Finish a session and it shows up here.</p>';
+  if (!list.length) return '<p class="pb-sub pb-nohist">Your grades show up here after your first session.</p>';
   const best = list.reduce((a, b) => b.avg > a.avg ? b : a, list[0]);
   const day = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  return `<div class="pb-hist"><span class="pb-hh">Your sessions <small>${list.length} saved · best ${letter(best.avg)} (${best.avg})</small></span>
+  return `<div class="pb-hist"><span class="pb-hh">Recent <small>best ${letter(best.avg)} · ${list.length} session${list.length === 1 ? '' : 's'}</small></span>
+    <div class="pb-hchips">${list.slice(0, 8).map(x => `<span class="pb-hc${x === best ? ' best' : ''}"><b style="color:${gradeColor(x.avg)}">${letter(x.avg)}</b><small>${esc(day(x.at))}</small></span>`).join('')}</div>
+    <details class="pb-hall"${$('.pb-hall')?.open ? ' open' : ''}><summary>All sessions</summary><div class="pb-hrows">
     ${list.slice(0, 12).map(x => `<div class="pb-hr${x === best ? ' best' : ''}"><b style="color:${gradeColor(x.avg)}">${letter(x.avg)}</b>
-      <div><span>${x === best ? '<i class="pb-best">BEST</i>' : ''}${esc(SESSIONS[x.session]?.name || '')} · ${x.throws} ${side === 'defense' ? 'reps' : 'throws'} · ${x.avg}</span><small>${esc(day(x.at))} · ${esc(x.drill || '')} · ${side === 'defense' ? esc(x.stat || '') : `${x.inStride}% in stride`}</small></div>
+      <div><span>${esc(x.drill || SESSIONS[x.session]?.name || '')} · ${x.avg}</span><small>${esc(day(x.at))} · ${x.throws} ${side === 'defense' ? 'reps' : 'throws'}${side === 'defense' ? (x.stat ? ` · ${esc(x.stat)}` : '') : ` · ${x.inStride}% in stride`}</small></div>
       <button type="button" data-pb="pdel" data-id="${esc(x.id)}" aria-label="Delete this session">✕</button></div>`).join('')}
-    ${list.length > 12 ? `<p class="pb-sub">Showing your 12 most recent.</p>` : ''}</div>`;
+    ${list.length > 12 ? `<p class="pb-sub">Showing your 12 most recent.</p>` : ''}</div></details></div>`;
 }
 
 /* Throw report card: grade, verdict and three bars, under the scoreboard for a couple of seconds. */
@@ -1941,7 +1999,7 @@ function insets(){
 }
 /* The button bar is rebuilt only when its buttons change: the HUD redraws on every clock tick (9 a second during the
    runoff), and a button swapped out between finger-down and finger-up swallows the tap. */
-function setBar(html){ const b = $('.pb-bar'); if (b && b._html !== html){ b.innerHTML = html; b._html = html; } }
+function setBar(html){ const b = $('.pb-bar'); if (b && b._html !== html){ b.innerHTML = html; b._html = html; root.style.setProperty('--pb-barh', `${b.offsetHeight || 56}px`); } }   // the hint sits above however tall the bar is
 function showHud(on){ $('.pb-hud').hidden = !on; const wx = $('.pb-wxhud'); if (wx){ wx.innerHTML = ''; wx.dataset.hk = ''; } $('.pb-tools').hidden = !on; root.classList.toggle('pb-tools-on', on); if (!on){ setBar(''); $('.pb-hint').textContent = ''; } lastHud = ''; }
 function hud(){
   if (!root || !G || $('.pb-hud').hidden) return;
@@ -1951,14 +2009,16 @@ function hud(){
   const ret = phase === 'ret' && G.play?.ret, myPunt = phase === 'punt' && G.play?.punt;
   const dd = ret ? (ret.ko ? 'KICKOFF RETURN' : 'PUNT RETURN') : myPunt ? (myPunt.ko ? 'KICKOFF' : 'PUNT') : G.twoPt ? '2-POINT TRY' : `${ord(G.down)} & ${G.toGo >= 100 - G.los ? 'GOAL' : G.toGo}`;
   const late = S.lateInHalf(G), live = phase === 'presnap';
-  const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || (S.CONCEPTS[G.autoCall] ? 'Coach: ' + S.CONCEPTS[G.autoCall].name : 'Random'))) + (G.pa ? ' · PA' : '') + (G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation]}` : '');
-  const sheetUp = $('.pb-modal').classList.contains('on');
+  const callName = (S.RUN_CALLS[G.call]?.name || (G.call === 'custom' ? G.callName : S.CONCEPTS[G.call]?.name || (S.CONCEPTS[G.autoCall] ? S.CONCEPTS[G.autoCall].name : 'Random'))) + (G.pa ? ' · PA' : '');
+  const formTag = G.formation && G.formation !== 'gun' ? ` · ${S.FORMATIONS[G.formation].toUpperCase()}` : '';   // in the small line over the name
+  const sheetUp = $('.pb-modal').classList.contains('on'), cardUp = sheetUp && !$('.pb-modal .pb-calls');   // a card (4th down, a drive) up: no buttons under it
   const H = hdUI.hud;   // the broadcast bug and glass buttons (hdui-hud.js)
   const btns = myPunt ? (paused || G.play.result ? '' : ['snap', 'steps', 'drop'].includes(myPunt.stage) ? H.chip('kick', 'KICK', '', 'go') : myPunt.hands && !myPunt.runner && myPunt.stage === 'air' ? H.chip('dive', 'DIVE', '', 'go') : '')
     : ret ? (paused || G.play.result ? '' : G.play.carrier ? (G.play.carrier.x <= 0 && G.play.carrier === ret.returner ? H.chip('kneel', 'KNEEL', 'TOUCHBACK', 'go') : '')
       : !ret.fair && ['snap', 'punter', 'air', 'tee'].includes(G.play.ball.state) ? H.chip('fair', ret.ko && ret.returner.x <= 0 ? 'KNEEL' : 'FAIR CATCH') : '')
-    : !live || paused ? '' : [
-    sheetUp ? '' : H.callBtn(callName.toUpperCase()),
+    : !live || paused || cardUp ? '' : [
+    sheetUp ? '' : H.callBtn(callName.toUpperCase(), (!G.call && S.CONCEPTS[G.autoCall] ? "COACH'S CALL" : 'PLAY') + formTag),
+    sheetUp || G.twoPt ? '' : H.dice(W.icon('dice')),
     G.coach && !sheetUp ? H.chip('snap', 'SNAP ▶', '', 'go') : '',
     G.runoff > 0 && G.timeouts > 0 && !G.ot ? H.chip('timeout', 'TIMEOUT', `${G.timeouts} LEFT`) : '',
     late && G.runoff > 0 && G.down < 4 && !G.twoPt ? H.chip('spike', 'SPIKE') : '',
@@ -2065,7 +2125,22 @@ function modal(html, light = false, kind = ''){
   // everything stays scrolled where it was, so a tap never makes it jump.
   const same = kind && kind === m.dataset.kind && m.classList.contains('on');
   const scrolls = same ? [...m.querySelectorAll('*')].map(el => [el.scrollTop, el.scrollLeft]) : null;
+  const pills = same ? [...m.querySelectorAll('.pb-seg[data-seg]')].map(el => [el.dataset.seg, el.style.getPropertyValue('--i')]) : [];
+  const slides = same ? [...m.querySelectorAll('[data-slide]')].map(el => [el.dataset.slide, el.style.getPropertyValue('--x')]) : [];
   m.innerHTML = html; m.classList.add('on'); m.classList.toggle('light', light); m.dataset.kind = kind;
+  // A segmented control's pill starts where it was and slides to the new pick.
+  for (const [k, was] of pills){
+    const el = m.querySelector(`.pb-seg[data-seg="${k}"]`), now = el?.style.getPropertyValue('--i');
+    if (!el || now === was) continue;
+    el.classList.add('pb-still'); el.style.setProperty('--i', was); void el.offsetWidth;
+    el.classList.remove('pb-still'); el.style.setProperty('--i', now);
+  }
+  for (const [k, was] of slides){   // a marker (the practice spot's ball) glides from where it was
+    const el = m.querySelector(`[data-slide="${k}"]`), now = el?.style.getPropertyValue('--x');
+    if (!el || now === was) continue;
+    el.classList.add('pb-still'); el.style.setProperty('--x', was); void el.offsetWidth;
+    el.classList.remove('pb-still'); el.style.setProperty('--x', now);
+  }
   m.classList.toggle('stay', !!same);
   if (scrolls) [...m.querySelectorAll('*')].forEach((el, i) => { const s = scrolls[i]; if (s && (s[0] || s[1])){ el.scrollTop = s[0]; el.scrollLeft = s[1]; } });
   m.classList.toggle('fsu', hdUI.cards.isFSU(keyCtx ? keyCtx.main.me : G?.youDefend ? G.opp : G?.me));   // garnet and gold when Florida State is yours
@@ -2087,18 +2162,18 @@ function onClick(e){
   switch (a){
     case 'exit': return onExit();
     case 'start': return startGame();
-    case 'practice': saved.practice = { ...PRACTICE_DEFAULTS, routes: {} }; return practiceSetup();
+    case 'practice': saved.practice = { ...PRACTICE_DEFAULTS, ...saved.practice, routes: saved.practice?.routes || {} }; return practiceSetup();   // your last setup, filled out with any new options
     case 'call': return playSheet();
     case 'callpick': {
       const v = b.dataset.v || null, mine = v?.startsWith('u:') && findPlay(v.slice(2));
       if (mine) Object.assign(G, { call: 'custom', callId: mine.id, callName: mine.name, callRoutes: { ...mine.routes } });
       else G.call = v;
-      if (S.CONCEPTS[v]?.form) G.formation = S.CONCEPTS[v].form;   // a play drawn up from its own formation lines you up in it
+      G.snapForm = null;   // a play drawn up from its own formation lines you up in it (setupPlay), unless you've picked one
       sheetFam = null; closeModal(); if (phase === 'presnap') S.setupPlay(G); return;
     }
     case 'calltab': sheetTab = b.dataset.v; return playSheet();   // redrawn in place (modal() keeps it still)
     case 'callfam': sheetFam = b.dataset.v; return playSheet();   // redrawn in place (modal() keeps it still)
-    case 'formpick': G.formation = b.dataset.v; if (phase === 'presnap') S.setupPlay(G); return playSheet();   // redrawn in place (modal() keeps it still)
+    case 'formpick': G.formation = b.dataset.v; G.formPick = true; if (phase === 'presnap') S.setupPlay(G); return playSheet();   // redrawn in place (modal() keeps it still)
     case 'patoggle': G.pa = !G.pa; if (S.RUN_CALLS[G.call]) G.call = null; if (phase === 'presnap') S.setupPlay(G); return playSheet();   // redrawn in place (modal() keeps it still)
     case 'hot': {
       const cur = Object.fromEntries(G.play.rec.map(r => [r.role, r.routeName]));
@@ -2122,7 +2197,14 @@ function onClick(e){
       saved.plays = saved.plays.filter(p => p.id !== b.dataset.id); save(); return playbookScreen();
     }
     case 'callclose': sheetFam = null; return closeModal();
-    case 'pset': { const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save(); return practiceSetup(true); }
+    case 'pset': {
+      const k = b.dataset.k, v = b.dataset.v; saved.practice[k] = k === 'count' || k === 'spot' ? Number(v) : v; save();
+      if (k === 'target' && b.matches('.pb-otog')){   // the switch flips in place, so its knob slides
+        const on = v === 'on'; b.setAttribute('aria-checked', String(on)); b.dataset.v = on ? 'off' : 'on';
+        b.querySelector('small').textContent = on ? 'One receiver lights up each rep: hit him' : 'Throw to whoever is open'; return;
+      }
+      return practiceSetup();
+    }
     case 'proute': { saved.practice.routes[b.dataset.role] = b.dataset.v || undefined; save(); return pickInPlace(b, practiceRoles(), practiceRoutes()); }
     case 'pstart': return saved.practice.side === 'defense' ? startDefDrill() : saved.practice.side === 'special' ? startSTDrill() : startPractice();
     case 'stagain': return startSTDrill();
@@ -2130,7 +2212,7 @@ function onClick(e){
     case 'keyrush': case 'keycover': return startKeyDef();
     case 'psetup': return practiceSetup();
     case 'pagain': return startPractice();
-    case 'pside': saved.practice.side = b.dataset.v; return practiceSetup();
+    case 'pside': { if (saved.practice.side === b.dataset.v) return; saved.practice.side = b.dataset.v; save(); psideFresh = true; practiceSetup(); const el = $('.pb-practice'); if (el) el.scrollTop = 0; return; }
     case 'pdel': {
       // Two taps: the first arms the button, the second deletes.
       if (b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = b.dataset.long ? 'TAP AGAIN TO DELETE' : 'DELETE?'; return; }
@@ -2150,6 +2232,8 @@ function onClick(e){
       if (b.dataset.v === 'random' && saved[b.dataset.k] === 'random') cond = null;   // Random again: a new roll
       saved[b.dataset.k] = b.dataset.v; save(); return wxOpen ? wxSheet() : setup();
     case 'wx': return wxSheet();
+    case 'deal': { const m = dealMatch(dealKind()); if (m){ pick.me = m.me; pick.opp = m.opp; dealt = true; } return setup(); }
+    case 'settings': return settingsSheet();
     case 'pjump': return SV.pickerJump(root, b.dataset.v);
     case 'pqx': return SV.pickerClear(root);
     case 'reroll': cond = null; return wxOpen ? wxSheet() : setup();
@@ -2158,6 +2242,9 @@ function onClick(e){
     case 'two': return goForTwo();
     case 'goforit': return closeModal();
     case 'punt': return doPunt();
+    case 'puntsim': return doPunt(true);
+    case 'kotb': return autoKickoff(true);
+    case 'retsim': return autoReturn(retCard || { endAt: retFrom }, retKO);
     case 'fg': return startKick('fg');
     case 'half': return secondHalf();
     case 'drive': return driveDone();
@@ -2171,7 +2258,7 @@ function onClick(e){
     case 'kick': Sp.kickTap(G); return;
     case 'kocall': return startMyKickoff(b.dataset.v);
     case 'dive': input.dive = true; return;
-    case 'kneel': input.kneel = true; return;
+    case 'kneel': if (phase === 'ret'){ input.kneel = true; return; } { const o = S.kneel(G); return o === 'downs' ? endMyPossession(G.los) : presnap(); }   // a touchback on a return, else run off the clock
     case 'dcall': return pickDriveCall(b.dataset.v);
     case 'keyskip': { const kp = keyPending; keyPending = null; closeModal(); return kp && finishOppDrive(kp.r, kp.then); }
     case 'sdrill': { const d = G.seasonDrill; return d && SV.drillDone(d.area, d.score); }
@@ -2186,9 +2273,16 @@ function onClick(e){
     case 'chalretry': return startChallenge(G.challenge);
     case 'pause': return paused ? unpause() : pause();
     case 'sound': saved.sound = !soundOn(); setSound(saved.sound); save(); b.innerHTML = saved.sound ? ICON.sound : ICON.mute; return;
+    case 'rollplay': {
+      // The dice: a fresh coach's call (a different play, its own side and formation), the die tumbling as it lands.
+      if (phase !== 'presnap') return;
+      Object.assign(G, { call: null, callId: null, pa: false, autoCall: null, snapSide: null, snapForm: null });
+      S.setupPlay(G); aim = null; hud();
+      const d = $('.pb-bar .hb-dice'); if (d){ d.classList.remove('roll'); void d.offsetWidth; d.classList.add('roll'); }
+      return;
+    }
     case 'timeout': if (G.timeouts > 0 && G.runoff > 0){ G.timeouts--; G.runoff = 0; sfx('whistle'); banner('TIMEOUT', `${G.timeouts} left`, '#7df9ff', 900); } return;
     case 'spike': { const o = S.spike(G); banner('SPIKE', 'Clock stopped', '#fff', 800); return o === 'downs' ? endMyPossession(G.los) : presnap(); }
-    case 'kneel': { const o = S.kneel(G); return o === 'downs' ? endMyPossession(G.los) : presnap(); }
   }
 }
 /* "Crowd & music": the crowd, its reactions and the band, quieter or off; the whistle, snap and hits stay as they are. */
@@ -2543,7 +2637,10 @@ const ICON = {
   sound: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2zM11 5h1v6h-1zM13 3h1v10h-1z" fill="currentColor"/></svg>',
   mute: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2zM11 6l1-1 1 1 1-1 1 1-1 1 1 1-1 1-1-1-1 1-1-1 1-1z" fill="currentColor"/></svg>',
   x: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4l1-1 4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4z" fill="currentColor"/></svg>',
-  chev: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  chev: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  cone: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 4h4.8l4.4 14H5.2z" fill="currentColor" opacity=".9"/><path d="M8.3 8.3h7.4M6.9 12.8h10.2" stroke="#fff" stroke-width="1.8"/><rect x="3" y="18" width="18" height="2.6" rx="1.3" fill="currentColor"/></svg>',
+  xo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 3.5l5 5M8.5 3.5l-5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="17.5" cy="17.5" r="3.6" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M6 12.5c0 3.5 2 6 6 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M9.2 17.2l2.9 1.9-1.6 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4 1a7.5 7.5 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A7.5 7.5 0 0 0 7 6.5l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-1a7.5 7.5 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.5 7.5 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>'
 };
 const CSS = `
 body.pb-open{overflow:hidden}
@@ -2784,7 +2881,6 @@ body.pb-open{overflow:hidden}
 .pb-hr button{background:#2c3138;border:2px solid #000;color:#ff8a80;font-size:8px;padding:6px 7px;min-width:28px}
 .pb-nohist{text-align:center}
 .pb-best{font-style:normal;color:#111;background:#ffd84a;padding:1px 3px;margin-right:5px;font-size:6px}
-.pb-menu2{flex-wrap:nowrap}
 .pb-ticker{display:grid;gap:3px;min-height:3.9em;margin:8px 0 2px;font:12px/1.3 'Public Sans',system-ui,sans-serif;color:#c9d1d9;text-align:left}
 .pb-ticker div:last-child{color:#fff}
 .pb-pbp{font:12px/1.3 'Public Sans',system-ui,sans-serif;color:#fff;text-shadow:0 1px 2px #000,0 0 6px #000;opacity:0;transition:opacity .3s;max-width:92vw;text-align:center}
@@ -2798,8 +2894,6 @@ body.pb-open{overflow:hidden}
 .pb-pa{flex:none;padding:8px 10px;font-size:8px;background:#15181c;color:#c9d1d9;border:2px solid #000;box-shadow:0 0 0 2px #2c3138}
 .pb-pa[aria-pressed="true"]{background:#7df9ff;color:#111}
 .pb-hot{margin-top:8px} .pb-hot summary{cursor:pointer;font-size:9px;color:#ffd84a;padding:6px 0}
-.pb-take{display:grid;gap:6px;background:#101215;color:#ffd84a !important;box-shadow:0 4px 0 #000,inset 0 0 0 2px #ffd84a}
-.pb-take small{font-size:7px;color:#c9d1d9;letter-spacing:.02em}
 .pb-chlist{display:grid;gap:10px;margin-top:6px}
 .pb-ch{display:grid;gap:8px;padding:12px;background:#15181c;border:2px solid #000;box-shadow:0 0 0 2px #2c3138,inset 4px 0 0 var(--c)}
 .pb-ch.won{box-shadow:0 0 0 2px #ffd84a,inset 4px 0 0 var(--c)}
@@ -2817,7 +2911,6 @@ body.pb-open{overflow:hidden}
 .pb-chsit{font-size:9px;color:#ffd84a}
 .pb-chintro p{font-family:'Public Sans',system-ui,sans-serif;font-size:13px;line-height:1.45}
 .pb-chintro .pb-chsit{font-family:inherit}
-.pb-menu2 .pb-go{flex:1 1 0}
 .pb-tabs button{font-size:7.5px;padding:8px 6px}
 .pb-empty{padding:18px 8px;white-space:normal;text-align:center;flex:1}
 .pb-name{font:inherit;font-size:16px;font-family:'Press Start 2P',monospace}
@@ -2833,12 +2926,6 @@ body.pb-open{overflow:hidden}
 .pb-pbc .dot{fill:#fff} .pb-pbc .ol{fill:#c9d1d9} .pb-pbc .qb{fill:#9aa4ae}
 .pb-pbc .q{fill:#fff;font:7px 'Press Start 2P',monospace;text-anchor:middle}
 .pb-side button{font-size:9px;padding:10px 6px}
-.pb-ddrills{display:grid;gap:6px}
-.pb-ddrills button{display:grid;gap:5px;text-align:left;background:#1b1f24;border:2px solid #000;box-shadow:0 3px 0 #000;padding:9px 10px}
-.pb-ddrills button b{font-weight:400;font-size:9px;color:#fff}
-.pb-ddrills button small{font-size:6.5px;line-height:1.6;color:#9aa4ae}
-.pb-ddrills button[aria-pressed="true"]{box-shadow:0 0 0 2px #ffd84a,0 3px 0 #000}
-.pb-ddrills button[aria-pressed="true"] b{color:#ffd84a}
 .pb-practice{gap:12px}
 .pb-sub{margin:0;font-size:8px;color:#9aa4ae;line-height:1.8}
 .pb-form{border:2px solid #000;color:#ffd84a;background:#101215}
