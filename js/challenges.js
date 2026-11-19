@@ -87,7 +87,11 @@ export const knownFor = id => id in cache ? (cache[id] || null) : undefined;
 /* This week's challenges, most dramatic first; early in the week (few finals yet) last week's fill in. */
 export async function weekChallenges(){
   let games = state.games.filter(isClose);
-  if (games.length < 3 && state.week && Number(state.week) > 1){
+  // Last week's finishes stay up through this week's Saturday: a few close Tuesday or Wednesday games early in the new
+  // week don't push out last Saturday's. (A week with no Saturday slate: only when this one has fewer than three.)
+  const sat = state.games.map(g => new Date(g.date)).filter(d => d.getDay() === 6).sort((a, b) => a - b)[0];
+  const satEnd = sat && new Date(sat.getFullYear(), sat.getMonth(), sat.getDate() + 1);
+  if ((satEnd ? Date.now() < satEnd : games.length < 3) && state.week && Number(state.week) > 1){
     try{ const j = await api.scoreboard(Number(state.week) - 1, state.st, 30 * 60e3); games = games.concat((j.events || []).map(parseEvent).filter(isClose)); }catch{}
   }
   games = games.sort((a, b) => Math.abs(a.home.score - a.away.score) - Math.abs(b.home.score - b.away.score)).slice(0, MAX_GAMES);

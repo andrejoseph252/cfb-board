@@ -1460,20 +1460,50 @@ const chalDone = id => saved.challenges?.[id];
 const chalTeam = t => { const ti = teamInfo(t.id); return withImage({ ...ti, name: ti.name === 'Team' ? t.name : ti.name, abbr: ti.abbr === 'TEAM' ? t.abbr : ti.abbr,
   logo: ti.logo || t.logo, color: ti.color === '#5a6470' && t.color ? t.color : ti.color }); };
 const clockText = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+/* Take Over: the biggest moment on top as a feature, then the rest as scorebug rows (the team you'd take over on top,
+   with its rank and the score at that moment; the clock and the situation on the right). Biggest games first: both
+   teams' AP ranks and strength (FPI), with a little for drama (less time, a closer score). */
+function chalWeight(c){
+  const q = t => { const r = apRank(t.id), f = teamInfo(t.id).fpi; return (r ? 40 - r : 0) + (Number.isFinite(f) ? f : -12); };
+  return q(c.me) + q(c.opp) + Math.max(0, 6 - c.clock / 30) + Math.max(0, 4 - Math.abs(c.score[0] - c.score[1]));
+}
 function challengesScreen(){
   phase = 'setup';
   const shell = body => modal(`<div class="pb-setup pb-chal"><div class="pb-ph"><b>TAKE OVER</b><button class="pb-x" type="button" data-pb="menu" aria-label="Back">${ICON.x}</button></div>
-    <p class="pb-sub">Real moments from this week's close games. Take over for the team that lost and win it from there.</p>${body}</div>`);
+    <p class="pb-psub">Real finishes from the last week. Win the games they couldn't.</p>${body}</div>`, false, 'chal');
   shell('<p class="pb-sub pb-load">Finding this week\'s late-game moments…</p>');
   weekChallenges().then(list => {
     if (!root || !$('.pb-chal')) return;
     if (!list.length) return shell('<p class="pb-sub">No close finishes yet this week. Check back once Saturday\'s games wrap up.</p>');
-    const logoTag = t => t.logo ? `<img src="${esc(logoUrl(t.logo, 72))}" alt="">` : '';
-    shell(`<div class="pb-chlist">${list.map(c => { const d = chalDone(c.id);
-      return `<div class="pb-ch${d?.won ? ' won' : ''}" style="--c:${esc(c.me.color || '#5a6470')}"><div class="pb-chh">${logoTag(c.me)}<b>${esc(c.me.abbr)}</b><i>vs</i>${logoTag(c.opp)}<b>${esc(c.opp.abbr)}</b>
-        <span class="pb-chtag">${esc(c.tag.toUpperCase())}</span></div><p>${esc(c.title)}</p>
-        <div class="pb-chf"><small>${d?.won ? 'BEATEN' : d ? `${d.tries} ${d.tries === 1 ? 'TRY' : 'TRIES'}` : 'REAL: ' + esc(c.real.toUpperCase())}</small>
-        <button class="pb-go" type="button" data-pb="chalgo" data-id="${esc(c.id)}">${d?.won ? 'PLAY AGAIN' : 'PLAY'}</button></div></div>`; }).join('')}</div>`);
+    list = list.map(c => [c, chalWeight(c)]).sort((a, b) => b[1] - a[1]).map(([c]) => c);
+    const logo = (t, n = 72) => t.logo ? `<img src="${esc(logoUrl(t.logo, n))}" alt="">` : `<i class="pb-chnl" style="background:${esc(t.color || '#5a6470')}"></i>`;
+    const rk = t => { const r = apRank(t.id); return r ? `<small>${r}</small>` : ''; };
+    const spot = c => c.x === 50 ? 'midfield' : c.x < 50 ? `own ${c.x}` : `opp ${100 - c.x}`;
+    const sit = c => { const d = c.score[0] - c.score[1]; return c.kind === 'hold' ? `Up ${d} · close it out` : `${d < 0 ? `Down ${-d}` : 'Tied'} · ${spot(c)}`; };
+    const day = c => c.date ? new Date(c.date).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'America/New_York' }).toUpperCase() : '';   // the day it was played (Eastern, like the schedule)
+    const heroLine = c => { const d = c.score[0] - c.score[1]; return c.kind === 'hold' ? `up ${d} with the ball. Close it out against` : `${d < 0 ? `down ${-d}` : 'tied'}, ball on the ${spot(c)}, against`; };
+    const status = c => { const d = chalDone(c.id); return d?.won ? '<em class="pb-chwon">BEATEN</em>' : d ? `<em>${d.tries} ${d.tries === 1 ? 'TRY' : 'TRIES'}</em>` : ''; };
+    // Progress: how many of this list you've beaten.
+    const won = list.filter(c => chalDone(c.id)?.won).length;
+    const prog = `<div class="pb-chprog"><span><b>${won}</b> of ${list.length} beaten</span><i><b style="width:${(100 * won / list.length).toFixed(1)}%"></b></i></div>`;
+    const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4 6.6 11.5 12.6 4.8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    // The situation as a badge: down (red), tied, or up and holding (green); beaten, a gold check.
+    const badge = c => { const D = chalDone(c.id), d = c.score[0] - c.score[1];
+      if (D?.won) return `<span class="pb-chb won">${CHECK}<small>BEATEN</small></span>`;
+      const [cls, big, lab] = c.kind === 'hold' ? ['up', `+${d}`, 'HOLD'] : d < 0 ? ['down', `−${-d}`, 'DOWN'] : ['tied', '0', 'TIED'];
+      return `<span class="pb-chb ${cls}"><b>${big}</b><small>${D ? `${D.tries} ${D.tries === 1 ? 'TRY' : 'TRIES'}` : lab}</small></span>`; };
+    const [top, ...rest] = list;
+    const hero = `<button class="pb-chhero${chalDone(top.id)?.won ? ' won' : ''}" type="button" data-pb="chalgo" data-id="${esc(top.id)}" style="--c:${esc(top.me.color || '#5a6470')};--o:${esc(top.opp.color || '#5a6470')}">
+      <span class="pb-chk">Biggest moment · ${day(top)}${status(top)}</span>
+      <span class="pb-chvs"><span class="pb-chl">${logo(top.me, 144)}</span><span class="pb-chled"><i>4TH</i><b>${mmss(top.clock)}</b><span>${top.score[0]}–${top.score[1]}</span></span><span class="pb-chl">${logo(top.opp, 144)}</span></span>
+      <span class="pb-chline">${rk(top.me)}<b>${esc(top.me.name)}</b> ${esc(heroLine(top))} ${rk(top.opp)}${esc(top.opp.name)}</span>
+      <span class="pb-chgo">${chalDone(top.id)?.won ? 'PLAY AGAIN' : 'PLAY IT'}<i>${ICON.chev}</i></span></button>`;
+    const row = c => { const W = chalDone(c.id)?.won;
+      return `<button class="pb-chr${W ? ' won' : ''}" type="button" data-pb="chalgo" data-id="${esc(c.id)}" style="--c:${esc(c.me.color || '#5a6470')}">
+        <span class="pb-chlg">${logo(c.me)}<span class="pb-chop">${logo(c.opp)}</span>${W ? `<i class="pb-chck">${CHECK}</i>` : ''}</span>
+        <span class="pb-chtx"><b>${rk(c.me)}${esc(c.me.name)}</b><small>vs ${rk(c.opp)}${esc(c.opp.name)} · 4th ${mmss(c.clock)} · ${day(c).charAt(0)}${day(c).slice(1).toLowerCase()}</small></span>
+        ${badge(c)}</button>`; };
+    shell(`${prog}${hero}${rest.length ? `<div class="pb-sect"><span>More moments</span><div class="pb-chrows">${rest.map(row).join('')}</div></div>` : ''}`);
   });
 }
 /* Sets the scene from the real moment (score, quarter, clock, spot, down and distance), then the normal game flow

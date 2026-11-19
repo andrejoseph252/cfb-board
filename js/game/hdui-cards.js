@@ -673,17 +673,61 @@ export const CSS = `
 .pb.hd .pb-kocard .pb-rcalls{row-gap:14px}
 
 /* ---------- take over: challenges ---------- */
-.pb.hd .pb-chlist{gap:10px}
-.pb.hd .pb-ch{gap:10px;padding:14px 14px 14px 18px;border:0;border-radius:22px;background:var(--hd-chip2);box-shadow:inset 4px 0 0 var(--c)}
-.pb.hd .pb-ch.won{box-shadow:inset 4px 0 0 var(--c),inset 0 0 0 1px rgba(255,210,63,.5)}
-.pb.hd .pb-chh{gap:8px;font:800 18px/1 var(--hd-display)}
-.pb.hd .pb-chh img{width:30px;height:30px;padding:3px;border-radius:50%;background:#fff;object-fit:contain}
-.pb.hd .pb-chh i{font:600 12px var(--hd-body);color:rgba(255,255,255,.5)}
+/* Take Over: the biggest moment as a feature card in both teams' colors, the rest as scorebug rows. */
+.pb.hd .pb-chhero{position:relative;overflow:hidden;isolation:isolate;display:grid;gap:10px;padding:14px 14px 13px;border:0;border-radius:24px;color:#fff;text-align:left;
+  background:linear-gradient(115deg,color-mix(in srgb,var(--c) 75%,#000) 0%,color-mix(in srgb,var(--c) 40%,#000) 48%,color-mix(in srgb,var(--o) 40%,#000) 52%,color-mix(in srgb,var(--o) 70%,#000) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 8px 22px rgba(0,0,0,.3);transition:transform .12s}
+.pb.hd .pb-chhero:active{transform:scale(.98)}
+.pb.hd .pb-chhero.won{box-shadow:inset 0 0 0 2px var(--hd-yellow),0 8px 22px rgba(0,0,0,.3)}
+.pb.hd .pb-chk{display:flex;align-items:center;gap:8px;font:700 10.5px/1 var(--hd-body);letter-spacing:.11em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.pb.hd .pb-chk em{margin-left:auto}
+.pb.hd .pb-chvs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center}
+.pb.hd .pb-chl{display:grid;place-items:center;width:62px;height:62px;padding:8px;border-radius:50%;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.pb.hd .pb-chl img{width:100%;height:100%;object-fit:contain}
+.pb.hd .pb-chled{display:grid;justify-items:center;gap:5px;padding:9px 12px 8px;border-radius:12px;background:#07080a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  font:11px/1 'Press Start 2P',ui-monospace,monospace;color:#ffb627;text-shadow:0 0 6px rgba(255,182,39,.55)}
+.pb.hd .pb-chled i{font-style:normal;font-size:7px;color:rgba(255,182,39,.7)}
+.pb.hd .pb-chled b{font:inherit;font-size:13px}
+.pb.hd .pb-chled span{font-size:8px;color:#fff;text-shadow:none;opacity:.85}
+.pb.hd .pb-chline{font:400 14px/1.35 var(--hd-body);color:rgba(255,255,255,.88)}
+.pb.hd .pb-chline b{font-weight:700;color:#fff}
+.pb.hd :is(.pb-chline,.pb-cht b) small{display:inline-block;margin-right:4px;font:700 10.5px/1 var(--hd-body);color:rgba(255,255,255,.6);vertical-align:1px}
+.pb.hd .pb-chgo{justify-self:start;display:flex;align-items:center;gap:4px;padding:9px 12px 9px 16px;border-radius:999px;background:var(--hd-yellow);color:#1b1400;font:800 16px/1 var(--hd-display);letter-spacing:.05em}
+.pb.hd .pb-chgo i{display:grid;width:16px;height:16px}.pb.hd .pb-chgo svg{width:16px;height:16px}
+.pb.hd .pb-chrows{display:grid;gap:7px}
+/* A row: your logo with theirs tucked against it, who and when, and the situation as a badge. Beaten: gold. */
+.pb.hd .pb-chr{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:66px;padding:9px 10px 9px 12px;border:0;border-radius:18px;
+  background:var(--hd-chip2);color:#fff;text-align:left;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);transition:transform .12s,background .2s}
+.pb.hd .pb-chr:active{transform:scale(.98);background:rgba(255,255,255,.09)}
+.pb.hd .pb-chr.won{background:linear-gradient(90deg,rgba(255,210,63,.13),rgba(255,210,63,.04));box-shadow:inset 0 0 0 1.5px rgba(255,210,63,.55)}
+.pb.hd .pb-chlg{position:relative;width:44px;height:44px}
+.pb.hd .pb-chlg > img,.pb.hd .pb-chlg > .pb-chnl{width:40px;height:40px;padding:5px;border-radius:50%;background:#fff;object-fit:contain;box-shadow:0 0 0 2.5px var(--c),0 3px 8px rgba(0,0,0,.3)}
+.pb.hd .pb-chop{position:absolute;right:-4px;bottom:-3px;display:grid;width:22px;height:22px;padding:2.5px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px #1a1c21}
+.pb.hd .pb-chop img,.pb.hd .pb-chop .pb-chnl{width:100%;height:100%;object-fit:contain;border-radius:50%}
+.pb.hd .pb-chnl{display:block}
+.pb.hd .pb-chck{position:absolute;left:-5px;top:-5px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--hd-yellow);color:#1b1400;box-shadow:0 0 0 2px #1a1c21}
+.pb.hd .pb-chck svg{width:13px;height:13px}
+.pb.hd .pb-chtx{display:grid;gap:4px;min-width:0}
+.pb.hd .pb-chtx b{font:700 15.5px/1.15 var(--hd-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd .pb-chtx > small{font:400 12px/1.25 var(--hd-body);color:rgba(255,255,255,.52);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb.hd :is(.pb-chline,.pb-chtx) small small,.pb.hd .pb-chtx b small,.pb.hd .pb-chline > small{display:inline-block;margin-right:4px;font:700 10.5px/1 var(--hd-body);color:rgba(255,255,255,.55);vertical-align:1px}
+.pb.hd .pb-chb{display:grid;justify-items:center;gap:3px;min-width:52px;padding:7px 6px 6px;border-radius:13px}
+.pb.hd .pb-chb b{font:800 21px/1 var(--hd-display);font-variant-numeric:tabular-nums}
+.pb.hd .pb-chb small{font:800 8.5px/1 var(--hd-body);letter-spacing:.11em;opacity:.8}
+.pb.hd .pb-chb.down{background:rgba(255,90,78,.14);color:#ff8a80}
+.pb.hd .pb-chb.up{background:rgba(61,220,132,.13);color:#5fe39a}
+.pb.hd .pb-chb.tied{background:rgba(255,255,255,.08);color:#fff}
+.pb.hd .pb-chb.won{background:var(--hd-yellow);color:#1b1400}
+.pb.hd .pb-chb.won svg{width:20px;height:20px}
+.pb.hd .pb-chb.won small{opacity:1}
+/* Progress: how many of this list you've beaten. */
+.pb.hd .pb-chprog{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;padding:0 4px}
+.pb.hd .pb-chprog span{font:500 12.5px/1 var(--hd-body);color:rgba(255,255,255,.6)}
+.pb.hd .pb-chprog span b{font-weight:800;color:var(--hd-yellow)}
+.pb.hd .pb-chprog i{height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.pb.hd .pb-chprog i b{display:block;height:100%;border-radius:3px;background:var(--hd-yellow)}
+.pb.hd .pb-chhero.won .pb-chgo{background:rgba(255,255,255,.14);color:#fff}
 .pb.hd .pb-chtag{padding:5px 9px;border-radius:999px;background:var(--hd-yellow);color:#1b1400;font:800 10px/1 var(--hd-body);letter-spacing:.07em}
-.pb.hd .pb-ch p{font:400 14px/1.45 var(--hd-body);color:#fff}
-.pb.hd .pb-chf small{font:700 10.5px/1.3 var(--hd-body);letter-spacing:.08em;color:rgba(255,255,255,.5)}
-.pb.hd .pb-ch.won .pb-chf small{color:var(--hd-yellow)}
-.pb.hd .pb-chf .pb-go{min-height:44px;padding:8px 22px;font-size:18px}
 .pb.hd .pb-chintro{text-align:center;justify-items:stretch}
 .pb.hd .pb-chintro .pb-chtag{justify-self:center;margin:0}
 .pb.hd .pb-chintro h2{margin-top:-4px}
