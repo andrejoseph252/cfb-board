@@ -310,8 +310,14 @@ function syncGame(){
   const want = location.hash === '#play';
   // The game builds its teams from the standings and rankings: start those now rather than when the slate is in.
   if (want && !pb?.isOpen()){ refreshStandings(); refreshRankings(); refreshFpi(); }
-  if (want && !pb?.isOpen()) import('./game/pixelbowl.js').then(m => { pb = m; m.open({ prefill: pbPrefill, exit: exitGame }); pbPrefill = null; }).catch(e => console.error(e));
-  else if (!want && pb?.isOpen()) pb.close();
+  if (want && !pb?.isOpen()){
+    // The first time, the game's code has to download: its black screen right away, so the tap answers at once, with
+    // a loading bar if it takes a moment (css/app.css .pb-boot); the game opens over it.
+    if (!pb && !document.querySelector('.pb-boot')) document.body.insertAdjacentHTML('beforeend', '<div class="pb-boot" role="status" aria-label="Loading the game"><i></i></div>');
+    import('./game/pixelbowl.js').then(m => { pb = m; m.open({ prefill: pbPrefill, exit: exitGame }); pbPrefill = null; })
+      .catch(e => { console.error(e); document.querySelector('.pb-boot')?.remove(); });
+  }
+  else if (!want){ document.querySelector('.pb-boot')?.remove(); if (pb?.isOpen()) pb.close(); }
 }
 window.addEventListener('hashchange', syncGame);
 /* Week picker (see weekpicker.js). Picking the current week goes back to following ESPN's current week. */

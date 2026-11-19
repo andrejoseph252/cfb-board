@@ -210,12 +210,12 @@ export function createRenderer(canvas){
       else { crowd = null; bake = { fk: fieldKey, field: art, p: portrait, cs: A.buildCrowdSteps(portrait, home, away, turf, M), at: 0 }; }
     }
   }
-  /* A slice of the waiting bake: about 5 ms a frame, so the game keeps running (the first field of a game bakes all at
-     once, there being nothing to show meanwhile). */
+  /* A slice of the waiting bake: about 5 ms a frame, so the game keeps running; the first field of a game takes
+     bigger slices (the page shows a drawn field behind the menu meanwhile, and the menu stays live). */
   function pumpBake(){
     const B = bake; if (!B || performance.now() < B.at) return;
     B.steps ||= A.buildFieldSteps(B.h, B.a, B.sky, B.shade, B.m);
-    const end = performance.now() + (art ? 5 : 1e9);
+    const end = performance.now() + (art ? 5 : 28);
     // The field first, then the stands; both go up together once both are done.
     let r;
     if (!B.field){ do r = B.steps.next(); while (!r.done && performance.now() < end); if (!r.done) return; B.field = r.value; B.p = portrait; B.cs = A.buildCrowdSteps(portrait, B.h, B.a, B.sky, B.m); }
@@ -1710,6 +1710,7 @@ export function createRenderer(canvas){
       insT = t2; insB = b2; setZoom(zoom.span);
     },
     get mirrored(){ return M; },
+    get ready(){ return !!art; },   // the field is up (the page's stand-in field can go)
     flyStart(G, done, variant){ fly = { done, wait: 0, on: false, t: 0, sk: 0, skip: false, alpha: 1, cheered: false, variant: variant || (Math.random() < .125 ? 'b2' : 'jets') }; },
     flySkip(){ if (!fly) return; if (fly.on) fly.skip = true; else endFly(); },
     get flying(){ return !!fly; }, get flyLevel(){ return fly?.on ? FO.flyLevel(fly.t, fly.variant) : .05; },

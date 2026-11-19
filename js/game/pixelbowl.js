@@ -209,7 +209,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     picker: cur => modal(SV.pickerHTML({ title: 'LOCKER ROOM', act: 'lk-pickteam', back: 'lk-open', list: allTeams(), cur })) });
   if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS + hdUI.CSS + LK.CSS }));
   root = document.createElement('div');
-  root.className = 'pb hd'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
+  root.className = 'pb hd pb-loading'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
   root.innerHTML = `<canvas class="pb-cv"></canvas>
     <div class="pb-hud" hidden><div class="pb-bugw"><div class="pb-bug"></div><div class="pb-wxhud"></div></div><div class="pb-dd"></div><div class="pb-pbp" aria-live="polite"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
@@ -221,12 +221,15 @@ export function open({ prefill = null, exit = () => {} } = {}){
     <div class="pb-bar"></div><div class="pb-hint"></div><div class="pb-banner"></div><div class="pb-grade" aria-live="polite"></div><div class="pb-modal"></div>
     <div class="pb-turn" aria-live="polite"><i></i><b>TURN YOUR PHONE UPRIGHT</b><small>The game plays in portrait</small></div>`;
   document.body.append(root); document.body.classList.add('pb-open');
+  document.querySelector('.pb-boot')?.remove();   // the board's black stand-in, shown while this code downloaded
   canvas = $('.pb-cv'); R = createRenderer(canvas); R.setMirror(false); R.resize();
   try{ screen.orientation?.lock?.('portrait')?.catch?.(() => {}); }catch{}   // holds where the browser allows it (an installed app); elsewhere .pb-turn covers sideways
   bindTeams(() => ({ me: (keyCtx?.main || G)?.me }));   // the home band plays for your team (and its chant)
   // Re-measure whenever the canvas's displayed size changes (phone toolbars, rotation, a late first layout).
   if (window.ResizeObserver){ sizeWatch = new ResizeObserver(() => R?.resize()); sizeWatch.observe(canvas); }
   root.addEventListener('pointerdown', e => { if (phase === 'fly'){ e.preventDefault(); e.stopPropagation(); R.flySkip(); } }, true);
+  root.addEventListener('touchstart', menuTouchStart, { passive: true }); root.addEventListener('touchmove', menuTouchMove, { passive: false });
+  root.addEventListener('touchend', menuTouchEnd, { passive: true }); root.addEventListener('touchcancel', menuTouchEnd, { passive: true });
   canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
   canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', cancel);
   // Its own button, so a press on the field only ever steers; a second thumb can hit it mid-drag.
@@ -323,6 +326,7 @@ function loop(ts){
     handoff: !aim?.active && !G.play?.target && !G.youDefend && (phase === 'presnap' && !G.kick && !G.play?.noHandoff || phase === 'live' && S.canHandoff(G)),
     readKey: phase === 'live' && G.play?.option && !G.play.carrier ? G.play.option.key : null });
   if (G) drain();
+  if (R.ready && root.classList.contains('pb-loading')) root.classList.remove('pb-loading');   // the field is drawn: it comes in (css/app.css)
   hud(); syncJump(); syncMoves(); syncPad(); syncReplay(); syncGauge();
   root.classList.toggle('pb-hint-top', phase === 'ret');   // on a return the hint sits up top, out of the way of the landing spot
 }
@@ -419,6 +423,7 @@ function setup(){
       ${row('playbook', ICON.xo, 'My Playbook', 'Draw up your own plays')}
       ${row('lk-open', LK.bustPlain(me), 'Locker Room', wear ? `${esc(me.abbr || me.name)} wearing ${esc(wear)}` : 'Design your uniforms', ` data-id="${esc(me.id)}"`)}</div></div>
   </div>`, false, 'setup');   // 'setup': redrawn in place (teams arriving, an option changed) without sliding in again
+  swipeHint();
 }
 
 /* The gear on the menu: the settings that hold for every game, and how to play. */
@@ -2305,6 +2310,71 @@ function onInput(e){
   if (e.target.matches('[data-pb-q]')){
     SV.pickerSearch(root, e.target.value);
   }
+}
+
+/* ---------- menu gestures (phones) ----------
+   On the game's menu screens, like the board's own sheets: drag from the left edge to go back a screen (the screen
+   follows the finger; past a quarter of the way, or a flick, and it goes), and drag the sheet down (scrolled to the
+   top) to leave the game for the board, a "Back to the board" pill fading in as it comes. A short drag springs back. */
+let mdrag = null;
+const menuSheet = () => phase === 'setup' && $('.pb-modal.on > :is(.pb-setup,.pb-card)');
+// Where this screen's back goes: its own back or close button (never the main menu's exit).
+const BACKS = '.pb-ph .pb-x, :scope > .pb-x:not([data-pb="exit"]), [data-pb="back"], [data-pb="s-hub"], [data-pb="lk-close"], [data-pb="ecancel"], .sz-hbtns [data-pb="menu"], [data-pb="menu"]';
+const menuBack = sheet => sheet.classList.contains('pb-home') ? null : sheet.querySelector(BACKS);
+function scrolledInside(el, sheet){ for (; el && el !== sheet.parentElement; el = el.parentElement) if (el.scrollTop > 0) return true; return false; }
+function exitPill(){ let p = $('.pb-exithint'); if (!p){ p = document.createElement('div'); p.className = 'pb-exithint'; p.setAttribute('aria-hidden', 'true'); p.innerHTML = `<i>${ICON.chev}</i>Back to the board`; root.append(p); } return p; }
+function menuTouchStart(e){
+  mdrag = null;
+  if (e.touches.length !== 1) return;
+  const sheet = menuSheet(); if (!sheet) return;
+  const t = e.touches[0], edge = t.clientX < 28;
+  if (!edge && !sheet.contains(e.target)) return;
+  if (e.target.closest('input, textarea, select')) return;
+  const now = performance.now();
+  mdrag = { x: t.clientX, y: t.clientY, edge, sheet, mode: null, d: 0, prev: { d: 0, t: now }, last: { d: 0, t: now }, target: e.target };
+}
+function menuTouchMove(e){
+  const m = mdrag; if (!m) return;
+  const t = e.touches[0], dx = t.clientX - m.x, dy = t.clientY - m.y;
+  if (!m.mode){
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    if (m.edge && dx > 0 && dx > Math.abs(dy) * 1.2 && menuBack(m.sheet)) m.mode = 'back';
+    else if (dy > 0 && dy > Math.abs(dx) * 1.2 && !scrolledInside(m.target, m.sheet)) m.mode = 'down';
+    else { mdrag = null; return; }
+    m.sheet.classList.add('pb-held', 'pb-dragging'); m.sheet.classList.remove('pb-settle');
+    if (swipeHints < 3){ swipeHints = 3; store.set('pbSwipeHints', 3); }   // they've found it
+  }
+  if (e.cancelable) e.preventDefault();   // the sheet moves; nothing scrolls underneath
+  m.d = Math.max(0, m.mode === 'back' ? dx : dy);
+  m.prev = m.last; m.last = { d: m.d, t: performance.now() };
+  if (m.mode === 'back'){ m.sheet.style.transform = `translateX(${m.d}px)`; m.sheet.style.opacity = String(Math.max(.4, 1 - m.d / (innerWidth * 1.4))); }
+  else { m.sheet.style.transform = `translateY(${m.d}px)`; exitPill().style.opacity = String(Math.min(1, m.d / 110)); }
+}
+function menuTouchEnd(){
+  const m = mdrag; mdrag = null;
+  if (!m?.mode) return;
+  const v = (m.last.d - m.prev.d) / Math.max(1, m.last.t - m.prev.t), size = m.mode === 'back' ? m.sheet.offsetWidth : m.sheet.offsetHeight;
+  const go = m.d > size * .26 || v > .5 && m.d > 30, s = m.sheet, pill = $('.pb-exithint');
+  s.classList.remove('pb-dragging'); s.classList.add('pb-settle');
+  if (!go){ s.style.transform = ''; s.style.opacity = ''; if (pill) pill.style.opacity = '0'; return; }
+  // Off it goes, from right where the finger left it; then the screen behind (or the board).
+  s.style.transform = m.mode === 'back' ? `translateX(${innerWidth}px)` : `translateY(${size + 40}px)`;
+  if (m.mode === 'back') s.style.opacity = '.4';
+  const back = m.mode === 'back' && menuBack(s);
+  setTimeout(() => { if (pill) pill.style.opacity = '0'; if (back) back.click(); else onExit(); }, 210);
+}
+/* The first few times the menu opens on a phone, it dips and springs back with the pill showing, so it's clear the
+   sheet pulls down to leave. Never again once someone has swiped one themselves. */
+let swipeHints = store.get('pbSwipeHints', 0);
+function swipeHint(){
+  if (!coarse() || swipeHints >= 3 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  store.set('pbSwipeHints', ++swipeHints);
+  setTimeout(() => {
+    const s = $('.pb-modal.on > .pb-home'); if (!s || mdrag) return;
+    s.classList.add('pb-held'); const pill = exitPill();
+    pill.animate([{ opacity: 0 }, { opacity: 1, offset: .3 }, { opacity: 1, offset: .7 }, { opacity: 0 }], { duration: 1200 });
+    s.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(30px)', offset: .38 }, { transform: 'translateY(-3px)', offset: .78 }, { transform: 'translateY(0)' }], { duration: 760, easing: 'cubic-bezier(.3,.7,.3,1)' });
+  }, 900);
 }
 
 /* ---------- touch and mouse ---------- */

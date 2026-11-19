@@ -45,6 +45,16 @@ export const CSS = `
 .pb.hd .pb-setup{grid-auto-rows:max-content;align-content:start;max-width:520px;max-height:calc(100dvh - var(--pb-top) - env(safe-area-inset-bottom,0px) - 8px);overscroll-behavior:contain;scrollbar-width:none}
 .pb.hd :is(.pb-card,.pb-setup)::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:rgba(255,255,255,.22)}
 @keyframes hdSheet{from{transform:translateY(40px);opacity:0}}
+/* Menu gestures (pixelbowl.js): a sheet being dragged follows the finger; let go and it settles or slides away. Once
+   dragged it stays .pb-held (no entrance animation to replay). */
+.pb.hd .pb-modal > .pb-held{animation:none}
+.pb.hd .pb-modal > .pb-dragging{transition:none}
+.pb.hd .pb-modal > .pb-settle{transition:transform .26s cubic-bezier(.2,.9,.25,1),opacity .26s}
+.pb.hd .pb-exithint{position:absolute;z-index:30;left:50%;top:calc(env(safe-area-inset-top,0px) + 22px);display:flex;align-items:center;gap:7px;padding:9px 15px 9px 12px;border-radius:999px;
+  transform:translateX(-50%);opacity:0;pointer-events:none;background:rgba(22,24,29,.88);-webkit-backdrop-filter:var(--hd-blur);backdrop-filter:var(--hd-blur);
+  border:1px solid var(--hd-line);box-shadow:0 8px 24px rgba(0,0,0,.45);font:600 13.5px/1 var(--hd-body);color:#fff;transition:opacity .2s}
+.pb.hd .pb-exithint i{display:grid;width:15px;height:15px;transform:rotate(90deg);color:var(--hd-yellow)}
+.pb.hd .pb-exithint svg{width:15px;height:15px}
 @media (prefers-reduced-motion:reduce){.pb.hd :is(.pb-card,.pb-setup){animation:none}}
 .pb.hd .pb-modal.stay :is(.pb-card,.pb-card *,.pb-setup,.pb-setup *){animation:none}
 .pb.hd .pb-card h2{margin:0;font:800 36px/.92 var(--hd-display);letter-spacing:.005em;text-transform:uppercase;color:#fff;text-shadow:none}
