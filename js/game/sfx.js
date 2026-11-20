@@ -1,4 +1,4 @@
-/* Sound for Coach Andre's Bowl: real recordings (audio/, made by scripts/sounds.py and picked in the sound lab),
+/* Sound for Tailgate: real recordings (audio/, made by scripts/sounds.py and picked in the sound lab),
    played with Web Audio. The context starts on the first tap, which browsers require.
 
    Signal flow: effects, music and the crowd each have a bus -> master -> a limiter -> speakers. Music, the crowd beds

@@ -299,7 +299,7 @@ document.addEventListener('keydown', e => {
 });
 window.addEventListener('hashchange', onHashChange);
 
-/* ---------- Coach Andre's Bowl, the arcade game (loaded on demand, shown at #play) ---------- */
+/* ---------- Tailgate, the arcade game (loaded on demand, shown at #play) ---------- */
 let pb = null, pbPrefill = null, pbPushed = false;
 function openGame(prefill = null){ pbPrefill = prefill; pbPushed = true; location.hash = '#play'; }
 function exitGame(){

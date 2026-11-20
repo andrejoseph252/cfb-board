@@ -1,4 +1,4 @@
-/* Special teams for Coach Andre's Bowl. Phase one: returning their punt.
+/* Special teams for Tailgate. Phase one: returning their punt.
 
    Their punter kicks from behind the line; the ball flies under gravity, and the crosswind gusts while it's up, so
    the landing ring (where it'll come down, recomputed every frame from the wind blowing right now) drifts and you

@@ -1,4 +1,4 @@
-/* Game conditions for Coach Andre's Bowl: the kickoff time (noon, afternoon, night) and the weather (clear, rain,
+/* Game conditions for Tailgate: the kickoff time (noon, afternoon, night) and the weather (clear, rain,
    snow, wind, fog), picked on the setup screen or rolled at random. drawhd.js and hdart.js paint them; sim.js reads
    `effects` so the weather plays as well as it looks, kept small on purpose: a wet ball is an edge, not a coin flip.
    `wind` is signed miles per hour across the field (+ toward y = 53.3), the same sense as a kick's crosswind. */

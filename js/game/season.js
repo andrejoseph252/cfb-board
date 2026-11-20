@@ -1,4 +1,4 @@
-/* Season mode for Coach Andre's Bowl: your team's real schedule, week by week, in a world that's real where it has
+/* Season mode for Tailgate: your team's real schedule, week by week, in a world that's real where it has
    happened and simulated where it hasn't. Every other FBS game comes from ESPN's weekly scoreboards: a game already
    played in real life keeps its real score; one that hasn't is simulated from the teams' FPI when its week is done.
    Your games are always yours. Then conference title games (the top two in your world's standings), a 12-team

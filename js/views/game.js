@@ -214,7 +214,7 @@ function threadLinks(g){
   const links = [
     game ? btn(game, 'Game thread') : (g.state !== 'pre' || soon) ? find('Game Thread', 'Find game thread') : '',
     post ? btn(post, 'Postgame thread') : g.state === 'post' ? find('Postgame Thread', 'Find postgame thread') : '',
-    // Coach Andre's Bowl, the arcade game: take over the real late-game moment of a close final, or play the matchup.
+    // Tailgate, the arcade game: take over the real late-game moment of a close final, or play the matchup.
     takeOver(g),
     `<button class="rbtn ghost" type="button" data-play="${esc(g.away.id)},${esc(g.home.id)}">${PAD}<span>Play this matchup</span></button>`
   ].filter(Boolean);

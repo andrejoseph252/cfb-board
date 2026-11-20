@@ -1,4 +1,4 @@
-/* Real names for Coach Andre's Bowl: each team's quarterback, running back and top four receivers, from the box
+/* Real names for Tailgate: each team's quarterback, running back and top four receivers, from the box
    score of its most recent game (ESPN's rosters are alphabetical, with no depth chart, so that's the honest way to
    know who actually plays). One schedule and one summary request per team, remembered on the device for 3 days. */
 import * as api from '../api.js';

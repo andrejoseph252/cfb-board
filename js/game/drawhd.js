@@ -1,4 +1,4 @@
-/* Coach Andre's Bowl's renderer, in hdart.js's late-afternoon style, with a camera that zooms: in close before the snap and with the ball carrier, out wide while the quarterback can
+/* Tailgate's renderer, in hdart.js's late-afternoon style, with a camera that zooms: in close before the snap and with the ball carrier, out wide while the quarterback can
    throw (and for kicks).
 
    Two layers. The field, players and shadows are pixel art at 10 logical pixels per yard in an offscreen buffer,

@@ -1,4 +1,4 @@
-/* Coach Andre's Bowl game logic, separate from drawing and the page. Like the arcade football games it's modeled on, you
+/* Tailgate game logic, separate from drawing and the page. Like the arcade football games it's modeled on, you
    only play offense: the other team's drives are simulated between yours.
 
    Coordinates are in yards. x runs along the field from your goal line (0) to theirs (100), with end zones at

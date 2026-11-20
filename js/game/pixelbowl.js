@@ -1,4 +1,4 @@
-/* Coach Andre's Bowl: an arcade football game in the spirit of the retro mobile classics. Pick your team and an opponent
+/* Tailgate: an arcade football game in the spirit of the retro mobile classics. Pick your team and an opponent
    (any FBS teams, in their colors, with strength from ESPN's FPI), then play offense: drag back and release to
    throw, hand off, juke and dive, kick field goals. The other team's drives are simulated between yours.
    Opened full screen at #play; loaded on demand so it costs nothing until then. */
@@ -209,7 +209,7 @@ export function open({ prefill = null, exit = () => {} } = {}){
     picker: cur => modal(SV.pickerHTML({ title: 'LOCKER ROOM', act: 'lk-pickteam', back: 'lk-open', list: allTeams(), cur })) });
   if (!document.getElementById('pb-css')) document.head.append(Object.assign(document.createElement('style'), { id: 'pb-css', textContent: CSS + SV.CSS + hdUI.CSS + LK.CSS }));
   root = document.createElement('div');
-  root.className = 'pb hd pb-loading'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Coach Andre's Bowl");
+  root.className = 'pb hd pb-loading'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', "Tailgate");
   root.innerHTML = `<canvas class="pb-cv"></canvas>
     <div class="pb-hud" hidden><div class="pb-bugw"><div class="pb-bug"></div><div class="pb-wxhud"></div></div><div class="pb-dd"></div><div class="pb-pbp" aria-live="polite"></div></div>
     <div class="pb-tools" hidden><button type="button" data-pb="pause" aria-label="Pause">${ICON.pause}</button><button type="button" data-pb="sound" aria-label="Sound">${saved.sound ? ICON.sound : ICON.mute}</button></div>
@@ -408,7 +408,7 @@ function setup(){
   const wear = LK.wearing(me.id);
   modal(`<div class="pb-setup pb-home">
     <div class="pb-hbtns"><button class="pb-x" type="button" data-pb="settings" aria-label="Settings">${ICON.gear}</button><button class="pb-x" type="button" data-pb="exit" aria-label="Close">${ICON.x}</button></div>
-    <h1 class="pb-logo"><span>COACH ANDRE'S</span><span>BOWL</span></h1>
+    <h1 class="pb-logo"><span>COLLEGE FOOTBALL</span><span>TAILGATE</span></h1>
     <div class="pb-match${fresh}"><div class="pb-tw">${card(me, 'YOU', 'pickme')}<button class="pb-kitbtn" type="button" data-pb="lk-open" data-id="${esc(me.id)}" aria-label="Uniform: ${esc(LK.wearing(me.id) || 'Home')}. Open the Locker Room">${LK.bust(me)}</button></div><div class="pb-vsc"><button class="pb-vs" type="button" data-pb="swap" aria-label="Swap teams">VS<i>⇄</i></button><button type="button" class="pb-deal" data-pb="deal" aria-label="New matchup">${W.icon('dice')}</button></div>${card(opp, 'CPU', 'pickopp')}</div>
     <div class="pb-opt"><span>Difficulty</span>${seg('diff', Object.entries(S.DIFFS).map(([k, d]) => [k, d.name]))}</div>
     <div class="pb-opt"><span>Quarters</span>${seg('len', Object.entries(S.LENGTHS).map(([k, d]) => [k, `${d.name}<small>${mmss(d.q)}</small>`]), ' pb-seg2')}</div>

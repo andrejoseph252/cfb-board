@@ -1,4 +1,4 @@
-/* Take over: real late-game moments from this week's close games, to replay in Coach Andre's Bowl.
+/* Take over: real late-game moments from this week's close games, to replay in Tailgate.
 
    For each close final, the team that lost gets one challenge, taken from ESPN's per-play feed (every play carries
    its drive, the down, distance and spot at the snap, the score and the clock):
