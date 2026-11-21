@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-21T02:53:23+00:00",
+ "updated": "2026-11-21T10:21:54+00:00",
  "threads": [
   {
    "kind": "post",
@@ -1519,39 +1519,6 @@
    "teams": [
     "Buffalo",
     "Ball State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Miami (OH) Defeats Ohio 34-17",
-   "url": "https://www.reddit.com/r/CFB/comments/1xt8saz/postgame_thread_miami_oh_defeats_ohio_3417/",
-   "published": "2026-11-11T04:48:18+00:00",
-   "gameId": "401866460",
-   "teams": [
-    "Miami (OH)",
-    "Ohio"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Bowling Green Defeats Kent State 33-28",
-   "url": "https://www.reddit.com/r/CFB/comments/1xt7gon/postgame_thread_bowling_green_defeats_kent_state/",
-   "published": "2026-11-11T03:38:12+00:00",
-   "gameId": "401866459",
-   "teams": [
-    "Bowling Green",
-    "Kent State"
-   ]
-  },
-  {
-   "kind": "post",
-   "title": "[Postgame Thread] Western Michigan Defeats Akron 42-14",
-   "url": "https://www.reddit.com/r/CFB/comments/1xt6s46/postgame_thread_western_michigan_defeats_akron/",
-   "published": "2026-11-11T03:04:12+00:00",
-   "gameId": "401866458",
-   "teams": [
-    "Western Michigan",
-    "Akron"
    ]
   }
  ],
