@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-21T22:30:43+00:00",
+ "updated": "2026-11-22T00:39:19+00:00",
  "threads": [
   {
    "kind": "post",
@@ -1486,39 +1486,6 @@
    "teams": [
     "Central Michigan",
     "Sacramento State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] UMass @ Toledo (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xtx5cx/game_thread_umass_toledo_730_pm_et/",
-   "published": "2026-11-11T23:30:08+00:00",
-   "gameId": null,
-   "teams": [
-    "UMass",
-    "Toledo"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Sacramento State @ Central Michigan (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xtx5ca/game_thread_sacramento_state_central_michigan_730/",
-   "published": "2026-11-11T23:30:07+00:00",
-   "gameId": null,
-   "teams": [
-    "Sacramento State",
-    "Central Michigan"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Buffalo @ Ball State (7:30 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xtx5bi/game_thread_buffalo_ball_state_730_pm_et/",
-   "published": "2026-11-11T23:30:05+00:00",
-   "gameId": null,
-   "teams": [
-    "Buffalo",
-    "Ball State"
    ]
   }
  ],
