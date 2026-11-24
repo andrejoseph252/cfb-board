@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T15:28:25+00:00",
+ "updated": "2026-11-24T02:39:48+00:00",
  "threads": [
   {
    "kind": "post",
@@ -1358,58 +1358,6 @@
     "Florida State",
     "Pittsburgh"
    ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Houston @ Colorado (10:15 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xvqn99/game_thread_houston_colorado_1015_pm_et/",
-   "published": "2026-11-14T02:15:05+00:00",
-   "gameId": null,
-   "teams": [
-    "Houston",
-    "Colorado"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Southern Utah @ Portland State (10:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xvqclv/game_thread_southern_utah_portland_state_1000_pm/",
-   "published": "2026-11-14T02:00:06+00:00",
-   "gameId": null,
-   "teams": [
-    "Southern Utah",
-    "Portland State"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Illinois @ UCLA (9:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xvp5e3/game_thread_illinois_ucla_900_pm_et/",
-   "published": "2026-11-14T01:00:09+00:00",
-   "gameId": null,
-   "teams": [
-    "Illinois",
-    "UCLA"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Florida State @ Pittsburgh (7:00 PM ET)",
-   "url": "https://www.reddit.com/r/CFB/comments/1xvmidl/game_thread_florida_state_pittsburgh_700_pm_et/",
-   "published": "2026-11-13T23:00:09+00:00",
-   "gameId": null,
-   "teams": [
-    "Florida State",
-    "Pittsburgh"
-   ]
-  },
-  {
-   "kind": "game",
-   "title": "[Game Thread] Non-D1 Games \u2014 Friday, November 13",
-   "url": "https://www.reddit.com/r/CFB/comments/1xvl2yy/game_thread_nond1_games_friday_november_13/",
-   "published": "2026-11-13T22:00:07+00:00",
-   "gameId": null,
-   "teams": null
   }
  ],
  "errors": [
