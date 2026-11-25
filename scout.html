@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Team scout</title>
+<meta name="theme-color" content="#111916">
+<script>try{const s=JSON.parse(localStorage.getItem('cfbboard.settings')||'{}'),m=s.mode||'dark';if(m!=='system')document.documentElement.dataset.theme=m}catch{}</script>
+<!-- Team scout: opened from a game's Matchup panel or the team's schedule; size a team up before kickoff. Reads data/players/<id>.json (scripts/players.py): every
+     player and unit ranked against all of FBS. Who's hurt and the depth order are worked out here from the box scores.
+     ?team=<espn id> picks the team (only teams in data/players/scout.json); ?game=<event id> is where Back returns. -->
+<style>
+@font-face{font-family:"Big Shoulders Display";font-weight:600 900;font-display:swap;src:url(fonts/big-shoulders-display-v24-latin-600-900.woff2) format("woff2")}
+@font-face{font-family:"Public Sans";font-weight:400 800;font-display:swap;src:url(fonts/public-sans-v21-latin-400-800.woff2) format("woff2")}
+:root{--bg:#F3F5F2;--surface:#fff;--ink:#16201A;--muted:#5E6B63;--line:#E1E5E0;--soft:#ECEFEA;--tc:#782f40;--tc-ink:#fff;--bad:#e5484d;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111916;--surface:#18221E;--ink:#E8EEE9;--muted:#93A39A;--line:#25332D;--soft:#202D27;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111916;--surface:#18221E;--ink:#E8EEE9;--muted:#93A39A;--line:#25332D;--soft:#202D27;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "Public Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+img{display:block}
+.wrap{max-width:720px;margin:0 auto;padding:10px 12px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.panel{background:var(--surface);border-radius:14px}
+.lbl{font:800 10px/1 "Public Sans";letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+
+.f{display:block;position:relative;overflow:hidden;border-radius:50%;background:var(--soft);flex:none}
+.f img{position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);height:104%;width:auto}
+.f .nof{position:absolute;inset:0;display:grid;place-items:center;font:900 14px/1 "Big Shoulders Display";color:var(--muted)}
+.dv{display:block;position:relative;height:6px;border-radius:3px;background:var(--soft)}
+.dv::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--muted);opacity:.4;border-radius:1px}
+.dv i{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--g)}
+.gn{font:900 16px/1 "Big Shoulders Display";color:var(--g);font-variant-numeric:tabular-nums}
+
+/* ---- header: team + the game ---- */
+.top{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--tc);color:var(--tc-ink);position:relative;overflow:hidden}
+.top .wm{position:absolute;right:90px;top:-30px;width:120px;height:120px;opacity:.1;pointer-events:none}
+.top .back{flex:none;width:28px;height:40px;margin:0 -4px 0 -6px;display:grid;place-items:center;color:inherit;text-decoration:none;font:300 34px/1 system-ui;opacity:.85}
+.top .disc{width:40px;height:40px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:none}
+.top .disc img{width:30px;height:30px}
+.top h1{margin:0;font:800 24px/1 "Big Shoulders Display";text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top p{margin:2px 0 0;font-size:12px;opacity:.85}
+.top .id{flex:1;min-width:0}
+.game{display:flex;align-items:center;gap:7px;padding:6px 8px 6px 10px;border-radius:10px;background:rgba(255,255,255,.14);flex:none;text-align:right;font-size:11px;line-height:1.25}
+.game b{display:block;font-size:12px}
+.game img{width:26px;height:26px;background:#fff;border-radius:50%;padding:2px}
+
+/* ---- players: who to know, who's out ---- */
+.people{padding:10px 0 12px}
+.ph-h{display:flex;justify-content:space-between;align-items:baseline;padding:2px 14px 8px}
+.ph-h small{font-size:11px;color:var(--muted)}
+.ph-h:not(:first-child){margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.cards{display:flex;gap:8px;overflow-x:auto;padding:0 14px;scroll-snap-type:x proximity;scrollbar-width:none}
+.cards::-webkit-scrollbar{display:none}
+.pc{position:relative;flex:none;width:112px;scroll-snap-align:start;border-radius:12px;overflow:hidden;background:var(--soft);display:flex;flex-direction:column}
+.pc .ph{display:block;position:relative;height:80px;overflow:hidden;background:linear-gradient(160deg,color-mix(in srgb,var(--g) 85%,#fff),color-mix(in srgb,var(--g) 75%,#000))}
+.pc .ph img{position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:78px;width:auto}
+.pc .ph .no{position:absolute;left:6px;top:0;font:900 40px/1 "Big Shoulders Display";color:#fff;opacity:.25}
+.pc .tx{display:flex;flex-direction:column;gap:2px;padding:7px 9px 9px}
+.pc .tx .lbl{font-size:9px;letter-spacing:.06em}
+.pc .tx b{font:800 17px/1.05 "Big Shoulders Display";text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .tx small{font-size:11px;color:var(--muted);line-height:1.3}
+.pc .gl{display:flex;align-items:baseline;gap:5px;margin-top:2px}
+.pc .gl em{font-style:normal;font-size:11px;font-weight:700;color:color-mix(in srgb,var(--g) 70%,var(--ink))}
+.pc.out .ph img{filter:grayscale(1);opacity:.8}
+.pc .flag{position:absolute;left:6px;top:58px;padding:3px 6px;border-radius:5px;background:var(--bad);color:#fff;font:800 9px/1 "Public Sans";letter-spacing:.06em;text-transform:uppercase}
+.pc.sore .flag{background:#d4a63c;color:#1b1406}
+.pc .next{margin-top:3px;font-size:11px;font-weight:700;color:var(--ink)}
+.weak{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:9px 14px 0;font-size:12px}
+.weak .lbl{margin-right:2px}
+.weak button{font-weight:700}
+.weak small{color:var(--muted);font-weight:500}
+.also{font-size:11px;color:var(--muted);padding:8px 14px 0}
+.also button{font-weight:700;color:var(--ink)}
+.top .pts{font-size:11px;opacity:.85;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .pts span{opacity:.75}
+.seg{display:flex;background:var(--surface);border-radius:11px;padding:3px;gap:3px;margin-bottom:8px}
+.seg button{flex:1;padding:8px 4px;border-radius:8px;font-weight:800;font-size:13px;color:var(--muted);text-align:center}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.cl{display:flex;flex-wrap:wrap;gap:5px}
+.ch{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 2px;border-radius:999px;background:var(--soft);font-size:12px;font-weight:700;white-space:nowrap}
+.ch .f{width:22px;height:22px;background:var(--line)}
+.ch small{font-weight:500;color:var(--muted)}
+.lanes{padding:0 14px 10px}
+.lanes .lt{display:block;font-size:11px;font-weight:700;margin-bottom:6px}
+.lanes .lt small{font-weight:500;color:var(--muted)}
+.lanes > div{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.ln0{display:flex;flex-direction:column;gap:2px;padding:7px 8px 8px;border-radius:9px;background:color-mix(in srgb,var(--g,#8a948e) 13%,var(--surface));box-shadow:inset 0 -3px 0 var(--g,transparent)}
+.ln0 .lbl{font-size:9px}
+.ln0 b{font:800 20px/1 "Big Shoulders Display"}
+.ln0 small{font-size:10px;color:var(--muted)}
+.am{font-weight:800;color:#b7862a}
+
+/* ---- the field ---- */
+.field{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:16/10;isolation:isolate;
+  background:radial-gradient(ellipse 110% 90% at 50% 45%,transparent 55%,rgba(0,0,0,.32)),repeating-linear-gradient(180deg,#2f7f41 0 6.25%,#2b763c 6.25% 12.5%)}
+@media (min-width:600px){.field{aspect-ratio:16/9.5}}
+.yl{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.22);z-index:-1}
+.hash{position:absolute;top:0;bottom:0;width:6px;z-index:-1;background:repeating-linear-gradient(180deg,rgba(255,255,255,.35) 0 1px,transparent 1px 3.125%)}
+.los,.fd{position:absolute;left:0;right:0;height:2px;margin-top:-1px;z-index:-1}
+.los{background:#5b95ff;box-shadow:0 0 6px rgba(91,149,255,.6)}
+.fd{background:#ffd23f;box-shadow:0 0 6px rgba(255,210,63,.55)}
+.tok{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;transform:translate(-50%,-19px);z-index:2;transition:transform .2s}
+.tok .f{width:38px;height:38px;border-radius:10px;background:linear-gradient(160deg,color-mix(in srgb,var(--g) 85%,#fff),color-mix(in srgb,var(--g) 78%,#000));
+  box-shadow:0 0 0 1.5px rgba(255,255,255,.85),0 3px 8px rgba(0,0,0,.35)}
+.tok .f .nof{color:rgba(255,255,255,.85)}
+.tok .nm{font:700 10px/1 "Public Sans";color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 6px rgba(0,0,0,.4)}
+.tok .nm b{font:900 11px/1 "Big Shoulders Display";margin-left:3px;opacity:.85}
+.tok.l .nm{align-self:flex-start}
+.tok.r .nm{align-self:flex-end}
+.tok.ol .f{width:32px;height:32px;border-radius:9px}
+.tok.ol{transform:translate(-50%,-16px)}
+.tok .fill{position:absolute;left:-5px;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--bad);color:#fff;font:900 11px/14px "Public Sans";text-align:center;box-shadow:0 0 0 1.5px #fff}
+.tok.on{z-index:3}
+.tok.on .f{box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(255,255,255,.3),0 0 18px rgba(255,255,255,.5)}
+@media (max-width:599px){.tok.ol:not(.on) .nm{display:none} .tok.alt .nm{margin-top:12px} .tok .nm b{display:none}}
+@media (min-width:600px){.tok .f{width:46px;height:46px;border-radius:12px} .tok{transform:translate(-50%,-23px)} .tok.ol .f{width:40px;height:40px} .tok.ol{transform:translate(-50%,-20px)} .tok .nm{font-size:11px}}
+.key{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:11px;color:var(--muted);padding:6px 2px 0}
+.key .sc{display:inline-block;width:46px;height:6px;border-radius:3px;background:linear-gradient(90deg,#e5484d,#d4a63c,#1f9d55);vertical-align:1px;margin:0 4px}
+.key .fx{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--bad);color:#fff;font:900 10px/12px "Public Sans";text-align:center;margin-right:3px}
+.key .fx.am{background:#e0ad3c;color:#1b1406}
+.tok .sore{position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;background:#e0ad3c;color:#1b1406;font:900 10px/14px "Public Sans";text-align:center;box-shadow:0 0 0 1.5px #fff}
+
+/* ---- position group ---- */
+.tabs{display:flex;gap:2px;padding:6px 6px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;padding:6px 10px;border-radius:8px;font-weight:800;font-size:12px;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--soft);color:var(--ink)}
+.rh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 14px 2px}
+.rh b{font:800 19px/1 "Big Shoulders Display";text-transform:uppercase}
+.rh span{font-size:12px;font-weight:700;color:color-mix(in srgb,var(--g) 70%,var(--ink))}
+.ms{display:flex;flex-wrap:wrap;gap:2px 12px;padding:2px 14px 8px;font-size:11px;color:var(--muted)}
+.ms span{white-space:nowrap}
+.ms span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--g);margin-right:5px;vertical-align:1px}
+.ms b{color:var(--ink);font-weight:700}
+.row{display:grid;grid-template-columns:14px 32px 1fr 70px;align-items:center;gap:9px;padding:6px 14px;border-top:1px solid var(--line);width:100%}
+.row .d{font:900 15px/1 "Big Shoulders Display";color:var(--muted);text-align:center}
+.row .f{width:32px;height:32px}
+.row.gone .f{filter:grayscale(1);opacity:.7}
+.row .n{min-width:0}
+.row .n b{display:block;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .n small{font-size:11px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.wrap{grid-template-columns:14px 32px 1fr}
+.row.wrap .n small{white-space:normal}
+.row .s{display:grid;grid-template-columns:1fr 22px;gap:7px;align-items:center;text-align:right}
+.tag{font-weight:800;color:var(--bad)}
+.more{border-top:1px solid var(--line)}
+.more summary{list-style:none;cursor:pointer;padding:8px 14px;font-size:12px;font-weight:700;color:var(--muted)}
+.more summary::-webkit-details-marker{display:none}
+.more .cl{padding:0 14px 12px}
+.how{font-size:11px;color:var(--muted);line-height:1.5;padding:0 2px}
+.how summary{cursor:pointer;font-weight:700}
+
+/* wide screens: field and its position group side by side */
+@media (min-width:980px){
+  .wrap{max-width:1120px;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}
+  .top,.how,.people{grid-column:1/-1}
+  .stage{grid-column:1}
+  .room{grid-column:2}
+}
+
+/* ---- player sheet ---- */
+dialog{border:0;padding:0;margin:auto auto 0;width:100%;max-width:540px;max-height:90vh;border-radius:20px 20px 0 0;background:var(--surface);color:var(--ink);overflow:auto}
+@media (min-width:600px){dialog{margin:auto;border-radius:20px}}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.sh-top{position:relative;background:linear-gradient(165deg,var(--tc),color-mix(in srgb,var(--tc) 50%,#000));color:var(--tc-ink);height:170px;overflow:hidden}
+.sh-top img.hs{position:absolute;right:6px;bottom:0;height:160px;width:auto}
+.sh-top .no{position:absolute;right:150px;top:-8px;font:900 120px/1 "Big Shoulders Display";opacity:.13}
+.sh-top .id{position:absolute;left:18px;bottom:14px;max-width:60%}
+.sh-top .id .nm{font:800 30px/.95 "Big Shoulders Display";text-transform:uppercase}
+.sh-top .id small{font-size:12px;opacity:.85;display:block;margin-top:5px}
+.sh-top .x{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;font-size:18px;z-index:2;text-align:center}
+.sh-bio{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.sh-bio span{padding:9px 6px;text-align:center;border-right:1px solid var(--line)}
+.sh-bio span:last-child{border-right:0}
+.sh-bio b{display:block;font:800 16px/1.1 "Big Shoulders Display"}
+.sh-bio small{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.sh-body{padding:4px 16px 22px}
+.sh-body h3{font:800 11px/1 "Public Sans";letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:20px 0 8px}
+.sh-grade{display:flex;align-items:center;gap:12px;padding:14px 16px 0}
+.sh-grade .gn{font-size:34px}
+.sh-grade div{flex:1}
+.sh-grade small{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.why{display:grid;gap:8px}
+.why div{display:grid;grid-template-columns:1fr 110px;gap:12px;align-items:center;font-size:12px;color:var(--muted)}
+.why b{color:var(--ink)}
+.log .cap{font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.bars{display:grid;gap:3px;align-items:end;height:60px;margin-top:6px}
+.bars .b{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.bars .b i{display:block;width:100%;max-width:22px;border-radius:3px 3px 0 0;background:var(--tc);min-height:2px}
+.bars .b.dnp i{background:var(--line)}
+.bars .b.l i{opacity:.5}
+.bars .b em{font:700 9px/1 "Public Sans";font-style:normal;color:var(--muted);margin-bottom:2px}
+.opps{display:grid;gap:3px;margin-top:4px}
+.opps img{width:15px;height:15px;margin:0 auto;opacity:.85}
+table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;text-align:right;padding:4px;border-bottom:1px solid var(--line)}
+td{padding:5px 4px;text-align:right;border-bottom:1px solid var(--soft)}
+th:first-child,td:first-child{text-align:left}
+td .op{display:flex;align-items:center;gap:6px}
+td .op img{width:18px;height:18px}
+td .W{color:#1f9d55;font-weight:700}td .L{color:var(--bad);font-weight:700}
+tr.dnp td{color:var(--muted)}
+
+.skel{background:var(--soft);border-radius:14px;animation:p 1.2s ease-in-out infinite}
+@keyframes p{50%{opacity:.5}}
+.err{padding:14px;border-radius:12px;background:var(--surface)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="skel" style="height:60px"></div>
+  <div class="skel" style="height:110px"></div>
+  <div class="skel" style="height:250px"></div>
+</div>
+<dialog id="sheet"></dialog>
+<script type="module">
+import { scoutList, esc, fmt, num, shot, img, face, inkOn, md, ord, STOPS, gcol, gword, dv, gnum, g0, USE, CLASS, UNITS, ROOM_NAME, ROOM_UNIT, UNIT_ROOM, SHORT, FORM, SPOTS, loadTeam, prepare, gone, usage, rooms, line, tiles, METRIC, bio, since, missed, gameName, QTR, hurtAt, shaken, flags, flagLine } from './js/scout-core.js';
+const $app = document.getElementById('app'), $sheet = document.getElementById('sheet');
+let SCOUT = new Set();   // teams with a scout page (data/players/scout.json)
+/* ---------------- render ---------------- */
+const Q = new URLSearchParams(location.search);
+const S = {team: Q.get('team') || '52', unit: 'offense', room: 'QB', data: {}, teams: {}};
+/* ---------------- players: who to know, who's out, who's banged up ---------------- */
+function people(d){
+  const tile = (p, g) => `<span class="ph" style="--g:${g}"><span class="no">${esc(p.no ?? '')}</span>${img(p, 200)}</span>`;
+  const short = p => line(p).split(' · ').slice(0, 2).join(' · ');
+  const know = toKnow(d).map(({p, role}) => `<button class="pc" data-id="${p.id}">${tile(p, gcol(p.grade))}<span class="tx">
+      <span class="lbl">${esc(role)}</span><b>${esc(p.last || p.short)}</b><small>${esc(short(p))}</small>
+      ${p.grade != null ? `<span class="gl" style="--g:${gcol(p.grade)}">${gnum(p.grade)}<em>${gword(p.grade)}</em></span>` : ''}</span></button>`).join('');
+  const h = d.players.filter(gone).sort((a, b) => (b.usual ? 1 : 0) - (a.usual ? 1 : 0) || (b.grade ?? -1) - (a.grade ?? -1));
+  const st = h.filter(p => p.usual), bk = h.filter(p => !p.usual);
+  const outCard = p => { const sub = d.players.find(q => Object.values(q.fills || {}).includes(p));
+    return `<button class="pc out" data-id="${p.id}">${tile(p, '#7b8580')}<span class="flag">Out</span><span class="tx">
+      <span class="lbl">${esc(p.pos)}${p.grade != null ? ` · <span style="color:${gcol(p.grade)}">${p.grade}</span>` : ''}</span><b>${esc(p.last || p.short)}</b>
+      <small>${missed(p)}${hurtAt(d, p) ? `<br>${esc(hurtAt(d, p))}` : ''}</small>${sub ? `<span class="next">Next up: ${esc(sub.last || sub.short)}</span>` : ''}</span></button>`; };
+  const sore = d.players.filter(p => shaken(d, p) && (p.usual || (p.grade ?? 0) >= 50)).sort((a, b) => (b.grade ?? 0) - (a.grade ?? 0));
+  const soreCard = p => `<button class="pc sore" data-id="${p.id}">${tile(p, gcol(p.grade))}<span class="flag">Hurt last game</span><span class="tx">
+      <span class="lbl">${esc(p.pos)}${p.grade != null ? ` · <span style="color:${gcol(p.grade)}">${p.grade}</span>` : ''}</span><b>${esc(p.last || p.short)}</b>
+      <small>${esc(hurtAt(d, p))}<br>Still on the depth chart</small></span></button>`;
+  const w = weak(d);
+  return `<div class="panel people">
+    <div class="ph-h"><span class="lbl">Players to know</span><small>grade vs FBS at his spot</small></div><div class="cards">${know}</div>
+    ${w.length ? `<div class="weak"><span class="lbl">Weak spots</span>${w.map(p => `<button data-id="${p.id}">${esc(p.last || p.short)} <small>${esc(p.pos)}</small> <b style="color:${gcol(p.grade)}">${p.grade}</b></button>`).join('')}</div>` : ''}
+    <div class="ph-h"><span class="lbl">Out${sore.length ? ' and banged up' : ''}</span><small>${st.length} starter${st.length === 1 ? '' : 's'} out</small></div>
+    <div class="cards">${st.map(outCard).join('')}${sore.map(soreCard).join('')}</div>
+    ${bk.length ? `<div class="also">Backups out: ${bk.map(p => `<button data-id="${p.id}">${esc(p.short)}</button> ${esc(p.pos)}`).join(', ')}</div>` : ''}</div>`;
+}
+function weak(d){
+  const st = new Set();
+  for (const [r, l] of Object.entries(d.R)) if (r !== 'RET') l.filter(p => !gone(p)).slice(0, SPOTS[r] || 1).forEach(p => st.add(p));
+  return [...st].filter(p => p.grade != null && p.grade < 35).sort((a, b) => a.grade - b.grade).slice(0, 5);
+}
+function toKnow(d){
+  const R = d.R, picked = new Set(), out = [];
+  const add = (p, role) => { if (p && !picked.has(p.id)){ picked.add(p.id); out.push({p, role}); } };
+  add(R.QB.find(p => !gone(p) && p.uu.QB > 0), 'Quarterback'); add(R.RB.find(p => !gone(p) && p.uu.RB > 0), 'Lead back');
+  add(R.WR.concat(R.TE).filter(p => !gone(p) && p.tot.receiving).sort((a, b) => b.tot.receiving.yds - a.tot.receiving.yds)[0], 'Top target');
+  const defs = d.players.filter(p => !gone(p) && ['DL', 'LB', 'DB'].includes(p.pos) && p.grade != null).sort((a, b) => b.grade - a.grade);
+  const ROLE = {DL: 'Best lineman', LB: 'Best linebacker', DB: 'Best DB'};
+  for (const p of defs) if (out.length < 6 && !out.some(o => o.p.pos === p.pos)) add(p, ROLE[p.pos]);
+  return out;
+}
+
+/* ---------------- the field: each starter on a tile colored by his grade ---------------- */
+function field(d){
+  const f = FORM[S.unit], R = d.R, olg = d.units.OL?.grade;
+  const lines = [12.5, 25, 37.5, 50, 62.5, 75, 87.5].map(y => `<span class="yl" style="top:${y}%"></span>`).join('');
+  let ol = 0;
+  const toks = f.spots.map(([room, i, x, y]) => {
+    const p = R[room].filter(q => !gone(q))[i]; if (!p) return '';
+    const g = room === 'RET' || room === 'OL' || room === 'LS' ? null : p.grade, fill = p.fills?.[room];
+    // Linemen have no stats of their own: their tiles take the whole line's color.
+    const col = room === 'OL' ? gcol(olg) : g == null ? '#5d6a66' : gcol(g);
+    const cls = [room === 'OL' || room === 'LS' ? 'ol' : '', room === 'OL' && ol++ % 2 ? 'alt' : '', room === S.room ? 'on' : '', x < 12 ? 'l' : x > 88 ? 'r' : ''].filter(Boolean).join(' ');
+    return `<button class="tok ${cls}" style="left:${x}%;top:${y}%;--g:${col}" data-room="${room}" data-id="${p.id}" title="${esc(p.name)}${g != null ? `, grade ${g}` : ''}${fill ? `, filling in for ${esc(fill.name)}` : ''}${shaken(d, p) ? `, ${hurtAt(d, p).toLowerCase()}` : ''}">
+      ${face(p, 110)}<span class="nm">${esc(p.last || p.short)}${g != null ? `<b>${g}</b>` : ''}</span>${fill ? '<span class="fill">+</span>' : ''}${shaken(d, p) ? '<span class="sore">!</span>' : ''}</button>`;
+  }).join('');
+  const seg = `<div class="seg" role="group">${Object.entries(UNITS).map(([k, u]) => `<button data-unit="${k}" aria-pressed="${k === S.unit}">${u.label}</button>`).join('')}</div>`;
+  return `<div class="stage">${seg}<div class="field"><span class="hash" style="left:37%"></span><span class="hash" style="left:63%"></span>${lines}
+      <span class="los" style="top:${f.los}%"></span>${f.fd ? `<span class="fd" style="top:${f.fd}%"></span>` : ''}${toks}</div>
+    <div class="key"><span>Tile = grade vs FBS: worse<span class="sc"></span>better</span>${S.unit === 'offense' ? '<span>O-line tiles = the whole line</span>' : ''}<span><span class="fx">+</span>in for an injured starter</span><span><span class="fx am">!</span>hurt last game</span></div></div>`;
+}
+
+/* Runs by direction, ranked against FBS. Offense: its own left/middle/right. Defense: the side of the defense the runs
+   went at (an offense running right is running at the defense's left). */
+function lanes(d){
+  const def = ['DL', 'LB'].includes(S.room), r = d.runs?.[def ? 'def' : 'off']; if (!r) return '';
+  const order = def ? [['right', 'Left side'], ['middle', 'Middle'], ['left', 'Right side']] : [['left', 'Left'], ['middle', 'Middle'], ['right', 'Right']];
+  const cell = ([k, label], i) => { const x = r[k]; if (!x?.ypc) return `<span class="ln0">${label}<b>–</b></span>`;
+    return `<span class="ln0" style="--g:${gcol(x.grade)}"><span class="lbl">${['◀', '▲', '▶'][i]} ${label}</span><b>${x.ypc}</b><small>yds a carry · ${ord(x.rank)}</small></span>`; };
+  return `<div class="lanes"><span class="lt">${def ? 'Runs at this defense' : 'Runs by direction'} <small>(${def ? 'by the side of the defense they went at; rank vs FBS' : 'rank vs FBS'})</small></span><div>${order.map(cell).join('')}</div></div>`;
+}
+
+/* ---------------- the selected position group ---------------- */
+function room(d){
+  const list = d.R[S.room] || [], noStats = S.room === 'OL' || S.room === 'LS', x = d.units[ROOM_UNIT[S.room]];
+  const tabs = `<div class="tabs">${UNITS[S.unit].rooms.map(r => `<button data-room="${r}" aria-pressed="${r === S.room}">${r === 'RET' ? 'Returners' : ROOM_NAME[r]}</button>`).join('')}</div>`;
+  const head = `<div class="rh" style="--g:${gcol(x?.grade)}"><b>${esc(ROOM_NAME[S.room])}</b>${x ? `<span>${esc(x.label)} · ${gword(x.grade)} · ${ord(x.rank)} of ${x.of}</span>` : ''}</div>
+    ${x ? `<div class="ms">${x.parts.map(([n, v, g, rk]) => `<span style="--g:${gcol(g)}">${esc(n)} <b>${esc(v)}</b> · ${ord(rk)}</span>`).join('')}</div>` : ''}
+    ${['OL', 'RB', 'DL', 'LB'].includes(S.room) ? lanes(d) : ''}`;
+  if (!list.length) return `<div class="panel room">${tabs}${head}<p class="how" style="padding:0 14px 12px">No ${ROOM_NAME[S.room].toLowerCase()} on ESPN's roster.</p></div>`;
+  const ok = p => !gone(p) && (noStats || p.uu[S.room] > 0);
+  const active = list.filter(ok), hurt = list.filter(gone), rest = list.filter(p => !ok(p) && !gone(p));
+  const show = Math.max(SPOTS[S.room] || 1, Math.min(active.length, 3)) + (['WR', 'DB', 'DL', 'OL'].includes(S.room) ? 1 : 0);
+  const extra = [...active.slice(show), ...rest], rated = S.room !== 'RET' && !noStats;
+  const olLine = p => { const n = flags(p); return `${esc(bio(p))}<br>${n ? `<span class="tag">${n} flag${n > 1 ? 's' : ''}: ${esc(flagLine(p))}</span>${p.penRank?.[0] <= 100 ? ` · ${ord(p.penRank[0])}-most of ${fmt(p.penRank[1])} FBS linemen` : ''}` : 'no flags'}`; };
+  const sub = p => gone(p) ? `<span class="tag">${missed(p)}</span>, ${esc(hurtAt(d, p) || since(p))}`
+    : p.fills?.[S.room] ? `<span class="tag">For ${esc(p.fills[S.room].short)}</span> · ${esc(line(p, S.room))}`
+    : S.room === 'OL' ? olLine(p)
+    : `${shaken(d, p) ? `<span class="am">${esc(hurtAt(d, p))}</span> · ` : ''}${esc(noStats ? bio(p) : line(p, S.room) || bio(p))}`;
+  const row = (p, i) => `<button class="row${gone(p) ? ' gone' : ''}${S.room === 'OL' ? ' wrap' : ''}" data-id="${p.id}"><span class="d">${i}</span>${face(p, 90)}
+    <span class="n"><b>${esc(p.name)}</b><small>${sub(p)}</small></span>
+    <span class="s">${rated ? `${dv(p.grade)}${gnum(p.grade)}` : ''}</span></button>`;
+  return `<div class="panel room">${tabs}${head}${active.slice(0, show).map((p, i) => row(p, i + 1)).join('')}${hurt.map(p => row(p, '–')).join('')}
+    ${S.room === 'OL' ? '<p class="how" style="padding:6px 14px 10px;margin:0;border-top:1px solid var(--line)">Box scores keep no stats for linemen, so there are no individual grades: the line is judged as a unit (above), by where its runs go, and by who draws flags. Order is by experience, then size.</p>' : ''}
+    ${extra.length ? `<details class="more"><summary>+ ${extra.length} more in the room</summary><div class="cl">${extra.map(p => `<button class="ch" data-id="${p.id}">${face(p, 60)}${esc(p.short)} <small>#${esc(p.no ?? '–')} ${esc(p.cls || '')}</small></button>`).join('')}</div></details>` : ''}</div>`;
+}
+
+function view(){
+  const d = S.data[S.team]; if (!d) return;
+  const t = d.team, root = document.documentElement.style, u = d.units;
+  root.setProperty('--tc', t.color || '#444'); root.setProperty('--tc-ink', inkOn(t.color || '#444'));
+  const other = S.home && (String(S.home) === String(S.team) ? S.away : S.home), o = S.teams[other] || {};
+  const game = other ? `<${SCOUT.has(String(other)) ? `button class="game" data-team="${other}" title="See ${esc(o.name)}"` : 'span class="game"'}><span><b>${S.neutral ? 'vs' : String(S.home) === String(S.team) ? 'vs' : 'at'} ${esc(o.abbr || o.name)}</b>${esc(new Date(S.date).toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric'}))}</span><img src="${esc(o.logo)}" alt=""></${SCOUT.has(String(other)) ? 'button' : 'span'}>` : '';
+  const sc = (k, txt) => u[k] ? `${u[k].parts[0][1]} ${txt} <span>${ord(u[k].rank)}</span>` : '';
+  document.title = `${t.name} scout`;
+  $app.innerHTML = `<header class="top"><a class="back" href="${esc(backHref())}" aria-label="Back to the board" data-back>‹</a><img class="wm" src="${esc(t.logo)}" alt=""><span class="disc"><img src="${esc(t.logo)}" alt=""></span>
+      <div class="id"><h1>${esc(t.name)}</h1><p>${esc([t.record, t.standing].filter(Boolean).join(' · '))}</p><p class="pts">${sc('OFF', 'pts')} · ${sc('DEF', 'allowed')}</p></div>${game}</header>
+    ${field(d)}${room(d)}${people(d)}
+    <details class="how"><summary>How this is worked out</summary><b>Ranks</b> put each unit against all ${u.QB?.of} FBS teams. <b>Player grades</b> (0–99) are the share of FBS players at the same position, with enough snaps, that he beats. <b>Who's out</b>: ESPN has no college injury reports, so anyone who was getting regular work and has dropped out of the box scores counts as out and is kept off the field; "hurt" notes come from the play-by-play ("injured on the play"). <b>Depth</b> is who played most, with the last 3 games counting double. <b>Linemen</b> have no box-score stats; their flags and run directions come from the play-by-play. Data as of ${esc(new Date(d.updated).toLocaleString(undefined, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}))}.</details>`;
+}
+
+function bars(d, p, room){
+  const [c, k, label] = METRIC[room] || METRIC.QB;
+  const vals = d.games.map((g, gi) => p.g[gi] ? (p.g[gi][c]?.[k] ?? 0) : null);
+  const max = Math.max(1, ...vals.filter(v => v != null)), cols = `grid-template-columns:repeat(${d.games.length},1fr)`;
+  return `<div class="log"><div class="cap"><span>${label}, game by game</span><span>${room === 'QB' && p.starts ? `Started ${p.starts} of ${d.n}` : `Played ${p.gp} of ${d.n}`}</span></div>
+    <div class="bars" style="${cols}">${vals.map((v, gi) => `<span class="b${v == null ? ' dnp' : ''}${d.games[gi].res === 'L' ? ' l' : ''}" title="${esc(d.games[gi].opp.name)}: ${v == null ? 'did not play' : v}">${v ? `<em>${v}</em>` : ''}<i style="height:${v == null ? 2 : Math.max(2, 78 * v / max)}%"></i></span>`).join('')}</div>
+    <div class="opps" style="${cols}">${d.games.map(g => `<img src="${esc(g.opp.logo)}" alt="${esc(g.opp.abbr)}" title="${g.home ? 'vs' : '@'} ${esc(g.opp.name)} ${g.res} ${g.score}" loading="lazy">`).join('')}</div></div>`;
+}
+
+function sheet(id){
+  const d = S.data[S.team], p = d.players.find(x => x.id === id); if (!p) return;
+  const t = p.tot;
+  const COLS = [
+    ['passing', 'Passing', [['cmp', 'C'], ['att', 'Att'], ['yds', 'Yds'], ['td', 'TD'], ['int', 'Int']]],
+    ['rushing', 'Rushing', [['car', 'Car'], ['yds', 'Yds'], ['td', 'TD'], ['long', 'Lng']]],
+    ['receiving', 'Receiving', [['rec', 'Rec'], ['yds', 'Yds'], ['td', 'TD'], ['long', 'Lng']]],
+    ['defensive', 'Defense', [['tot', 'Tkl'], ['tfl', 'TFL'], ['sacks', 'Sck'], ['pd', 'PD'], ['qbh', 'Hur']]],
+    ['interceptions', 'Interceptions', [['int', 'Int'], ['yds', 'Yds'], ['td', 'TD']]],
+    ['kicking', 'Kicking', [['fgm', 'FGM'], ['fga', 'FGA'], ['long', 'Lng'], ['xpm', 'XP'], ['pts', 'Pts']]],
+    ['punting', 'Punting', [['no', 'No'], ['yds', 'Yds'], ['in20', 'In20'], ['long', 'Lng']]],
+    ['kickReturns', 'Kick returns', [['no', 'No'], ['yds', 'Yds'], ['td', 'TD']]],
+    ['puntReturns', 'Punt returns', [['no', 'No'], ['yds', 'Yds'], ['td', 'TD']]]
+  ].filter(([c]) => t[c] && !(c === 'defensive' && !['DL', 'LB', 'DB'].includes(p.pos) && (t[c].tot || 0) < 3) && !(c === 'rushing' && ['WR', 'TE'].includes(p.pos) && (t[c].car || 0) < 3));
+  const tables = COLS.map(([c, label, cols]) => `<h3>${label}</h3><table><thead><tr><th>Game</th>${cols.map(([, h]) => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+    ${d.games.map((g, gi) => { const s = p.g[gi]?.[c]; return `<tr class="${s ? '' : 'dnp'}"><td><span class="op"><img src="${esc(g.opp.logo)}" alt="">${g.home ? 'vs' : '@'} ${esc(g.opp.abbr)} <span class="${g.res}">${g.res}</span></span></td>${cols.map(([k]) => `<td>${s ? fmt(s[k]) : '–'}</td>`).join('')}</tr>`; }).join('')}
+    <tr><td><b>Season</b></td>${cols.map(([k]) => `<td><b>${fmt(t[c][k])}</b></td>`).join('')}</tr></tbody></table>`).join('');
+  const pv = (n, v) => /%/.test(n) ? `${(v * 100).toFixed(1)}%` : String(Math.round(v * 10) / 10);
+  const grade = p.grade != null ? `<div class="sh-grade" style="--g:${gcol(p.grade)}">${gnum(p.grade)}<div><small><b style="color:var(--g)">${gword(p.grade)}</b> · better than ${p.grade}% of ${p.pool} FBS ${esc(p.pos)}s</small>${dv(p.grade)}</div></div>
+    <div class="sh-body" style="padding-bottom:0"><h3>Why</h3><div class="why">${(p.parts || []).map(([n, v, g]) => `<div style="--g:${gcol(g)}"><span>${esc(n)}: <b>${pv(n, v)}</b></span>${dv(g)}</div>`).join('')}</div></div>` :
+    `<p class="note" style="margin:14px 16px 0">${p.pos === 'OL' ? 'Linemen get no box-score stats, so there is no player grade.' : 'Not enough snaps this season for a grade.'}</p>`;
+  $sheet.innerHTML = `<div class="sh-top"><button class="x" aria-label="Close" data-close>×</button><span class="no">${esc(p.no ?? '')}</span>${img(p, 300).replace('<img', '<img class="hs"')}
+      <div class="id"><div class="nm">${esc(p.name)}</div><small>#${esc(p.no ?? '–')} · ${esc(p.pos)} · ${esc(d.team.name)}</small>${gone(p) ? `<small><b>${missed(p)}</b>, ${esc(hurtAt(d, p) || since(p))}</small>` : shaken(d, p) ? `<small><b>${esc(hurtAt(d, p))}</b></small>` : ''}</div></div>
+    <div class="sh-bio"><span><b>${esc(p.cls || '–')}</b><small>Class</small></span><span><b>${esc((p.ht || '–').replace(/\s/g, ''))}</b><small>Height</small></span><span><b>${esc((p.wt || '–').replace(' lbs', ''))}</b><small>Weight</small></span><span><b style="font-size:12px;line-height:1.5">${esc(p.home || '–')}</b><small>Hometown</small></span></div>
+    ${grade}<div class="sh-body">${flags(p) ? `<h3>Flags</h3><p style="margin:0;font-size:13px">${flags(p)} this season: ${esc(flagLine(p))}${p.penRank ? ` · ${ord(p.penRank[0])}-most of ${fmt(p.penRank[1])} FBS linemen` : ''}</p>` : ''}${p.gp && METRIC[p.pos] ? `<h3>Season</h3>${bars(d, p, p.pos)}` : ''}${tables || '<p class="note">No stats on record this season.</p>'}</div>`;
+  $sheet.showModal();
+}
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.close != null){ $sheet.close(); return; }
+  if (b.dataset.team){ if (b.dataset.team !== S.team){ S.team = b.dataset.team; S.unit = 'offense'; S.room = 'QB'; await ensure(S.team); view(); } return; }
+  if (b.dataset.unitKey){ [S.unit, S.room] = UNIT_ROOM[b.dataset.unitKey]; view(); return; }
+  if (b.dataset.unit){ S.unit = b.dataset.unit; S.room = UNITS[S.unit].rooms[0]; view(); return; }
+  if (b.classList.contains('tok')){ if (S.room === b.dataset.room) sheet(b.dataset.id); else { S.room = b.dataset.room; view(); } return; }
+  if (b.dataset.room){ S.room = b.dataset.room; view(); return; }
+  if (b.dataset.id) sheet(b.dataset.id);
+});
+$sheet.addEventListener('click', e => { if (e.target === $sheet) $sheet.close(); });
+
+async function ensure(id){
+  if (S.data[id]) return;
+  S.data[id] = await loadTeam(id);
+  const t = S.data[id].team; S.teams[id] = {name: t.name, abbr: t.abbr, logo: t.logo, record: t.record};
+}
+// Back: to the page that opened this one when it's the board (keeps its place), else to the board on this game.
+const backHref = () => `./${Q.get('game') ? `#game/${Q.get('game')}` : S.data[S.team]?.next ? `#game/${S.data[S.team].next.id}` : ''}`;
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-back]'); if (!a) return;
+  try{ if (document.referrer && new URL(document.referrer).origin === location.origin && history.length > 1){ e.preventDefault(); history.back(); } }catch{}
+});
+(async () => {
+  try{
+    SCOUT = await scoutList();
+    if (!SCOUT.has(S.team)){
+      $app.innerHTML = `<div class="err"><b>No scouting report for this team yet.</b> Scouting covers the Power 4 and Notre Dame. <a href="./">Back to the board</a></div>`;
+      return;
+    }
+    await ensure(S.team);
+    const g = S.data[S.team].next;
+    // The game this page is opened from: both teams, either one a tap away.
+    if (g){
+      S.teams[g.opp.id] ||= {name: g.opp.name, abbr: g.opp.abbr, logo: g.opp.logo};
+      S.home = g.home ? S.team : g.opp.id; S.away = g.home ? g.opp.id : S.team; S.date = g.date; S.neutral = g.neutral;
+    }
+    view();
+  } catch (err){
+    $app.innerHTML = `<div class="err"><b>Couldn't load this team.</b> ${esc(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

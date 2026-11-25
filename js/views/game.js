@@ -8,7 +8,8 @@ import { useData } from '../resource.js';
 import { teamLink, panel, fmtDelay } from './components.js';
 import { chartHTML } from './wpchart.js';
 import { quarterDrives } from './drives.js';
-import { banner, theLine, lineChart, tape, recentForm } from './preview.js';
+import { banner, theLine, lineChart, recentForm } from './preview.js';
+import { matchup } from './matchup.js';
 import { threadsFor, searchUrl } from '../threads.js';
 import { lineFor } from '../lines.js';
 import { ats, atsWhy, fmtLine } from '../ats.js';
@@ -44,7 +45,7 @@ export function viewGame(id){
   if (g.syncing) return h;
   if (g.state === 'pre'){
     loadPredictions([g]);
-    h += theLine(g, s) + betPanel(g) + tape(g) + recentForm(g);
+    h += theLine(g, s) + betPanel(g) + matchup(g) + recentForm(g);
   } else {
     // Finished and live games only show the pregame line when it actually moved.
     const pregame = Math.abs(lineFor(g)?.move ?? 0) >= .03 ? lineChart(g) : '';

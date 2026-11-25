@@ -9,6 +9,7 @@ import { teamLink, logo, panel, gameHref } from './components.js';
 import { inkOn } from './preview.js';
 import { isMine, STAR } from '../myteam.js';
 import { ats } from '../ats.js';
+import { scoutList } from '../scout-core.js';
 
 /* Against the spread, from this team's side: its closing line and whether it covered, as a quiet tag after the score. */
 function atsMark(g, side){
@@ -84,7 +85,9 @@ export function viewTeam(id){
   const mine = isMine(t.id);
   const myBtn = `<button class="mine-btn th-change" type="button" data-mine="${esc(t.id)}" data-name="${esc(t.name)}" data-color="${esc(t.color || '')}" data-logo="${esc(t.logo || '')}" aria-pressed="${mine}"
     title="${mine ? 'Your team. Tap to unset' : 'Follow this team: always pinned, with a ring in its color'}">${STAR}<span>${mine ? 'My team' : 'Make my team'}</span></button>`;
-  return teamHero(t, { ap, conf, st, f, myBtn }) +
+  // Teams with a scouting report (the Power 4 and Notre Dame) link to it under the header.
+  const scout = useData('scout:list', scoutList, x => x).data?.has(String(t.id)) ? `<a class="mu-scout solo" href="scout.html?team=${esc(t.id)}"><span class="tx"><b>Depth chart and roster</b><small>Who starts, who's out, players to know</small></span><span aria-hidden="true">›</span></a>` : '';
+  return teamHero(t, { ap, conf, st, f, myBtn }) + scout +
     panel(`${e.data.season || ''} schedule`, `<div class="shead"><span>Date</span><span>Opponent</span><span>Result</span><span>Record</span></div><ol class="sched">${rows}</ol>`) +
     `<p class="note">Tap any opponent to jump to their schedule, or a result for the box score. Back returns to the previous team.</p>`;
 }

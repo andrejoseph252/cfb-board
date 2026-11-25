@@ -9,7 +9,7 @@ import { lineFor } from '../lines.js';
 import { upset, upsetWhy, BOLT } from '../upset.js';
 import { useData } from '../resource.js';
 import { weekLabel } from '../picks.js';
-import { logo, panel, barColors, sideColors, ballClass, ballIcon, stepPath, teamHref, gameHref } from './components.js';
+import { logo, panel, barColors, ballClass, ballIcon, stepPath, teamHref, gameHref } from './components.js';
 
 /* Black or white text, whichever reads better on a team color. */
 export function inkOn(hex){
@@ -132,68 +132,6 @@ export function theLine(g, s){
   if (!main) return panel('The line', '<p class="muted">No prices or projections yet. Markets usually open early in the week.</p>');
   return panel('The line', tugOfWar(g, main[2], main[1]) + forecastStrip(g, rows) + lineChart(g) +
     (facts.length ? `<div class="facts">${facts.map(x => `<span>${x}</span>`).join('')}</div>` : ''));
-}
-
-/* ---------- tale of the tape ---------- */
-/* National percentile (0-1, 1 = best) of a value within all FBS teams. */
-function pctile(v, all, lowerBetter){
-  if (v == null || !all.length) return null;
-  const worse = all.filter(x => lowerBetter ? x > v : x < v).length;
-  return worse / Math.max(1, all.length - 1);
-}
-const nth = (v, all, lowerBetter) => 1 + all.filter(x => lowerBetter ? x < v : x > v).length;
-
-/* How the two teams have played this season, as a compact comparison: one line per stat in plain words, each team's
-   national rank in its own column, and the better side of each line marked with a pill in that team's color (no pill
-   when they're within a few spots: even). A one-line verdict above says what it adds up to. Overall, offense and
-   defense are ESPN's FPI ratings (adjusted for the opponents each team has played); points come from the standings. */
-export function tape(g){
-  const f = state.fpi, st = state.standings;
-  if (!f && !st) return '';
-  const fp = t => f?.byTeam[t.id], sd = t => st?.byTeam[t.id];
-  const gp = r => r?.overall ? r.overall.w + r.overall.l + r.overall.t : 0;
-  const ppg = r => r?.ppg ?? null, opp = r => r?.pa != null && gp(r) ? r.pa / gp(r) : null;
-  const fpiAll = k => f ? f.list.map(t => t[k]).filter(v => v != null) : [];
-  const stAll = fn => st ? Object.values(st.byTeam).map(fn).filter(v => v != null) : [];
-  const rank = (v, all, lower) => v == null || !all.length ? null : nth(v, all, lower);
-  const offAll = fpiAll('off'), defAll = fpiAll('def'), ppgAll = stAll(ppg), oppAll = stAll(opp);
-  const of = t => { const x = fp(t), r = sd(t);
-    return { overall: x?.rank ?? null, off: rank(x?.off, offAll, false), def: rank(x?.def, defAll, false), sos: x?.sosRank ?? null,
-      ppg: ppg(r), ppgRk: rank(ppg(r), ppgAll, false), opp: opp(r), oppRk: rank(opp(r), oppAll, true) }; };
-  const A = of(g.away), H = of(g.home);
-  // [label, away rank, home rank, away figure, home figure]: lower rank is better; within 8 spots is even.
-  const lines = [
-    ['Overall', A.overall, H.overall],
-    ['Offense', A.off, H.off],
-    ['Defense', A.def, H.def],
-    ['Points scored', A.ppgRk, H.ppgRk, A.ppg, H.ppg],
-    ['Points allowed', A.oppRk, H.oppRk, A.opp, H.opp],
-    ['Schedule faced', A.sos, H.sos]
-  ].filter(([, ra, rh]) => ra != null && rh != null);
-  if (!lines.length) return '';
-  const better = (ra, rh) => Math.abs(ra - rh) < 8 ? null : ra < rh ? 'a' : 'h';
-  const cell = (side, rk, fig, win) => `<span class="tot-c ${side}${win ? ' win' : ''}"><b>#${rk}</b>${fig != null ? `<small>${fig.toFixed(1)}</small>` : ''}</span>`;
-  const rows = lines.map(([k, ra, rh, fa, fh]) => { const w = better(ra, rh);
-    return `<div class="tot-row" role="row">${cell('a', ra, fa, w === 'a')}<span class="tot-k" role="rowheader">${esc(k)}</span>${cell('h', rh, fh, w === 'h')}</div>`; }).join('');
-
-  // The verdict: who's stronger, and where the other side holds up.
-  const ov = A.overall && H.overall ? better(A.overall, H.overall) : null;
-  let verdict = '';
-  if (A.overall && H.overall && !ov) verdict = 'Evenly matched on paper.';
-  else if (ov){
-    const [W, L, Wd, Ld] = ov === 'a' ? [g.away, g.home, A, H] : [g.home, g.away, H, A];
-    const but = [];
-    if (Ld.off && Wd.def && Ld.off <= Wd.def) but.push(`${L.name}'s offense matches up well with ${W.name}'s defense`);
-    if (Ld.def && Wd.off && Ld.def <= Wd.off) but.push(`${L.name}'s defense can slow ${W.name}'s offense`);
-    const leads = lines.filter(([, ra, rh]) => better(ra, rh) === ov).length;
-    verdict = but.length ? `${W.name} is the stronger team, but ${but.join(' and ')}.` : `${W.name} is the stronger team, ahead in ${leads} of ${lines.length}.`;
-  }
-  const [ca, ch] = sideColors(g), ink = c => /^#[0-9a-f]{6}$/i.test(c) ? inkOn(c) : '#fff';
-  const head = t => `<span class="tot-t">${logo(t.logo, 'logo sm')}<b>${esc(t.abbr)}</b></span>`;
-  return panel('Tale of the tape', `<div class="tot" role="table" aria-label="Season comparison, national ranks" style="--ca:${esc(ca)};--ch:${esc(ch)};--ia:${ink(ca)};--ih:${ink(ch)}">
-    ${verdict ? `<p class="tot-verdict">${esc(verdict)}</p>` : ''}
-    <div class="tot-row tot-head" role="row">${head(g.away)}<span class="tot-k">National rank</span>${head(g.home)}</div>
-    ${rows}</div>`);
 }
 
 /* ---------- recent form ---------- */
